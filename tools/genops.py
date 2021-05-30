@@ -7,12 +7,13 @@ import sys
 # opcodes.html is downloaded from "http://www.oxyron.de/html/opcodes02.html"
 # on 2021-05-28
 
-filename = 'opcodes2.html'
+filename = 'opcodes02.html'
 if not pathlib.Path(filename).exists():
     print('file not exists; run `wget "http://www.oxyron.de/html/opcodes02.html"`', file=sys.stderr)
     exit(1)
 
-soup = BeautifulSoup(open('opcodes2.html'), 'html.parser')
+soup = BeautifulSoup(
+    open('opcodes02.html', encoding='ISO-8859-1'), 'html.parser')
 
 op_table: bs4.element.Tag = soup.select_one('table')
 cells: bs4.element.ResultSet = op_table.select('tr > td')
