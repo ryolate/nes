@@ -19,26 +19,25 @@ test("Parse iNES", () => {
 })
 
 
+const wantNESTestLog = parseNesTestLog()
 test("nestest", () => {
-    const wantLog = parseNesTestLog()
-
-    const bus = new CPUBus(cartridge)
-    const cpu = new CPU(bus)
-
+    const cpu = new CPU(new CPUBus(cartridge))
     cpu.setPCForTest(0xc000)
-    {
-        let i = 0
-        cpu.setDebugCallback((got: CPUStatus) => {
-            if (i >= wantLog.length) {
-                return
-            }
-            const want = wantLog[i++]
-            expect(state2Obj(got)).toEqual(state2Obj(want[0]))
-        })
-    }
 
+    let i = 0
+    cpu.setDebugCallback(got => {
+        if (i >= wantNESTestLog.length) {
+            return
+        }
+        const want = wantNESTestLog[i++]
+        expect(state2Obj(got)).toEqual(state2Obj(want[0]))
+    })
+
+    let tickCount = 0
     while (cpu.tick()) {
+        tickCount++
     }
+    expect(i).toBe(wantNESTestLog.length)
 })
 
 function state2Obj(state: CPUStatus): Object {

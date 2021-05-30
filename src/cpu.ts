@@ -62,22 +62,20 @@ export function operation2str(op: Operation): string {
 function dec(x: uint8): uint8 {
     return (x + UINT8_MAX) & UINT8_MAX
 }
-
 function inc(x: uint8): uint8 {
     return (x + 1) & UINT8_MAX
+}
+function comp(x: uint8): uint8 {
+    return (x ^ UINT8_MAX) + 1
 }
 
 function dec16(x: uint16): uint16 {
     return (x + UINT16_MAX) & UINT16_MAX
 }
-
 function inc16(x: uint16): uint16 {
     return (x + 1) & UINT16_MAX
 }
 
-function comp(x: uint8): uint8 {
-    return (x ^ UINT8_MAX) + 1
-}
 
 export class CPU {
     private A: uint8 = 0
@@ -132,11 +130,7 @@ export class CPU {
     }
 
     fetch(): uint8 {
-        const res = this.bus.read(this.postIncPC())
-        if (this.PC > UINT16_MAX) {
-            this.PC = 0
-        }
-        return res
+        return this.bus.read(this.postIncPC())
     }
 
     fetch16(): uint16 {
@@ -155,14 +149,13 @@ export class CPU {
                 case "zpy":
                 case "izx":
                 case "izy":
+                case "rel":
                     return this.fetch()
                 case "abs":
                 case "abx":
                 case "aby":
                 case "ind":
                     return this.fetch16()
-                case "rel":
-                    return this.fetch()
             }
         })()
         return {
@@ -231,9 +224,9 @@ export class CPU {
                 case "zpy": // d,y
                     return (instr.arg + this.Y) & UINT8_MAX
                 case "izx": // (d,x)
-                    return this.bus.read16Wrapping((instr.arg + this.X) & UINT8_MAX)
+                    return this.bus.read16((instr.arg + this.X) & UINT8_MAX)
                 case "izy": {// (d), y
-                    const base = this.bus.read16Wrapping(instr.arg)
+                    const base = this.bus.read16(instr.arg)
                     const p = (base + this.Y) & UINT16_MAX
                     pageBoundaryCrossed = (p >> 8) != (base >> 8)
                     return p
@@ -251,7 +244,7 @@ export class CPU {
                     return p
                 }
                 case "ind":
-                    return this.bus.read16Wrapping(instr.arg)
+                    return this.bus.read16(instr.arg)
                 case "rel": {
                     return (this.PC + uint8ToSigned(instr.arg)) & UINT16_MAX
                 }
@@ -426,10 +419,7 @@ export class CPU {
                 break
             }
             case "PHP": {
-                let p = this.getP()
-                p |= 1 << 5
-                p |= 1 << 4
-                this.push(p)
+                this.push(this.getP() | 1 << 4 | 1 << 5)
                 break
             }
             // Jump/Flag commands
@@ -509,12 +499,12 @@ export class CPU {
                 break
             }
             case "JSR": {
-                this.push16(this.PC - 1)
+                this.push16(dec16(this.PC))
                 this.PC = addr
                 break
             }
             case "RTS": {
-                this.PC = this.pop16() + 1
+                this.PC = inc16(this.pop16())
                 break
             }
             case "JMP": {
@@ -594,8 +584,7 @@ export class CPU {
                 break
             }
             case "LAX": {
-                this.A = this.setNZ(this.bus.read(addr))
-                this.X = this.A
+                this.A = this.X = this.setNZ(this.bus.read(addr))
                 break
             }
             case "DCP": { // DEC + CMP
@@ -637,33 +626,25 @@ export class CPU {
                 this.A = this.setNZ(this.X & this.bus.read(addr))
                 break
             }
-            case "LAX": { // LDA + TAX
-                this.A = this.X = this.setNZ(this.bus.read(addr))
-                break
-            }
             case "AXS": {
                 this.X = this.setNZC((this.A & this.X) + comp(this.bus.read(addr)))
                 break
             }
             case "AHX": {
-                const h = inc(addr >> 8)
-                this.bus.write(addr, this.A & this.X & h)
+                this.bus.write(addr, this.A & this.X & inc(addr >> 8))
                 break
             }
             case "SHY": {
-                const h = inc(addr >> 8)
-                this.bus.write(addr, this.Y & h)
+                this.bus.write(addr, this.Y & inc(addr >> 8))
                 break
             }
             case "SHX": {
-                const h = inc(addr >> 8)
-                this.bus.write(addr, this.X & h)
+                this.bus.write(addr, this.X & inc(addr >> 8))
                 break
             }
             case "TAS": {
-                const h = inc(addr >> 8)
                 this.S = this.A & this.X
-                this.bus.write(addr, this.S & h)
+                this.bus.write(addr, this.S & inc(addr >> 8))
                 break
             }
             case "LAS": {
@@ -765,9 +746,6 @@ export class CPUBus {
         return 0
     }
     read16(pc: uint16): uint16 {
-        return this.read(pc) | this.read(pc + 1) << 8
-    }
-    read16Wrapping(pc: uint16): uint16 {
         let np = pc + 1
         if ((np >> 8) > (pc >> 8)) np -= 0x100
         return this.read(pc) | this.read(np) << 8
