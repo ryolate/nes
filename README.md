@@ -6,7 +6,7 @@ Nes emulator.
 
 `node --version # v16.0.0`
 
-## Deevelopment
+## Development
 
 `npm run start`
 
