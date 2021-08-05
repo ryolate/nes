@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom'
 import './index.css'
 import { Demo } from './sandbox'
 import * as Breakout from './breakout'
+import * as NESUI from './nesui'
 
 import {
     HashRouter as Router,
@@ -17,6 +18,7 @@ function App() {
                     <li className="navbar-item"><NavLink className="nav-link" exact to="/">Home</NavLink></li>
                     <li className="navbar-item"><NavLink className="nav-link" to="/sandbox">Sandbox</NavLink></li>
                     <li className="navbar-item"><NavLink className="nav-link" to="/breakout">Breakout</NavLink></li>
+                    <li className="navbar-item"><NavLink className="nav-link" to="/nes">NES</NavLink></li>
                 </ul>
             </nav>
             <div>
@@ -25,6 +27,7 @@ function App() {
                 <Switch>
                     <Route path="/sandbox"><Demo /></Route>
                     <Route path="/breakout"><Breakout.App /></Route>
+                    <Route path="/nes"><NESUI.App /></Route>
                     <Route path="/"><h2>Welcome to my homepage!</h2></Route>
                 </Switch>
             </div>

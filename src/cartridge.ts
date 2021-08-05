@@ -23,6 +23,15 @@ class Scanner {
         for (let i = 0; i < n; i++) res[i] = this.read()
         return res
     }
+    isEOF(): boolean {
+        return this.data.length == this.p
+    }
+    assertEOF() {
+        if (this.isEOF()) {
+            return
+        }
+        throw new Error(`EOF is not reached data.length = ${this.data.length} p = ${this.p}`)
+    }
 }
 
 interface Header {
@@ -46,17 +55,18 @@ interface Header {
 }
 
 function parseHeader(sc: Scanner): Header {
+    // 0-3: Constant $4E $45 $53 $1A ("NES" followed by MS-DOS end-of-file)
     sc.expect(0x4E)
     sc.expect(0x45)
     sc.expect(0x53)
     sc.expect(0x1A)
-    const prgROMSize = sc.read() * 16 * 1024
-    const chrROMSize = sc.read() * 8 * 1024 // 0 means the board uses CHR RAM
+    const prgROMSize = sc.read() * 16 * 1024 // Size of PRG ROM in 16 KB units
+    const chrROMSize = sc.read() * 8 * 1024 // Size of CHR ROM in 8 KB units (Value 0 means the board uses CHR RAM)
     const flag6 = sc.read() // Mapper, mirroring, battery, trainer
     const flag7 = sc.read() // Mapper, VS/Playchoice, NES 2.0
     const flag8 = sc.read() // PRG-RAM size (rarely used extension)
-    const flag9 = sc.read()
-    const flag10 = sc.read()
+    const flag9 = sc.read() // TV system (rarely used extension)
+    const flag10 = sc.read() // TV system, PRG-RAM presence (unofficial, rarely used extension)
     sc.read() // 11-15: Unused padding
     sc.read() // 12
     sc.read() // 13
@@ -91,7 +101,6 @@ function parseHeader(sc: Scanner): Header {
         prgRAMSize,
     }
 }
-
 
 export class Cartridge {
     readonly header: Header
@@ -134,6 +143,25 @@ export class Cartridge {
         }
     }
 
+    // Pattern table $0000 - $1FFF
+    // https://wiki.nesdev.com/w/index.php?title=PPU_memory_map
+    readPPU(pc: uint16): uint8 {
+        if (pc < 0 || pc >= 0x2000) {
+            throw new Error(`Cartridge.readPPU(${pc})`)
+        }
+        return this.chrROM[pc & 0x1FFF]
+    }
+    writePPU(pc: uint16, x: uint8) {
+        this.chrROM[pc & 0x1FFFF] = x
+    }
+
+    // parses INES data.
+    //
+    // Example:
+    //     const data = fs.readFileSync("testdata/nestest.nes")
+    //     const cartridge = Cartridge.parseINES(data)
+    //
+    // Reference: https://wiki.nesdev.com/w/index.php?title=INES
     static parseINES(data: Uint8Array) {
         const sc = new Scanner(data)
         const header = parseHeader(sc)
@@ -148,9 +176,41 @@ export class Cartridge {
 
         const suppotedMappers = [0]
         if (!suppotedMappers.includes(header.mapper)) {
-            throw new Error(`unsupported mapper ${header.mapper}`)
+            throw new Error(`unsupported mapper ${header.mapper} `)
         }
 
+        sc.assertEOF()
+
         return new Cartridge(header, trainer, prgROM, chrROM, header.prgRAMSize)
+    }
+
+    // render pattern table 0 (4K) using predefined colors.
+    renderCharacters(canvas: HTMLCanvasElement) {
+        const pixelSize = 2
+        canvas.setAttribute('width', `${16 * 8 * pixelSize}`)
+        canvas.setAttribute('height', `${16 * 8 * pixelSize}`)
+        const ctx = canvas.getContext('2d')!
+        for (let y = 0; y < 16; y++) { // tile row
+            for (let x = 0; x < 16; x++) { // tile column
+                const i = y << 8 | x << 4
+
+                for (let r = 0; r < 8; r++) { // fine Y offset, the row number within a tile
+                    const lowerBits = this.readPPU(i | r)
+                    const upperBits = this.readPPU(i | 8 | r)
+                    for (let c = 0; c < 8; c++) {
+                        const colorIndex = (((upperBits >> 7 - c) & 1) << 1) | ((lowerBits >> 7 - c) & 1)
+
+                        if (colorIndex < 0 || colorIndex > 3) {
+                            throw new Error(`!!! ${colorIndex}`)
+                        }
+
+                        const gray = (3 - colorIndex) * 80
+                        ctx.fillStyle = `rgb(${gray},${gray},${gray})`
+
+                        ctx.fillRect((x * 8 + c) * pixelSize, (y * 8 + r) * pixelSize, pixelSize, pixelSize)
+                    }
+                }
+            }
+        }
     }
 }

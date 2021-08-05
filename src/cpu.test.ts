@@ -1,5 +1,6 @@
 import { Cartridge } from './cartridge'
-import { CPU, CPUBus, CPUStatus } from './cpu'
+import { CPU, CPUStatus } from './cpu'
+import { PPU } from './ppu'
 import { Instruction } from './opcode'
 import * as fs from 'fs'
 
@@ -7,7 +8,7 @@ const data = fs.readFileSync("testdata/nestest.nes")
 const cartridge = Cartridge.parseINES(data)
 
 test("Parse iNES", () => {
-    const cpu = new CPU(new CPUBus(cartridge))
+    const cpu = new CPU(cartridge, new PPU(cartridge))
 
     cpu.setPCForTest(0xc000)
 
@@ -18,10 +19,9 @@ test("Parse iNES", () => {
     }
 })
 
-
 const wantNESTestLog = parseNesTestLog()
 test("nestest", () => {
-    const cpu = new CPU(new CPUBus(cartridge))
+    const cpu = new CPU(cartridge, new PPU(cartridge))
     cpu.setPCForTest(0xc000)
 
     let i = 0

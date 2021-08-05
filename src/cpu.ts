@@ -1,6 +1,7 @@
 import { opcodes, Opcode } from './opcode'
 import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, checkUint16 } from './num'
 import { Cartridge } from './cartridge'
+import { PPU } from './ppu'
 
 export interface Operation extends Opcode {
     arg: uint8 | uint16 // value used for addressing
@@ -114,11 +115,16 @@ export class CPU {
 
     private stallCount: number = 6 // number of cycles consumed ahead of time
 
-    constructor(bus: CPUBus) {
-        this.bus = bus
+    constructor(cartridge: Cartridge, ppu: PPU) {
+        this.bus = new CPUBus(cartridge, ppu)
         // https://wiki.nesdev.com/w/index.php/CPU_power_up_state
         this.S = 0xFD
         this.I = 1
+
+        this.reset()
+    }
+    reset() {
+        this.PC = this.bus.read16(0xFFFC)
     }
 
     postIncPC(): uint16 {
@@ -721,21 +727,23 @@ export interface CPUStatus {
     cyc: uint8
 }
 
-export class CPUBus {
+class CPUBus {
     private CPURAM: Uint8Array // 2KB internal RAM
     private cartridge: Cartridge // Cartridge space
+    private ppu: PPU
 
-    constructor(cartridge: Cartridge) {
+    constructor(cartridge: Cartridge, ppu: PPU) {
         this.CPURAM = new Uint8Array(0x800)
         this.cartridge = cartridge
+        this.ppu = ppu
     }
 
+    // https://wiki.nesdev.com/w/index.php/CPU_memory_map
     read(pc: uint16): uint8 {
-        checkUint16(pc)
         if (pc < 0x2000) {
             return this.CPURAM[pc % 0x800]
         } else if (pc < 0x4000) {
-            // PPU
+            return this.ppu.readCPU(pc)
         } else if (pc < 0x4017) {
             // APU
         } else if (pc < 0x4020) {
@@ -756,9 +764,11 @@ export class CPUBus {
             this.CPURAM[pc % 0x800] = x
         } else if (pc < 0x4000) {
             // PPU
+            this.ppu.writeCPU(pc, x)
         } else if (pc < 0x4017) {
             // APU
         } else if (pc < 0x4020) {
+            throw new Error(`Unsupported write(${pc}, ${x}) to CPU Test Mode`)
             // CPU Test Mode
         } else {
             this.cartridge.writeCPU(pc, x)
