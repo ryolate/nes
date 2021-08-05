@@ -25,6 +25,7 @@ export class Console {
 		}
 	}
 
+	// Render the game.
 	render(ctx: CanvasRenderingContext2D) {
 		this.ppu.render(ctx)
 	}

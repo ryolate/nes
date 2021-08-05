@@ -48,7 +48,6 @@ const gameRunner = (canvas: HTMLCanvasElement, cartridgeData: Uint8Array): {
 
 const DebugInfo = (props: { cartridgeData: Uint8Array }) => {
 	const cartridge = Cartridge.parseINES(props.cartridgeData)
-
 	const canvasRef = useRef<HTMLCanvasElement>(null)
 
 	useEffect(() => {

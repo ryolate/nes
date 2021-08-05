@@ -13,7 +13,7 @@ Nes emulator.
 ## Push to production
 
 ```
-npm run build:prod
+npm run build
 git add ...
 git push
 ```
