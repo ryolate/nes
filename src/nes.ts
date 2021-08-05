@@ -6,7 +6,7 @@ import { CPU } from "./cpu";
 const CPUHz = 1.789773 * 1000 * 1000
 const CPUMillisPerCycle = 1000 / CPUHz
 
-export class Console {
+export class NES {
 	ppu: PPU
 	cpu: CPU
 	constructor(cartridgeData: Uint8Array) {

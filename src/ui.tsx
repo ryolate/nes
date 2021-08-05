@@ -22,7 +22,7 @@ const gameRunner = (canvas: HTMLCanvasElement, cartridgeData: Uint8Array): {
 	}
 
 	let prevTimestamp: DOMHighResTimeStamp
-	const nes = new NES.Console(cartridgeData)
+	const nes = new NES.NES(cartridgeData)
 
 	// callback of requestAnimationFrame
 	function render(timestamp: DOMHighResTimeStamp) {
