@@ -1,6 +1,7 @@
 import { Cartridge } from "./cartridge";
 import { PPU } from "./ppu";
 import { CPU } from "./cpu";
+import { NMI } from "./nmi";
 
 // NTSC CPU clock frequency = 1.789773 MHz
 const CPUHz = 1.789773 * 1000 * 1000
@@ -11,8 +12,9 @@ export class NES {
 	cpu: CPU
 	constructor(cartridgeData: Uint8Array) {
 		const cartridge = Cartridge.parseINES(cartridgeData)
-		this.ppu = new PPU(cartridge)
-		this.cpu = new CPU(cartridge, this.ppu)
+		const nmi = new NMI()
+		this.ppu = new PPU(cartridge, nmi)
+		this.cpu = new CPU(cartridge, this.ppu, nmi)
 	}
 
 	step(elapsedMillis: number) {

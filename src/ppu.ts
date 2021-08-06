@@ -1,5 +1,6 @@
 import { Cartridge } from './cartridge'
 import { uint16, uint8 } from './num'
+import { NMI } from './nmi'
 
 // Display resolution
 const WIDTH = 256
@@ -84,8 +85,11 @@ export class PPU {
     scanlineCycle: number = 0 // [0,341)
     frameCount: number = 0
 
-    constructor(cartridge: Cartridge) {
+    nmi: NMI
+
+    constructor(cartridge: Cartridge, nmi: NMI) {
         this.bus = new PPUBus(cartridge)
+        this.nmi = nmi
 
         for (let i = 0; i < this.buffers.length; i++) {
             for (let j = 0; j < this.buffers[i].length; j += 4) {
@@ -116,6 +120,12 @@ export class PPU {
             this.buffers[1 - this.frontBufferIndex][i * 4 + 0] = color[0] // R
             this.buffers[1 - this.frontBufferIndex][i * 4 + 1] = color[1] // G
             this.buffers[1 - this.frontBufferIndex][i * 4 + 2] = color[2] // B
+            return
+        }
+
+        if (this.scanline == HEIGHT && this.scanlineCycle == 0) {
+            // Trigger VBlank NMI
+            this.nmi.set()
         }
     }
 
@@ -125,7 +135,6 @@ export class PPU {
         return this.colors[i]
     }
 
-    dejavu: Set<number> = new Set()
     // Pixel index at (x,y). Returns a number in range 0 to 3.
     private backgroundPixelColorIndex(x: number, y: number): number {
         if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
@@ -162,23 +171,24 @@ export class PPU {
     // writeCPU write x to the PPU register pc indicates.
     // https://wiki.nesdev.com/w/index.php?title=PPU_registers
     writeCPU(pc: uint16, x: uint8) {
+        // https://wiki.nesdev.com/w/index.php?title=CPU_memory_map
         if (pc < 0x2000 || pc > 0x3FFF) {
             throw new Error(`Out of range PPC.writeCPU(${pc}, ${x})`)
         }
-        switch (pc) {
-            case 0x2000:
+        switch (pc & 7) {
+            case 0:
                 this.ctrl = pc
                 return
-            case 0x2001:
+            case 1:
                 this.mask = pc
                 return
-            case 0x2005:
+            case 5:
                 this.scroll = (this.scroll << 8 | x) & 0xFFFF
                 return
-            case 0x2006:
+            case 6:
                 this.addr = (this.addr << 8 | x) & 0xFFFF
                 return
-            case 0x2007:
+            case 7:
                 this.bus.write(this.addr, x)
                 // After access, the video memory address will increment by an amount determined by bit 2 of $2000.
                 if (this.ctrlIncrementMode === 0) {
@@ -209,8 +219,7 @@ class PPUBus {
             return this.cartridge.readPPU(pc)
         } else if (pc < 0x3F00) {
             // Nametable (VRAM)
-            const res = this.nametable[pc / 0x400 & 3][pc & 0x3FF]
-            return res
+            return this.nametable[pc / 0x400 & 3][pc & 0x3FF]
         } else {
             // Palette RAM
             return this.palettes[pc & 0x1F]

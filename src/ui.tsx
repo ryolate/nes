@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react'
 import * as NES from './nes'
-import sampleROMPath from './asset/hello.nes'
+import sampleROMPath from './asset/nestest.nes'
 import { Cartridge } from './cartridge'
 
 const gameRunner = (canvas: HTMLCanvasElement, cartridgeData: Uint8Array): {

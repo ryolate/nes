@@ -1,9 +1,10 @@
-import { opcodes, Opcode } from './opcode'
+import * as Opcode from './opcode'
 import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, checkUint16 } from './num'
 import { Cartridge } from './cartridge'
 import { PPU } from './ppu'
+import { NMI } from './nmi'
 
-export interface Operation extends Opcode {
+export interface Operation extends Opcode.Opcode {
     arg: uint8 | uint16 // value used for addressing
 }
 
@@ -112,10 +113,12 @@ export class CPU {
     private C: uint8 = 0 // carry
 
     private halt = false
+    private nmi: NMI
 
     private stallCount: number = 6 // number of cycles consumed ahead of time
 
-    constructor(cartridge: Cartridge, ppu: PPU) {
+    constructor(cartridge: Cartridge, ppu: PPU, nmi: NMI) {
+        this.nmi = nmi
         this.bus = new CPUBus(cartridge, ppu)
         // https://wiki.nesdev.com/w/index.php/CPU_power_up_state
         this.S = 0xFD
@@ -124,6 +127,7 @@ export class CPU {
         this.reset()
     }
     reset() {
+        // reset vector at $FFFC
         this.PC = this.bus.read16(0xFFFC)
     }
 
@@ -144,7 +148,12 @@ export class CPU {
     }
 
     fetchInstruction(): Operation {
-        const op = opcodes[this.fetch()]
+        let op: Opcode.Opcode
+        if (this.nmi.handle()) {
+            op = Opcode.nmi
+        } else {
+            op = Opcode.opcodes[this.fetch()]
+        }
         const x = (() => {
             switch (op.mode) {
                 case "": // imp
@@ -263,6 +272,17 @@ export class CPU {
 
         let branched = false
         switch (instr.opcode) {
+            // Fake opcodes
+            case "_NMI":
+                this.push16(this.PC)
+                this.push(this.getP())
+                this.PC = this.bus.read(0xFFFA)
+                this.I = 1
+            case "_IRQ":
+                this.push16(this.PC)
+                this.push(this.getP())
+                this.PC = this.bus.read(0xFFFE)
+                this.I = 1
             // Logical and arithmetic commands
             case "ORA":
                 this.A = this.setNZ(this.A | this.bus.read(addr))
