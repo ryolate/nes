@@ -1,37 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react'
 import * as NES from './nes'
-import sampleROMPath from './asset/nestest.nes'
+import sampleROMPath from './asset/hello.nes'
 import { Cartridge } from './cartridge'
-
-const gameRunner = (canvas: HTMLCanvasElement, cartridgeData: Uint8Array): {
-	render: (timestamp: DOMHighResTimeStamp) => void
-	close: () => void
-} => {
-	const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
-
-	let prevTimestamp: DOMHighResTimeStamp
-	const nes = new NES.NES(cartridgeData)
-
-	// callback of requestAnimationFrame
-	function render(timestamp: DOMHighResTimeStamp) {
-		if (prevTimestamp === undefined) {
-			prevTimestamp = timestamp
-			return
-		}
-		const elapsed = timestamp - prevTimestamp
-		prevTimestamp = timestamp
-
-		nes.step(elapsed)
-		nes.render(ctx)
-	}
-
-	return {
-		render: render,
-		close: () => {
-			// Cleanup
-		}
-	}
-}
 
 const DebugInfo = (props: { cartridgeData: Uint8Array }) => {
 	const cartridge = Cartridge.parseINES(props.cartridgeData)
@@ -47,32 +17,36 @@ const DebugInfo = (props: { cartridgeData: Uint8Array }) => {
 	</>
 }
 
-const Game = (props: { cartridgeData: Uint8Array | null }) => {
-	if (props.cartridgeData === null) {
-		return null
-	}
-
+const RealGame = (props: { nes: NES.NES }) => {
 	const canvasRef = useRef<HTMLCanvasElement>(null)
 	const [fps, setFPS] = useState(0)
 
 	useEffect(() => {
 		const canvas = canvasRef.current!
 
-		const g = gameRunner(canvas, props.cartridgeData!)
+		const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
 
+		let prevTimestamp: DOMHighResTimeStamp
 		let prevSecond: DOMHighResTimeStamp
 		let countInSecond = 0
 
 		let reqId: number
 		const render = (timestamp: DOMHighResTimeStamp) => {
-			g.render(timestamp)
 			reqId = requestAnimationFrame(render)
 
 			const currentSecond = Math.floor(timestamp / 1000)
-			if (prevSecond === undefined) {
+			if (prevTimestamp === undefined) {
+				prevTimestamp = timestamp
 				prevSecond = currentSecond
 				return
 			}
+
+			const elapsed = timestamp - prevTimestamp
+			prevTimestamp = timestamp
+
+			props.nes.step(elapsed)
+			props.nes.render(ctx)
+
 			countInSecond++
 			if (prevSecond < currentSecond) {
 				setFPS(countInSecond)
@@ -82,10 +56,9 @@ const Game = (props: { cartridgeData: Uint8Array | null }) => {
 		}
 		render(performance.now())
 		return () => {
-			g.close()
 			cancelAnimationFrame(reqId)
 		}
-	}, [props.cartridgeData])
+	})
 
 	return <>
 		<div className="row">
@@ -97,21 +70,7 @@ const Game = (props: { cartridgeData: Uint8Array | null }) => {
 				></canvas >
 				<label>FPS = {Math.round(fps * 10) / 10}</label>
 			</div>
-			<div className="col-3">
-				Use the keyboard to control:
-				<ul>
-					<li>A: Left</li>
-					<li>D: Right</li>
-					<li>W: Up</li>
-					<li>S: Down</li>
-					<li>K: A button</li>
-					<li>J: B button</li>
-					<li>F: SELECT</li>
-					<li>H: START</li>
-				</ul>
-			</div>
 		</div>
-		<DebugInfo cartridgeData={props.cartridgeData} />
 	</>
 }
 
@@ -132,7 +91,7 @@ const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 		return () => { cancelled = true }
 	}, [filePath])
 
-	return <div><label>Choose .nes file</label>
+	return <div>
 		< input type="file" accept=".nes" onChange={(e) => {
 			if (e === null) {
 				return
@@ -146,7 +105,21 @@ export const App = () => {
 	const [cartridgeData, setCartridgeData] = useState<Uint8Array | null>(null)
 
 	return <div>
-		<Game cartridgeData={cartridgeData} />
+		{cartridgeData ? <RealGame nes={new NES.NES(cartridgeData)} /> : null}
 		<FileChooser onChange={(data) => { setCartridgeData(data) }} />
+
+		<div>
+			Control:
+			<ul>
+				<li>A: Left</li>
+				<li>D: Right</li>
+				<li>W: Up</li>
+				<li>S: Down</li>
+				<li>K: A button</li>
+				<li>J: B button</li>
+				<li>F: SELECT</li>
+				<li>H: START</li>
+			</ul>
+		</div>
 	</div>
 }
