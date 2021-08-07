@@ -1,7 +1,7 @@
 import * as Opcode from './opcode'
 import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, checkUint16 } from './num'
 import { Cartridge } from './cartridge'
-import { PPU } from './ppu'
+import { PPU } from './ppu/ppu'
 import { NMI } from './nmi'
 import { debug } from './debug'
 
@@ -811,7 +811,7 @@ class CPUBus {
             this.ppu.writeCPU(pc, x)
         } else if (pc < 0x4017) {
             // APU
-            throw new Error(`Unsupported CPU.write(${pc}, ${x}) to APU`)
+            debug(`Unsupported CPU.write(${pc}, ${x}) to APU`)
         } else if (pc < 0x4020) {
             throw new Error(`Unsupported write(${pc}, ${x}) to CPU Test Mode`)
             // CPU Test Mode

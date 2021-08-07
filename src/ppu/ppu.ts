@@ -1,6 +1,6 @@
-import { Cartridge } from './cartridge'
-import { uint16, uint8 } from './num'
-import { NMI } from './nmi'
+import { Cartridge } from '../cartridge'
+import { uint16, uint8 } from '../num'
+import { NMI } from '../nmi'
 
 // Display resolution
 const WIDTH = 256
@@ -10,6 +10,7 @@ type Color = [uint8, uint8, uint8]
 
 // NTCS
 export class PPU {
+    // PPUCTRL $2000
     ctrlNMIEnable = 0 // cause NMI on VBlank
     ctrlPPUMaster = 1 // always 1
     ctrlSpriteHeight = 0 // Sprite size; 0:8x8, 1:8x16
@@ -37,13 +38,13 @@ export class PPU {
         this.ctrlNametableSelect = x & 1
     }
 
-    // PPUMask $2001
-    colorEmphasis = 0 // BGR
-    spriteEnable = 0
-    backgroundEnable = 0
-    spriteLeftColumnEnable = 0
-    backgroundLeftColumnEnable = 0
-    grayscale = 0
+    // PPUMASK $2001
+    colorEmphasis = 0 // Emphasize color BGR
+    spriteEnable = 0 // 1: Show sprites
+    backgroundEnable = 0 // 1: Show background
+    spriteLeftColumnEnable = 0 // 1: Show sprites in leftmost 8 pixels of screen, 0: Hide
+    backgroundLeftColumnEnable = 0 // 1: Show background in leftmost 8 pixels of screen, 0: Hide
+    grayscale = 0 // Greyscale (0: normal color, 1: produce a greyscale display)
 
     private get mask(): uint8 {
         return this.colorEmphasis << 5
@@ -62,10 +63,10 @@ export class PPU {
         this.grayscale = x & 1
     }
 
-    // Status $2002
-    vblank = 0
-    spriteZeroHit = 0
-    spriteOverflow = 0
+    // PPUSTATUS $2002
+    vblank = 0 // Vertical blank has started (0: not in vblank; 1: in vblank).
+    spriteZeroHit = 0 // Sprite 0 Hit.
+    spriteOverflow = 0 // Sprite overflow.
     private set status(x: uint8) {
         this.vblank = x >> 7
         this.spriteZeroHit = x >> 6 & 1
@@ -75,11 +76,22 @@ export class PPU {
         return this.vblank << 7 | this.spriteZeroHit << 6 | this.spriteOverflow << 5
     }
 
+    // OAMADDR $2003
     oamAddr: uint8 = 0
+
+    // OAMDATA $2004
     oamData: uint8 = 0
+
+    // PPUSCROLL $2005
     scroll: uint8 = 0
+
+    // PPUADDR $2006
     addr: uint16 = 0
+
+    // PPUDATA $2007
     data: uint8 = 0
+
+    // OAMDMA $4014
     oamDMA: uint8 = 0
 
     bus: PPUBus
@@ -117,12 +129,8 @@ export class PPU {
         }
 
         if (this.scanline < HEIGHT && 1 <= this.scanlineCycle && this.scanlineCycle <= WIDTH) {
-            const i = (this.scanline * WIDTH + (this.scanlineCycle - 1))
             const color = this.backgroundPixelColor(this.scanlineCycle - 1, this.scanline)
-
-            this.buffers[1 - this.frontBufferIndex][i * 4 + 0] = color[0] // R
-            this.buffers[1 - this.frontBufferIndex][i * 4 + 1] = color[1] // G
-            this.buffers[1 - this.frontBufferIndex][i * 4 + 2] = color[2] // B
+            this.putPixelColor(this.scanlineCycle - 1, this.scanline, color)
             return
         }
 
@@ -130,6 +138,13 @@ export class PPU {
             // Trigger VBlank NMI
             this.nmi.set()
         }
+    }
+
+    private putPixelColor(x: number, y: number, c: Color) {
+        const i = y * WIDTH + x
+        this.buffers[1 - this.frontBufferIndex][i * 4 + 0] = c[0] // R
+        this.buffers[1 - this.frontBufferIndex][i * 4 + 1] = c[1] // G
+        this.buffers[1 - this.frontBufferIndex][i * 4 + 2] = c[2] // B
     }
 
     colors: Array<Color> = [[240, 240, 240], [160, 160, 160], [80, 80, 80], [0, 0, 0]]
@@ -199,6 +214,7 @@ export class PPU {
                 } else {
                     this.addr += 32
                 }
+                return
             default:
                 throw new Error(`Unsupported PPU.writeCPU(0x${pc.toString(16)}, ${x})`)
         }

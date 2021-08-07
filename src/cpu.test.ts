@@ -1,6 +1,6 @@
 import { Cartridge } from './cartridge'
 import { CPU, CPUStatus, CPUHaltError } from './cpu'
-import { PPU } from './ppu'
+import { PPU } from './ppu/ppu'
 import { Instruction } from './opcode'
 import { NMI } from './nmi'
 import * as fs from 'fs'

@@ -1,5 +1,5 @@
 import { Cartridge } from "./cartridge";
-import { PPU } from "./ppu";
+import { PPU } from "./ppu/ppu";
 import { CPU, CPUHaltError, CPUStatus } from "./cpu";
 import { NMI } from "./nmi";
 import * as Debug from "./debug"

@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react'
 import * as NES from './nes'
-import sampleROMPath from './asset/nestest.nes'
+import sampleROMPath from './asset/hello.nes'
 
 const TableRow = (props: { row: Array<string> }) => {
 	return <tr>
@@ -93,6 +93,7 @@ const DebugGame = (props: { nes: NES.NES }) => {
 	const reset = () => {
 		props.nes.resetAll();
 		setDebugInfo([])
+		setError("")
 
 		nesRender()
 	}
@@ -117,7 +118,7 @@ const DebugGame = (props: { nes: NES.NES }) => {
 		<div>
 			<canvas ref={charsCanvasRef}></canvas>
 		</div>
-	</div >
+	</div>
 }
 
 const RealGame = (props: { nes: NES.NES }) => {
