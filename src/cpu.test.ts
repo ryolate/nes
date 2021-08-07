@@ -1,5 +1,5 @@
 import { Cartridge } from './cartridge'
-import { CPU, CPUStatus } from './cpu'
+import { CPU, CPUStatus, CPUHaltError } from './cpu'
 import { PPU } from './ppu'
 import { Instruction } from './opcode'
 import { NMI } from './nmi'
@@ -36,9 +36,12 @@ test("nestest", () => {
         expect(state2Obj(got)).toEqual(want[0])
     })
 
-    let tickCount = 0
-    while (cpu.tick()) {
-        tickCount++
+    try {
+        for (; ;) {
+            cpu.tick()
+        }
+    } catch (e) {
+        expect(e).toBeInstanceOf(CPUHaltError)
     }
     expect(i).toBe(wantNESTestLog.length)
 })
@@ -54,7 +57,6 @@ function state2Obj(state: CPUStatus): Object {
         cyc: state.cyc
     }
 }
-
 
 function parseNesTestLog(): Array<[Object, string]> {
     // https://www.qmtpro.com/~nes/misc/nestest.log

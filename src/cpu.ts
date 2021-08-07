@@ -3,10 +3,13 @@ import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, checkUint1
 import { Cartridge } from './cartridge'
 import { PPU } from './ppu'
 import { NMI } from './nmi'
+import { debug } from './debug'
 
 export interface Operation extends Opcode.Opcode {
     arg: uint8 | uint16 // value used for addressing
 }
+
+export class CPUHaltError extends Error { }
 
 export function operation2str(op: Operation): string {
     const n = (() => {
@@ -86,6 +89,7 @@ export class CPU {
     private _PC: uint16 = 0
     private bus: CPUBus
     private cycle: number = 0
+    debugMode = false
 
     private set PC(x: uint16) {
         while (x > UINT16_MAX) {
@@ -693,15 +697,15 @@ export class CPU {
         }
     }
 
-    // tick returns false when CPU is halted
-    tick(): boolean {
+    // throw error on CPU halt.
+    tick() {
         if (this.halt) {
-            return false
+            throw new CPUHaltError("CPU halt")
         }
         this.cycle++
         if (this.stallCount > 0) {
             this.stallCount--
-            return true
+            return
         }
 
         this.debugCallbacks.forEach(x => {
@@ -711,7 +715,7 @@ export class CPU {
         const instr = this.fetchInstruction()
         this.execute(instr)
 
-        return true
+        return
     }
 
     setPCForTest(pc: uint16) {
@@ -722,6 +726,11 @@ export class CPU {
     private debugCallbacks: Array<[(c: CPUStatus) => void, number]> = []
     addDebugCallback(f: (c: CPUStatus) => void): number {
         this.debugCallbacks.push([f, this.debugCallbackID])
+
+        if (this.debugCallbacks.length >= 2) {
+            console.error("debugcallback >= 2")
+        }
+
         return this.debugCallbackID++
     }
     removeDebugCallback(id: number) {
@@ -773,6 +782,7 @@ class CPUBus {
 
     // https://wiki.nesdev.com/w/index.php/CPU_memory_map
     read(pc: uint16): uint8 {
+        debug(`CPU.read(0x${pc.toString(16)})`)
         if (pc < 0x2000) {
             return this.CPURAM[pc % 0x800]
         } else if (pc < 0x4000) {
@@ -784,7 +794,7 @@ class CPUBus {
         } else {
             return this.cartridge.readCPU(pc)
         }
-        return 0
+        throw new Error(`Unsupported CPU.read 0x${pc.toString(16)}`)
     }
     read16(pc: uint16): uint16 {
         let np = pc + 1
@@ -792,6 +802,7 @@ class CPUBus {
         return this.read(pc) | this.read(np) << 8
     }
     write(pc: uint16, x: uint8) {
+        debug(`CPU.write(0x${pc.toString(16)})`)
         checkUint16(pc)
         if (pc < 0x2000) {
             this.CPURAM[pc % 0x800] = x
@@ -800,6 +811,7 @@ class CPUBus {
             this.ppu.writeCPU(pc, x)
         } else if (pc < 0x4017) {
             // APU
+            throw new Error(`Unsupported CPU.write(${pc}, ${x}) to APU`)
         } else if (pc < 0x4020) {
             throw new Error(`Unsupported write(${pc}, ${x}) to CPU Test Mode`)
             // CPU Test Mode

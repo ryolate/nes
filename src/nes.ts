@@ -1,7 +1,8 @@
 import { Cartridge } from "./cartridge";
 import { PPU } from "./ppu";
-import { CPU, CPUStatus } from "./cpu";
+import { CPU, CPUHaltError, CPUStatus } from "./cpu";
 import { NMI } from "./nmi";
+import * as Debug from "./debug"
 
 // NTSC CPU clock frequency = 1.789773 MHz
 const CPUHz = 1.789773 * 1000 * 1000
@@ -23,9 +24,17 @@ export class NES {
 
 	play(elapsedMillis: number) {
 		const numCPUSteps = Math.round(elapsedMillis / CPUMillisPerCycle)
-		this.step(numCPUSteps)
+
+		try {
+			this.step(numCPUSteps)
+		} catch (e) {
+			if (!(e instanceof CPUHaltError)) {
+				throw e
+			}
+		}
 	}
 
+	// throw error on CPU halt
 	private step(numCPUSteps: number) {
 		for (let i = 0; i < numCPUSteps; i++) {
 			this.ppu.tick()
@@ -47,17 +56,20 @@ export class NES {
 		this.cpu = new CPU(this.cartridge, this.ppu, nmi)
 	}
 
+	// throw CPUHaltError on CPU halt
 	stepToNextInstruction(): DebugInfo {
 		let cpuStatus: CPUStatus | null = null
 		let id = this.cpu.addDebugCallback((s) => {
 			cpuStatus = s
 		})
 
-		while (cpuStatus === null) {
-			this.step(1)
+		try {
+			while (cpuStatus === null) {
+				this.step(1)
+			}
+		} finally {
+			this.cpu.removeDebugCallback(id)
 		}
-
-		this.cpu.removeDebugCallback(id)
 
 		return {
 			cpuStatus: cpuStatus!,
@@ -67,6 +79,9 @@ export class NES {
 		return {
 			cpuStatus: this.cpu.cpuStatus()
 		}
+	}
+	setDebugMode(debugMode: boolean) {
+		Debug.setDebugMode(debugMode)
 	}
 }
 

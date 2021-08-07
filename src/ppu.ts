@@ -71,6 +71,9 @@ export class PPU {
         this.spriteZeroHit = x >> 6 & 1
         this.spriteOverflow = x >> 5 & 1
     }
+    private get status(): number {
+        return this.vblank << 7 | this.spriteZeroHit << 6 | this.spriteOverflow << 5
+    }
 
     oamAddr: uint8 = 0
     oamData: uint8 = 0
@@ -196,7 +199,6 @@ export class PPU {
                 } else {
                     this.addr += 32
                 }
-                return
             default:
                 throw new Error(`Unsupported PPU.writeCPU(0x${pc.toString(16)}, ${x})`)
         }

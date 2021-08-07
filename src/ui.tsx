@@ -2,8 +2,17 @@ import React, { useRef, useEffect, useState } from 'react'
 import * as NES from './nes'
 import sampleROMPath from './asset/nestest.nes'
 
+const TableRow = (props: { row: Array<string> }) => {
+	return <tr>
+		{props.row.map((x, i) => {
+			return <td key={i}>{x}</td>
+		})
+		}
+	</tr>
+}
+
 const DebugInfo = (props: { debugInfoHistory: Array<NES.DebugInfo> }) => {
-	if (!props.debugInfoHistory) {
+	if (props.debugInfoHistory.length === 0) {
 		return null
 	}
 	const info = props.debugInfoHistory[props.debugInfoHistory.length - 1]
@@ -11,42 +20,86 @@ const DebugInfo = (props: { debugInfoHistory: Array<NES.DebugInfo> }) => {
 
 	return <div>
 		<table>
-			<tr>
-				<td>A</td>
-				<td>{s.registers.a}</td>
-			</tr>
+			<tbody>
+				{
+					[
+						["PC", s.registers.pc],
+						["A", s.registers.a],
+						["X", s.registers.x],
+						["Y", s.registers.y],
+						["P", s.registers.p],
+						["S", s.registers.s],
+					].map(([s, x], i) => {
+						const id = "" + i
+						return <TableRow key={id} row={[s as string, x.toString(16).toUpperCase()]} />
+					})
+				}
+				<TableRow key="cyc" row={["CYC", "" + s.cyc]}></TableRow>
+			</tbody>
 		</table>
-		{s.registers.a}
+	</div>
+}
+
+const ErrorBanner = (props: { error: string }) => {
+	if (!props.error) {
+		return null
+	}
+	return <div style={{ color: "red" }}>
+		<label>Error: {props.error}</label>
 	</div>
 }
 
 const DebugGame = (props: { nes: NES.NES }) => {
 	const gameCanvasRef = useRef<HTMLCanvasElement>(null)
 	const charsCanvasRef = useRef<HTMLCanvasElement>(null)
+
 	const [stepCount, setStepCount] = useState(1)
+	const [error, setError] = useState<string>("")
 
 	const [debugInfo, setDebugInfo] = useState<Array<NES.DebugInfo>>([])
 
 	const nesRender = () => {
 		props.nes.render(gameCanvasRef.current!.getContext('2d')!)
+		addDebugInfo()
+	}
+
+	const addDebugInfo = () => {
+		const x = props.nes.debugInfo()
+		const last = debugInfo[debugInfo.length - 1]
+		if (last && last.cpuStatus.cyc === x.cpuStatus.cyc) {
+			return
+		}
+		setDebugInfo(debugInfo.concat([props.nes.debugInfo()]))
 	}
 
 	useEffect(() => {
 		props.nes.cartridge.renderCharacters(charsCanvasRef.current!)
 		nesRender()
-	})
+	}, [])
 
 	const onStep = () => {
-		for (let i = 0; i < stepCount; i++) {
-			props.nes.stepToNextInstruction()
+		try {
+			for (let i = 0; i < stepCount; i++) {
+				props.nes.stepToNextInstruction()
+			}
+		} catch (e) {
+			const err = e as Error
+			setError(err.message)
 		}
 		nesRender()
+		addDebugInfo()
+	}
 
-		setDebugInfo(debugInfo.concat([props.nes.debugInfo()]))
+	const reset = () => {
+		props.nes.resetAll();
+		setDebugInfo([])
+
+		nesRender()
 	}
 
 	return <div>
-		<button onClick={() => { props.nes.resetAll(); nesRender() }}>reset</button>
+		<ErrorBanner error={error} />
+		<button onClick={reset}>reset</button>
 		<button onClick={onStep}>step</button>
 		<label>count: <input min="1" type="number" value={stepCount ? stepCount : ""} onChange={(e) => {
 			if (e.target.value === "") {
@@ -154,6 +207,7 @@ const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 const Game = (props: { nes: NES.NES }) => {
 	const [debugMode, setDebugMode] = useState<boolean>(true)
 
+	props.nes.setDebugMode(debugMode)
 	const game = debugMode ?
 		<DebugGame nes={props.nes} /> :
 		<RealGame nes={props.nes} />
