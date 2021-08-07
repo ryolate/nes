@@ -9,18 +9,6 @@ const gameRunner = (canvas: HTMLCanvasElement, cartridgeData: Uint8Array): {
 } => {
 	const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
 
-	document.addEventListener("keydown", keydownListener)
-	document.addEventListener("keyup", keyupListener)
-
-	function keydownListener(e: KeyboardEvent) {
-		// TODO: update controller state
-	}
-
-	function keyupListener(e: KeyboardEvent) {
-		// if (e.key == "j") leftPressed = false
-		// else if (e.key == "l") rightPressed = false
-	}
-
 	let prevTimestamp: DOMHighResTimeStamp
 	const nes = new NES.NES(cartridgeData)
 
@@ -40,8 +28,7 @@ const gameRunner = (canvas: HTMLCanvasElement, cartridgeData: Uint8Array): {
 	return {
 		render: render,
 		close: () => {
-			document.removeEventListener("keydown", keydownListener)
-			document.removeEventListener("keyup", keyupListener)
+			// Cleanup
 		}
 	}
 }
@@ -60,14 +47,18 @@ const DebugInfo = (props: { cartridgeData: Uint8Array }) => {
 	</>
 }
 
-const Game = (props: { cartridgeData: Uint8Array }) => {
+const Game = (props: { cartridgeData: Uint8Array | null }) => {
+	if (props.cartridgeData === null) {
+		return null
+	}
+
 	const canvasRef = useRef<HTMLCanvasElement>(null)
 	const [fps, setFPS] = useState(0)
 
 	useEffect(() => {
 		const canvas = canvasRef.current!
 
-		const g = gameRunner(canvas, props.cartridgeData)
+		const g = gameRunner(canvas, props.cartridgeData!)
 
 		let prevSecond: DOMHighResTimeStamp
 		let countInSecond = 0
@@ -124,37 +115,38 @@ const Game = (props: { cartridgeData: Uint8Array }) => {
 	</>
 }
 
-export const App = () => {
+const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 	const [filePath, setFilePath] = useState<string>(sampleROMPath)
-	const [cartridgeData, setCartridgeData] = useState<Uint8Array | null>(null)
 
 	useEffect(() => {
+		let cancelled = false
 		fetch(filePath).then((response) => {
 			return response.blob()
 		}).then((blob) => {
 			return blob.arrayBuffer()
 		}).then((data) => {
-			setCartridgeData(new Uint8Array(data))
+			if (!cancelled) {
+				props.onChange(new Uint8Array(data))
+			}
 		})
+		return () => { cancelled = true }
 	}, [filePath])
 
-	const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		if (e === null) {
-			return
-		}
-		const file = e.target.files![0]
-		const path = URL.createObjectURL(file)
-		setFilePath(path)
-	}
+	return <div><label>Choose .nes file</label>
+		< input type="file" accept=".nes" onChange={(e) => {
+			if (e === null) {
+				return
+			}
+			const file = e.target.files![0]
+			setFilePath(URL.createObjectURL(file))
+		}} /></div>
+}
 
-	if (cartridgeData == null) {
-		return <></>
-	}
-	return <>
-		<Game cartridgeData={cartridgeData!} />
-		<div>
-			<label>Choose .nes file</label>
-			<input type="file" onChange={onFileChange} />
-		</div>
-	</>
+export const App = () => {
+	const [cartridgeData, setCartridgeData] = useState<Uint8Array | null>(null)
+
+	return <div>
+		<Game cartridgeData={cartridgeData} />
+		<FileChooser onChange={(data) => { setCartridgeData(data) }} />
+	</div>
 }
