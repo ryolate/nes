@@ -78,7 +78,6 @@ function inc16(x: uint16): uint16 {
     return (x + 1) & UINT16_MAX
 }
 
-
 export class CPU {
     private A: uint8 = 0
     private X: uint8 = 0
@@ -705,9 +704,9 @@ export class CPU {
             return true
         }
 
-        if (this.debugCallback) {
-            this.debugCallback(this.cpuStatus())
-        }
+        this.debugCallbacks.forEach(x => {
+            x[0](this.cpuStatus())
+        });
 
         const instr = this.fetchInstruction()
         this.execute(instr)
@@ -719,31 +718,45 @@ export class CPU {
         this.PC = pc
     }
 
-    private debugCallback?: (c: CPUStatus) => void
-    setDebugCallback(f: (c: CPUStatus) => void) {
-        this.debugCallback = f
+    private debugCallbackID = 0
+    private debugCallbacks: Array<[(c: CPUStatus) => void, number]> = []
+    addDebugCallback(f: (c: CPUStatus) => void): number {
+        this.debugCallbacks.push([f, this.debugCallbackID])
+        return this.debugCallbackID++
+    }
+    removeDebugCallback(id: number) {
+        for (let i = 0; i < this.debugCallbacks.length; i++) {
+            if (this.debugCallbacks[i][1] !== id) {
+                continue
+            }
+            this.debugCallbacks.splice(i, 1)
+        }
     }
 
     cpuStatus(): CPUStatus {
         return {
-            pc: this.PC,
-            a: this.A,
-            x: this.X,
-            y: this.Y,
-            p: this.getP(),
-            s: this.S,
+            registers: {
+                pc: this.PC,
+                a: this.A,
+                x: this.X,
+                y: this.Y,
+                p: this.getP(),
+                s: this.S,
+            },
             cyc: this.cycle,
         }
     }
 }
 
 export interface CPUStatus {
-    pc: uint16
-    a: uint8
-    x: uint8
-    y: uint8
-    p: uint8
-    s: uint8
+    registers: {
+        pc: uint16
+        a: uint8
+        x: uint8
+        y: uint8
+        p: uint8
+        s: uint8
+    }
     cyc: uint8
 }
 

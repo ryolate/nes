@@ -28,12 +28,12 @@ test("nestest", () => {
     cpu.setPCForTest(0xc000)
 
     let i = 0
-    cpu.setDebugCallback(got => {
+    cpu.addDebugCallback(got => {
         if (i >= wantNESTestLog.length) {
             return
         }
         const want = wantNESTestLog[i++]
-        expect(state2Obj(got)).toEqual(state2Obj(want[0]))
+        expect(state2Obj(got)).toEqual(want[0])
     })
 
     let tickCount = 0
@@ -45,25 +45,25 @@ test("nestest", () => {
 
 function state2Obj(state: CPUStatus): Object {
     return {
-        pc: state.pc.toString(16),
-        a: state.a.toString(16),
-        x: state.x.toString(16),
-        y: state.y.toString(16),
-        p: state.p.toString(16),
-        s: state.s.toString(16),
+        pc: state.registers.pc,
+        a: state.registers.a,
+        x: state.registers.x,
+        y: state.registers.y,
+        p: state.registers.p,
+        s: state.registers.s,
         cyc: state.cyc
     }
 }
 
 
-function parseNesTestLog(): Array<[CPUStatus, string]> {
+function parseNesTestLog(): Array<[Object, string]> {
     // https://www.qmtpro.com/~nes/misc/nestest.log
     const data = fs.readFileSync("testdata/nestest.log")
     // 0         1         2         3         4         5         6         7         8         9
     // 0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
     // C000  4C F5 C5  JMP $C5F5                       A:00 X:00 Y:00 P:24 SP:FD PPU:  0, 21 CYC:7
     const logs = String(data).split('\r\n')
-    return logs.map((s): [CPUStatus, string] => {
+    return logs.map((s): [Object, string] => {
         return [{
             pc: parseInt(s.slice(0, 4), 16),
             a: parseInt(s.slice(50, 52), 16),

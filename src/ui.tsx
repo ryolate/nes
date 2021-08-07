@@ -1,20 +1,70 @@
 import React, { useRef, useEffect, useState } from 'react'
 import * as NES from './nes'
-import sampleROMPath from './asset/hello.nes'
-import { Cartridge } from './cartridge'
+import sampleROMPath from './asset/nestest.nes'
 
-const DebugInfo = (props: { cartridgeData: Uint8Array }) => {
-	const cartridge = Cartridge.parseINES(props.cartridgeData)
-	const canvasRef = useRef<HTMLCanvasElement>(null)
+const DebugInfo = (props: { debugInfoHistory: Array<NES.DebugInfo> }) => {
+	if (!props.debugInfoHistory) {
+		return null
+	}
+	const info = props.debugInfoHistory[props.debugInfoHistory.length - 1]
+	const s = info.cpuStatus
+
+	return <div>
+		<table>
+			<tr>
+				<td>A</td>
+				<td>{s.registers.a}</td>
+			</tr>
+		</table>
+		{s.registers.a}
+	</div>
+}
+
+const DebugGame = (props: { nes: NES.NES }) => {
+	const gameCanvasRef = useRef<HTMLCanvasElement>(null)
+	const charsCanvasRef = useRef<HTMLCanvasElement>(null)
+	const [stepCount, setStepCount] = useState(1)
+
+	const [debugInfo, setDebugInfo] = useState<Array<NES.DebugInfo>>([])
+
+	const nesRender = () => {
+		props.nes.render(gameCanvasRef.current!.getContext('2d')!)
+	}
 
 	useEffect(() => {
-		const canvas = canvasRef.current!
-		cartridge.renderCharacters(canvas)
-	}, [props.cartridgeData])
+		props.nes.cartridge.renderCharacters(charsCanvasRef.current!)
+		nesRender()
+	})
 
-	return <>
-		<canvas ref={canvasRef}></canvas>
-	</>
+	const onStep = () => {
+		for (let i = 0; i < stepCount; i++) {
+			props.nes.stepToNextInstruction()
+		}
+		nesRender()
+
+		setDebugInfo(debugInfo.concat([props.nes.debugInfo()]))
+	}
+
+	return <div>
+		<button onClick={() => { props.nes.resetAll(); nesRender() }}>reset</button>
+		<button onClick={onStep}>step</button>
+		<label>count: <input min="1" type="number" value={stepCount ? stepCount : ""} onChange={(e) => {
+			if (e.target.value === "") {
+				setStepCount(0)
+			}
+			setStepCount(parseInt(e.target.value))
+		}}></input></label>
+		<DebugInfo debugInfoHistory={debugInfo}></DebugInfo>
+		<div>
+			<label>CHRROM:</label>
+			<canvas ref={gameCanvasRef}
+				width="256"
+				height="240"></canvas>
+		</div>
+		<div>
+			<canvas ref={charsCanvasRef}></canvas>
+		</div>
+	</div >
 }
 
 const RealGame = (props: { nes: NES.NES }) => {
@@ -44,7 +94,7 @@ const RealGame = (props: { nes: NES.NES }) => {
 			const elapsed = timestamp - prevTimestamp
 			prevTimestamp = timestamp
 
-			props.nes.step(elapsed)
+			props.nes.play(elapsed)
 			props.nes.render(ctx)
 
 			countInSecond++
@@ -101,11 +151,26 @@ const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 		}} /></div>
 }
 
+const Game = (props: { nes: NES.NES }) => {
+	const [debugMode, setDebugMode] = useState<boolean>(true)
+
+	const game = debugMode ?
+		<DebugGame nes={props.nes} /> :
+		<RealGame nes={props.nes} />
+
+	return <div>
+		<label>debug mode:<input name="debugmode" type="checkbox" checked={debugMode} onChange={(e) => {
+			setDebugMode(e.target.checked)
+		}} /></label>
+		{game}
+	</div >
+}
+
 export const App = () => {
 	const [cartridgeData, setCartridgeData] = useState<Uint8Array | null>(null)
 
 	return <div>
-		{cartridgeData ? <RealGame nes={new NES.NES(cartridgeData)} /> : null}
+		{cartridgeData ? <Game nes={new NES.NES(cartridgeData)} /> : null}
 		<FileChooser onChange={(data) => { setCartridgeData(data) }} />
 
 		<div>
