@@ -5,6 +5,7 @@ import { APU } from "./apu";
 import { NMI } from "./nmi";
 import * as Debug from "./debug"
 import { Controller } from "./controller";
+import { uint8 } from "./num";
 
 // NTSC CPU clock frequency = 1.789773 MHz
 const CPUHz = 1.789773 * 1000 * 1000
@@ -41,6 +42,7 @@ export class NES {
 
 	// throw error on CPU halt
 	private step(numCPUSteps: number) {
+		
 		for (let i = 0; i < numCPUSteps; i++) {
 			this.ppu.tick()
 			this.ppu.tick()
@@ -52,6 +54,11 @@ export class NES {
 	// Render the game.
 	render(ctx: CanvasRenderingContext2D) {
 		this.ppu.render(ctx)
+	}
+
+	// 0 = A, B, Select, Start, Up, Down, Left, Right = 7
+	setControllerState(data: uint8) {
+		this.controller.setController1Data(data)
 	}
 
 	////////////////////////////// Debug //////////////////////////////

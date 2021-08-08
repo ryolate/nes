@@ -222,6 +222,37 @@ const Game = (props: { nes: NES.NES }) => {
 		}
 	}, [debugMode])
 
+	useEffect(() => {
+		// A, B, Select, Start, Up, Down, Left, Right
+		const keys = "kjfhwsad"
+		let data = 0
+		const keydownListener = (e: KeyboardEvent) => {
+			const i = keys.indexOf(e.key)
+			if (i === undefined) {
+				return
+			}
+			data |= 1 << i
+			props.nes.setControllerState(data)
+		}
+		const keyupListener = (e: KeyboardEvent) => {
+			const i = keys.indexOf(e.key)
+			if (i === undefined) {
+				return
+			}
+			data &= ~(1 << i)
+			props.nes.setControllerState(data)
+		}
+
+		document.addEventListener("keydown", keydownListener)
+		document.addEventListener("keyup", keyupListener)
+
+		return () => {
+			document.removeEventListener("keydown", keydownListener)
+			document.removeEventListener("keyup", keyupListener)
+			props.nes.setControllerState(0)
+		}
+	}, [])
+
 	props.nes.setDebugMode(debugMode)
 	const game = debugMode ?
 		<DebugGame nes={props.nes} /> :

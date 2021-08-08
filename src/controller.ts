@@ -7,14 +7,18 @@ import { uint8 } from "./num"
 export class Controller {
 	private strobe = 0 // Controller shift register strobe
 	private controller1 = 0
+	private realController1 = 0
 
 	constructor() { }
 
 	write4016(x: uint8) {
+		this.update()
 		this.strobe = x
+		this.update()
 	}
 	// Read polled data one bit at a time from $4016 or $4017
 	read4016(): uint8 { // controller 1
+		this.update()
 		const res = this.controller1 & 1
 		this.controller1 >>= 1
 		return res
@@ -25,9 +29,13 @@ export class Controller {
 
 	// NES standard controller input.
 	// 0 = A, B, Select, Start, Up, Down, Left, Right = 7
-	pushController1Data(x: uint8) {
+	setController1Data(x: uint8) {
+		this.realController1 = x
+	}
+
+	update() {
 		if ((this.strobe & 1) === 1) {
-			this.controller1 = x
+			this.controller1 = this.realController1
 		}
 	}
 }

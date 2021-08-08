@@ -713,6 +713,7 @@ export class CPU {
         if (this.halt) {
             throw new CPUHaltError("CPU halt")
         }
+
         this.cycle++
         if (this.stallCount > 0) {
             this.stallCount--
