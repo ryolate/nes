@@ -15,6 +15,7 @@ Reference:
 - OAM https://wiki.nesdev.com/w/index.php?title=PPU_OAM
 - NMI https://wiki.nesdev.com/w/index.php?title=NMI
 - rendering https://wiki.nesdev.com/w/index.php?title=PPU_rendering
+- scrolling https://wiki.nesdev.com/w/index.php?title=PPU_scrolling
 */
 
 // Display resolution
@@ -42,9 +43,7 @@ export class PPU {
         this.ctrlIncrementMode = x >> 2 & 1
         this.ctrlNametableSelect = x & 1
 
-        if (this.ctrlSpriteHeight) throw new Error('Unimplemented 1')
-        if (this.ctrlBackgroundTileSelect) throw new Error('Unimplemented 2')
-        if (this.ctrlSpriteTileSelect) throw new Error('Unimplemented 3')
+        if (this.ctrlSpriteHeight) throw new Error('Unimplemented spriteHeight')
     }
 
     // PPUMASK $2001 > write
@@ -63,11 +62,8 @@ export class PPU {
         this.backgroundLeftColumnEnable = x >> 1 & 1
         this.grayscale = x & 1
 
-        if (this.colorEmphasis) throw new Error('Unimplemented')
-        if (this.spriteEnable) throw new Error('Unimplemented')
-        if (this.spriteLeftColumnEnable) throw new Error('Unimplemented')
-        if (this.backgroundLeftColumnEnable) throw new Error('Unimplemented')
-        if (this.grayscale) throw new Error('Unimplemented')
+        if (this.colorEmphasis) throw new Error('Unimplemented 1')
+        if (this.grayscale) throw new Error('Unimplemented 5')
     }
 
     // PPUSTATUS $2002 < read
@@ -85,18 +81,12 @@ export class PPU {
     oamData: uint8 = 0
 
     // PPUSCROLL $2005 >> write x2
-    _scroll: uint8 = 0
-    set scroll(x: uint8) {
-        this._scroll = x
-        if (x > 0) throw new Error('Unimplemented scroll')
-    }
+    // https://wiki.nesdev.com/w/index.php?title=PPU_scrolling
+    scrollX: uint8 = 0
+    scrollY: uint8 = 0
 
     // PPUADDR $2006 >> write x2
-    _addr: uint16 = 0
-    set addr(x: uint8) {
-        this._addr = x
-        if (x > 0) throw new Error('Unimplemented addr')
-    }
+    addr: uint16 = 0
 
     // PPUDATA $2007 <> read/write
     _data: uint8 = 0
@@ -141,14 +131,19 @@ export class PPU {
 
         // Trigger events based on scanline and scanlnieCycle.
         if (this.scanline < HEIGHT && 1 <= this.scanlineCycle && this.scanlineCycle <= WIDTH) {
-            const x = this.scanlineCycle - 1, y = this.scanline
-            const bgColor = this.backgroundPixelColor(x, y)
+            const x = (this.scanlineCycle - 1), y = this.scanline
+            if (x < 8 && !this.backgroundLeftColumnEnable) {
+                return
+            }
+            const bgColor = this.backgroundPixelColor(x + this.scrollX, y + this.scrollY)
             this.putPixelColor(x, y, bgColor)
             return
         } else if (this.scanline === HEIGHT && this.scanlineCycle === 0) { // VBlank start
             // Render all the sprites here.
             // TODO: make this cycle acculate.
-            this.putSprites()
+            if (this.spriteEnable) {
+                this.putSprites()
+            }
             this.frontBufferIndex = 1 - this.frontBufferIndex
 
             if (this.ctrlNMIEnable) {
@@ -165,7 +160,7 @@ export class PPU {
     private frontBufferIndex = 0
     private putPixelColor(x: number, y: number, c: Color.Color) {
         if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
-            throw new Error(`putPixelColor(${x}, ${y})`)
+            return
         }
         const i = y * WIDTH + x
         this.buffers[1 - this.frontBufferIndex][i * 4 + 0] = c[0] // R
@@ -192,8 +187,11 @@ export class PPU {
             const palette = this.bus.spritePalettes[pi]
 
             for (let xi = 0; xi < 8; xi++) {
+                if (x + xi < 8 && !this.spriteLeftColumnEnable) {
+                    continue
+                }
                 for (let yi = 0; yi < 8; yi++) {
-                    const pv = this.patternValue(tileIndexNumber, xi, yi)
+                    const pv = this.patternValue(this.ctrlSpriteTileSelect, tileIndexNumber, xi, yi)
                     if (pv === 0) {
                         continue
                     }
@@ -208,9 +206,19 @@ export class PPU {
         // Compute which background pallete to use from the attribute table.
         // https://wiki.nesdev.com/w/index.php?title=PPU_attribute_tables
 
+        let nametableId = this.ctrlNametableSelect
+        if (x >= WIDTH) {
+            x -= WIDTH
+            nametableId = (nametableId ^ 1)
+        }
+        if (y >= HEIGHT) {
+            y -= HEIGHT
+            nametableId = (nametableId ^ 2)
+        }
+
         // Each byte controls the palette of a 32×32 pixel
         const i = (y >> 5) << 3 | (x >> 5)
-        const b = this.bus.nametable[this.ctrlNametableSelect][i]
+        const b = this.bus.nametable[nametableId][i]
         const x2 = (x >> 4 & 1) << 1, y2 = (y >> 4 & 1) << 1
         const at = b >> (y2 << 1 | x2) & 3
 
@@ -243,14 +251,15 @@ export class PPU {
         const pt = this.bus.nametable[this.ctrlNametableSelect][i]
 
         // read pattern table
-        return this.patternValue(pt, x, y)
+        return this.patternValue(this.ctrlBackgroundTileSelect, pt, x, y)
     }
 
     // get the value at the (x,y) position of the i-th tile in the pattern table.
     // the return value can be used for indexing a palette.
-    private patternValue(i: number, x: number, y: number): number {
-        const upper = this.bus.cartridge.readPPU(i << 4 | 8 | (y & 7))
-        const lower = this.bus.cartridge.readPPU(i << 4 | 0 | (y & 7))
+    // h specifies whether to use left(0) or right(1) pattern table.
+    private patternValue(h: number, i: number, x: number, y: number): number {
+        const upper = this.bus.cartridge.readPPU(h << 12 | i << 4 | 8 | (y & 7))
+        const lower = this.bus.cartridge.readPPU(h << 12 | i << 4 | 0 | (y & 7))
         return (((upper >> (7 - (x & 7))) & 1) << 1) | ((lower >> (7 - (x & 7))) & 1)
     }
 
@@ -288,7 +297,8 @@ export class PPU {
             case 2: // status is read only
                 return
             case 5:
-                this.scroll = (this.scroll << 8 | x) & 0xFFFF
+                this.scrollX = this.scrollY
+                this.scrollY = x
                 return
             case 6:
                 this.addr = (this.addr << 8 | x) & 0xFFFF
