@@ -23,7 +23,8 @@ const HEIGHT = 240
 
 // NTCS
 export class PPU {
-    // PPUCTRL $2000 - Various flags controlling PPU operation
+    // PPUCTRL $2000 > write
+    // Various flags controlling PPU operation
     ctrlNMIEnable = 0 // cause NMI on VBlank
     ctrlPPUMaster = 1 // always 1
     ctrlSpriteHeight = 0 // Sprite size; 0:8x8, 1:8x16
@@ -32,15 +33,6 @@ export class PPU {
     ctrlIncrementMode = 0 // VRAM address increment per CPU read/write of PPUDATA (0: add 1, going across; 1: add 32, going down)
     ctrlNametableSelect = 0 // Base nametable address (0 = $2000; 1 = $2400; 2 = $2800; 3 = $2C00)
 
-    private get ctrl(): uint8 {
-        return this.ctrlNMIEnable << 7
-            | this.ctrlPPUMaster << 6
-            | this.ctrlSpriteHeight << 5
-            | this.ctrlBackgroundTileSelect << 4
-            | this.ctrlSpriteTileSelect << 3
-            | this.ctrlIncrementMode << 2
-            | this.ctrlNametableSelect
-    }
     private set ctrl(x: uint8) {
         this.ctrlNMIEnable = x >> 7 & 1
         this.ctrlPPUMaster = x >> 6 & 1
@@ -49,9 +41,13 @@ export class PPU {
         this.ctrlSpriteTileSelect = x >> 3 & 1
         this.ctrlIncrementMode = x >> 2 & 1
         this.ctrlNametableSelect = x & 1
+
+        if (this.ctrlSpriteHeight) throw new Error('Unimplemented 1')
+        if (this.ctrlBackgroundTileSelect) throw new Error('Unimplemented 2')
+        if (this.ctrlSpriteTileSelect) throw new Error('Unimplemented 3')
     }
 
-    // PPUMASK $2001
+    // PPUMASK $2001 > write
     colorEmphasis = 0 // Emphasize color BGR
     spriteEnable = 0 // 1: Show sprites
     backgroundEnable = 0 // 1: Show background
@@ -59,14 +55,6 @@ export class PPU {
     backgroundLeftColumnEnable = 0 // 1: Show background in leftmost 8 pixels of screen, 0: Hide
     grayscale = 0 // Greyscale (0: normal color, 1: produce a greyscale display)
 
-    private get mask(): uint8 {
-        return this.colorEmphasis << 5
-            | this.spriteEnable << 4
-            | this.backgroundEnable << 3
-            | this.spriteLeftColumnEnable << 2
-            | this.backgroundLeftColumnEnable << 1
-            | this.grayscale
-    }
     private set mask(x: uint8) {
         this.colorEmphasis = x >> 5
         this.spriteEnable = x >> 4 & 1
@@ -74,35 +62,48 @@ export class PPU {
         this.spriteLeftColumnEnable = x >> 2 & 1
         this.backgroundLeftColumnEnable = x >> 1 & 1
         this.grayscale = x & 1
+
+        if (this.colorEmphasis) throw new Error('Unimplemented')
+        if (this.spriteEnable) throw new Error('Unimplemented')
+        if (this.spriteLeftColumnEnable) throw new Error('Unimplemented')
+        if (this.backgroundLeftColumnEnable) throw new Error('Unimplemented')
+        if (this.grayscale) throw new Error('Unimplemented')
     }
 
-    // PPUSTATUS $2002
+    // PPUSTATUS $2002 < read
     vblank = 0 // Vertical blank has started (0: not in vblank; 1: in vblank).
     spriteZeroHit = 0 // Sprite 0 Hit.
     spriteOverflow = 0 // Sprite overflow.
-    private set status(x: uint8) {
-        this.vblank = x >> 7
-        this.spriteZeroHit = x >> 6 & 1
-        this.spriteOverflow = x >> 5 & 1
-    }
     private get status(): number {
         return this.vblank << 7 | this.spriteZeroHit << 6 | this.spriteOverflow << 5
     }
 
-    // OAMADDR $2003
+    // OAMADDR $2003 > write
     oamAddr: uint8 = 0
 
-    // OAMDATA $2004
+    // OAMDATA $2004 <> read/write
     oamData: uint8 = 0
 
-    // PPUSCROLL $2005
-    scroll: uint8 = 0
+    // PPUSCROLL $2005 >> write x2
+    _scroll: uint8 = 0
+    set scroll(x: uint8) {
+        this._scroll = x
+        if (x > 0) throw new Error('Unimplemented scroll')
+    }
 
-    // PPUADDR $2006
-    addr: uint16 = 0
+    // PPUADDR $2006 >> write x2
+    _addr: uint16 = 0
+    set addr(x: uint8) {
+        this._addr = x
+        if (x > 0) throw new Error('Unimplemented addr')
+    }
 
-    // PPUDATA $2007
-    data: uint8 = 0
+    // PPUDATA $2007 <> read/write
+    _data: uint8 = 0
+    set data(x: uint8) {
+        this._data = x
+        if (x > 0) throw new Error('Unimplemented data')
+    }
 
     bus: PPUBus
 
@@ -123,9 +124,7 @@ export class PPU {
         }
     }
 
-    private buffers = [new Uint8ClampedArray(WIDTH * HEIGHT * 4), new Uint8ClampedArray(WIDTH * HEIGHT * 4)]
-    private frontBufferIndex = 0
-    tick(): void {
+    private incrementCycleCount() {
         this.scanlineCycle++
         if (this.scanlineCycle >= 341) {
             this.scanlineCycle = 0
@@ -134,9 +133,11 @@ export class PPU {
         if (this.scanline >= 262) {
             this.scanline = 0
             this.frameCount++
-
-            this.frontBufferIndex = 1 - this.frontBufferIndex
         }
+    }
+
+    tick(): void {
+        this.incrementCycleCount()
 
         // Trigger events based on scanline and scanlnieCycle.
         if (this.scanline < HEIGHT && 1 <= this.scanlineCycle && this.scanlineCycle <= WIDTH) {
@@ -148,6 +149,7 @@ export class PPU {
             // Render all the sprites here.
             // TODO: make this cycle acculate.
             this.putSprites()
+            this.frontBufferIndex = 1 - this.frontBufferIndex
 
             if (this.ctrlNMIEnable) {
                 // Trigger VBlank NMI
@@ -159,9 +161,11 @@ export class PPU {
         }
     }
 
+    private buffers = [new Uint8ClampedArray(WIDTH * HEIGHT * 4), new Uint8ClampedArray(WIDTH * HEIGHT * 4)]
+    private frontBufferIndex = 0
     private putPixelColor(x: number, y: number, c: Color.Color) {
         if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
-            return
+            throw new Error(`putPixelColor(${x}, ${y})`)
         }
         const i = y * WIDTH + x
         this.buffers[1 - this.frontBufferIndex][i * 4 + 0] = c[0] // R
@@ -189,11 +193,11 @@ export class PPU {
 
             for (let xi = 0; xi < 8; xi++) {
                 for (let yi = 0; yi < 8; yi++) {
-                    const pi = this.patternValue(tileIndexNumber, xi, yi)
-                    if (pi === 0) {
+                    const pv = this.patternValue(tileIndexNumber, xi, yi)
+                    if (pv === 0) {
                         continue
                     }
-                    const ci = palette[pi - 1]
+                    const ci = palette[pv - 1]
                     this.putPixelColor(x + xi, y + yi, Color.get(ci))
                 }
             }
@@ -257,13 +261,13 @@ export class PPU {
 
     readCPU(pc: uint16): uint8 {
         switch (pc & 7) {
-            case 0: return this.ctrl
-            case 1: return this.mask
+            case 0: return 0
+            case 1: return 0
             case 2: return this.status
-            case 3: return this.oamAddr
+            case 3: return 0
             case 4: return this.oamData
-            case 5: return this.scroll
-            case 6: return this.addr
+            case 5: return 0
+            case 6: return 0
             case 7: return this.data
         }
         throw new Error('Impossible')
@@ -280,6 +284,8 @@ export class PPU {
                 return
             case 1:
                 this.mask = x
+                return
+            case 2: // status is read only
                 return
             case 5:
                 this.scroll = (this.scroll << 8 | x) & 0xFFFF
@@ -304,8 +310,6 @@ export class PPU {
         for (let i = 0; i < 256; i++) {
             this.bus.oam[i] = buf[i]
         }
-        console.log('sendDMA')
-        console.log(this.bus.oam)
     }
 
     ////////////////////////////// Debug //////////////////////////////

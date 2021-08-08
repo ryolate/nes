@@ -39,6 +39,9 @@ test("nestest", () => {
             cpu.tick()
         }
     } catch (e) {
+        if (!(e instanceof CPUHaltError)) {
+            console.log(e)
+        }
         expect(e).toBeInstanceOf(CPUHaltError)
     }
     expect(i).toBe(wantNESTestLog.length)

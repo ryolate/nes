@@ -1,5 +1,11 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { uint8, uint16, hasBit } from './num'
 
+/*
+Reference:
+- INES format https://wiki.nesdev.com/w/index.php?title=INES
+- NROM (mapper 0) https://wiki.nesdev.com/w/index.php?title=INES_Mapper_000
+*/
 class Scanner {
     private p: number
     private data: Uint8Array
@@ -65,8 +71,8 @@ function parseHeader(sc: Scanner): Header {
     const flag6 = sc.read() // Mapper, mirroring, battery, trainer
     const flag7 = sc.read() // Mapper, VS/Playchoice, NES 2.0
     const flag8 = sc.read() // PRG-RAM size (rarely used extension)
-    const flag9 = sc.read() // TV system (rarely used extension)
-    const flag10 = sc.read() // TV system, PRG-RAM presence (unofficial, rarely used extension)
+    sc.read() // TV system (rarely used extension)
+    sc.read() // TV system, PRG-RAM presence (unofficial, rarely used extension)
     sc.read() // 11-15: Unused padding
     sc.read() // 12
     sc.read() // 13
@@ -118,6 +124,9 @@ export class Cartridge {
     }
 
     readCPU(pc: uint16): uint8 {
+        if (pc < 0x4020) {
+            throw new Error(`Outside cartridge space ${pc.toString(16)}`)
+        }
         if (pc < 0x6000) {
             return 0
         } else if (pc < 0x8000) {
@@ -130,15 +139,21 @@ export class Cartridge {
         }
     }
 
-    writeCPU(pc: uint16, x: uint8) {
+    writeCPU(pc: uint16, x: uint8): void {
+        if (pc < 0x4020) {
+            throw new Error(`Outside cartridge space ${pc.toString(16)}`)
+        }
         if (pc < 0x6000) {
             return
         } else if (pc < 0x8000) {
+            // Family Basic only: PRG RAM, mirrored as necessary to fill entire
+            // 8 KiB window, write protectable with an external switch
             if (this.prgRAM.length) {
                 this.prgRAM[(pc - 0x8000) % this.prgRAM.length] = x
             }
             return
         } else {
+            // ROM Space
             return
         }
     }
@@ -151,7 +166,10 @@ export class Cartridge {
         }
         return this.chrROM[pc & 0x1FFF]
     }
-    writePPU(pc: uint16, x: uint8) {
+    writePPU(pc: uint16, x: uint8): void {
+        if (this.header.chrROMSize > 0) {
+            return
+        }
         this.chrROM[pc & 0x1FFFF] = x
     }
 
@@ -162,7 +180,7 @@ export class Cartridge {
     //     const cartridge = Cartridge.parseINES(data)
     //
     // Reference: https://wiki.nesdev.com/w/index.php?title=INES
-    static parseINES(data: Uint8Array) {
+    static parseINES(data: Uint8Array): Cartridge {
         const sc = new Scanner(data)
         const header = parseHeader(sc)
 
@@ -185,29 +203,23 @@ export class Cartridge {
     }
 
     // render pattern table 0 (4K) using predefined colors.
-    renderCharacters(canvas: HTMLCanvasElement) {
+    renderCharacters(canvas: HTMLCanvasElement): void {
         const pixelSize = 2
-        canvas.setAttribute('width', `${16 * 8 * pixelSize}`)
+        canvas.setAttribute('width', `${2 * 16 * 8 * pixelSize}`)
         canvas.setAttribute('height', `${16 * 8 * pixelSize}`)
         const ctx = canvas.getContext('2d')!
-        for (let y = 0; y < 16; y++) { // tile row
-            for (let x = 0; x < 16; x++) { // tile column
-                const i = y << 8 | x << 4
-
-                for (let r = 0; r < 8; r++) { // fine Y offset, the row number within a tile
-                    const lowerBits = this.readPPU(i | r)
-                    const upperBits = this.readPPU(i | 8 | r)
-                    for (let c = 0; c < 8; c++) {
-                        const colorIndex = (((upperBits >> 7 - c) & 1) << 1) | ((lowerBits >> 7 - c) & 1)
-
-                        if (colorIndex < 0 || colorIndex > 3) {
-                            throw new Error(`!!! ${colorIndex}`)
+        for (let h = 0; h < 2; h++) { // (0: "left"; 1: "right")
+            for (let y = 0; y < 16; y++) { // tile row
+                for (let x = 0; x < 16; x++) { // tile column
+                    for (let r = 0; r < 8; r++) { // fine Y offset, the row number within a tile
+                        const lowerBits = this.readPPU(h << 12 | y << 8 | x << 4 | r)
+                        const upperBits = this.readPPU(h << 12 | y << 8 | x << 4 | 8 | r)
+                        for (let c = 0; c < 8; c++) {
+                            const colorIndex = (((upperBits >> 7 - c) & 1) << 1) | ((lowerBits >> 7 - c) & 1)
+                            const gray = (3 - colorIndex) * 80
+                            ctx.fillStyle = `rgb(${gray},${gray},${gray})`
+                            ctx.fillRect((h * 16 * 8 + x * 8 + c) * pixelSize, (y * 8 + r) * pixelSize, pixelSize, pixelSize)
                         }
-
-                        const gray = (3 - colorIndex) * 80
-                        ctx.fillStyle = `rgb(${gray},${gray},${gray})`
-
-                        ctx.fillRect((x * 8 + c) * pixelSize, (y * 8 + r) * pixelSize, pixelSize, pixelSize)
                     }
                 }
             }
