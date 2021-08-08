@@ -1,6 +1,7 @@
-import React, { useRef, useEffect, useState } from 'react'
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+import React, { useRef, useEffect, useState, useCallback } from 'react'
 import * as NES from './nes'
-import sampleROMPath from './asset/MapWalker.nes'
+import sampleROMPath from './asset/nestest.nes'
 import * as Color from './ppu/color'
 
 const TableRow = (props: { row: Array<string> }) => {
@@ -62,25 +63,25 @@ const DebugGame = (props: { nes: NES.NES }) => {
 
 	const [debugInfo, setDebugInfo] = useState<Array<NES.DebugInfo>>([])
 
-	const nesRender = () => {
-		props.nes.render(gameCanvasRef.current!.getContext('2d')!)
-		addDebugInfo()
-	}
-
-	const addDebugInfo = () => {
+	const addDebugInfo = useCallback(() => {
 		const x = props.nes.debugInfo()
 		const last = debugInfo[debugInfo.length - 1]
 		if (last && last.cpuStatus.cyc === x.cpuStatus.cyc) {
 			return
 		}
 		setDebugInfo(debugInfo.concat([props.nes.debugInfo()]))
-	}
+	}, [debugInfo, props.nes])
+
+	const nesRender = useCallback(() => {
+		props.nes.render(gameCanvasRef.current!.getContext('2d')!)
+		addDebugInfo()
+	}, [addDebugInfo, props.nes])
 
 	useEffect(() => {
 		props.nes.cartridge.renderCharacters(charsCanvasRef.current!)
 		Color.render(colorsCanvasRef.current!)
 		nesRender()
-	}, [])
+	}, [nesRender, props.nes])
 
 	const onStep = () => {
 		try {
@@ -187,6 +188,7 @@ const RealGame = (props: { nes: NES.NES }) => {
 const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 	const [filePath, setFilePath] = useState<string>(sampleROMPath)
 
+	const onChange = props.onChange
 	useEffect(() => {
 		let cancelled = false
 		fetch(filePath).then((response) => {
@@ -195,11 +197,11 @@ const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 			return blob.arrayBuffer()
 		}).then((data) => {
 			if (!cancelled) {
-				props.onChange(new Uint8Array(data))
+				onChange(new Uint8Array(data))
 			}
 		})
 		return () => { cancelled = true }
-	}, [filePath])
+	}, [filePath, onChange])
 
 	return <div>
 		< input type="file" accept=".nes" onChange={(e) => {
@@ -212,7 +214,7 @@ const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 }
 
 const Game = (props: { nes: NES.NES }) => {
-	const [debugMode, setDebugMode] = useState<boolean>(!sessionStorage.getItem("noDebug"))
+	const [debugMode, setDebugMode] = useState<boolean>(() => !sessionStorage.getItem("noDebug"))
 
 	useEffect(() => {
 		if (debugMode) {
@@ -251,7 +253,7 @@ const Game = (props: { nes: NES.NES }) => {
 			document.removeEventListener("keyup", keyupListener)
 			props.nes.setControllerState(0)
 		}
-	}, [])
+	}, [props.nes])
 
 	props.nes.setDebugMode(debugMode)
 	const game = debugMode ?
@@ -266,12 +268,12 @@ const Game = (props: { nes: NES.NES }) => {
 	</div >
 }
 
-export const App = () => {
+export const App = (): JSX.Element => {
 	const [cartridgeData, setCartridgeData] = useState<Uint8Array | null>(null)
 
 	return <div>
 		{cartridgeData ? <Game nes={new NES.NES(cartridgeData)} /> : null}
-		<FileChooser onChange={(data) => { setCartridgeData(data) }} />
+		<FileChooser onChange={setCartridgeData} />
 
 		<div>
 			Control:

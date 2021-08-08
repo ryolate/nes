@@ -10,11 +10,12 @@ Reference:
 - registers https://wiki.nesdev.com/w/index.php?title=PPU_registers
 - memory map https://wiki.nesdev.com/w/index.php?title=CPU_memory_map
 - pattern tables https://wiki.nesdev.com/w/index.php?title=PPU_pattern_tables
-- name tables https://wiki.nesdev.com/w/index.php?title=PPU_nametables
 - palettes https://wiki.nesdev.com/w/index.php?title=PPU_palettes
+- name tables https://wiki.nesdev.com/w/index.php?title=PPU_nametables
 - attribute tables https://wiki.nesdev.com/w/index.php?title=PPU_attribute_tables
-- NMI https://wiki.nesdev.com/w/index.php?title=NMI
 - OAM https://wiki.nesdev.com/w/index.php?title=PPU_OAM
+- NMI https://wiki.nesdev.com/w/index.php?title=NMI
+- rendering https://wiki.nesdev.com/w/index.php?title=PPU_rendering
 */
 
 // Display resolution
@@ -104,9 +105,6 @@ export class PPU {
     // PPUDATA $2007
     data: uint8 = 0
 
-    // OAMDMA $4014
-    oamDMA: uint8 = 0
-
     bus: PPUBus
 
     scanline: number = 0 // [0,262)
@@ -144,10 +142,14 @@ export class PPU {
         // Trigger events based on scanline and scanlnieCycle.
         if (this.scanline < HEIGHT && 1 <= this.scanlineCycle && this.scanlineCycle <= WIDTH) {
             const x = this.scanlineCycle - 1, y = this.scanline
-            const color = this.backgroundPixelColor(x, y)
-            this.putPixelColor(x, y, color)
+            const bgColor = this.backgroundPixelColor(x, y)
+            this.putPixelColor(x, y, bgColor)
             return
         } else if (this.scanline === HEIGHT && this.scanlineCycle === 0) { // VBlank start
+            // Render all the sprites here.
+            // TODO: make this cycle acculate.
+            this.putSprites()
+
             if (this.ctrlNMIEnable) {
                 // Trigger VBlank NMI
                 this.nmi.set()
@@ -159,10 +161,45 @@ export class PPU {
     }
 
     private putPixelColor(x: number, y: number, c: Color.Color) {
+        if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
+            return
+        }
         const i = y * WIDTH + x
         this.buffers[1 - this.frontBufferIndex][i * 4 + 0] = c[0] // R
         this.buffers[1 - this.frontBufferIndex][i * 4 + 1] = c[1] // G
         this.buffers[1 - this.frontBufferIndex][i * 4 + 2] = c[2] // B
+    }
+
+    private putSprites() {
+        // 64 sprites
+        for (let i = 0; i < 256; i += 4) {
+            const y = this.bus.oam[i] // Y position of top of sprite
+            const tileIndexNumber = this.bus.oam[i + 1]
+            const attributes = this.bus.oam[i + 2]
+            const x = this.bus.oam[i + 3] // X position of left side of sprite
+
+            const pi = attributes & 3 // Palette (4 to 7) of sprite
+            const priority = attributes >> 5 & 1 // Priority (0: in front of background; 1: behind background)
+            const flipHorizontally = attributes >> 6 & 1 // Flip sprite horizontally
+            const flipVertically = attributes >> 7 & 1 // Flip sprite vertically
+            if (priority === 1 || flipHorizontally === 1 || flipVertically === 1) {
+                throw new Error(`Unsupported OAM attr ${priority} ${flipHorizontally} ${flipVertically}`)
+            }
+
+            const palette = this.bus.spritePalettes[pi]
+
+            for (let xi = 0; xi < 8; xi++) {
+                for (let yi = 0; yi < 8; yi++) {
+                    const pi = this.patternValue(tileIndexNumber, xi, yi)
+                    if (pi === 0) {
+                        continue
+                    }
+                    debugger
+                    const ci = palette[pi - 1]
+                    this.putPixelColor(x + xi, y + yi, Color.get(ci))
+                }
+            }
+        }
     }
 
     private backgroundPixelColor(x: number, y: number): Color.Color {
@@ -204,9 +241,14 @@ export class PPU {
         const pt = this.bus.nametable[this.ctrlNametableSelect][i]
 
         // read pattern table
-        const upper = this.bus.cartridge.readPPU(pt << 4 | 8 | (y & 7))
-        const lower = this.bus.cartridge.readPPU(pt << 4 | 0 | (y & 7))
+        return this.patternValue(pt, x, y)
+    }
 
+    // get the value at the (x,y) position of the i-th tile in the pattern table.
+    // the return value can be used for indexing a palette.
+    private patternValue(i: number, x: number, y: number): number {
+        const upper = this.bus.cartridge.readPPU(i << 4 | 8 | (y & 7))
+        const lower = this.bus.cartridge.readPPU(i << 4 | 0 | (y & 7))
         return (((upper >> (7 - (x & 7))) & 1) << 1) | ((lower >> (7 - (x & 7))) & 1)
     }
 
@@ -264,6 +306,8 @@ export class PPU {
         for (let i = 0; i < 256; i++) {
             this.bus.oam[i] = buf[i]
         }
+        console.log('sendDMA')
+        console.log(this.bus.oam)
     }
 
     ////////////////////////////// Debug //////////////////////////////
