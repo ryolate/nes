@@ -1,25 +1,30 @@
 import { Cartridge } from "./cartridge";
 import { PPU } from "./ppu/ppu";
 import { CPU, CPUHaltError, CPUStatus } from "./cpu";
+import { APU } from "./apu";
 import { NMI } from "./nmi";
 import * as Debug from "./debug"
+import { Controller } from "./controller";
 
 // NTSC CPU clock frequency = 1.789773 MHz
 const CPUHz = 1.789773 * 1000 * 1000
 const CPUMillisPerCycle = 1000 / CPUHz
 
 export class NES {
+	cartridge: Cartridge
+	controller: Controller
+
 	ppu: PPU
 	cpu: CPU
-	cartridge: Cartridge
 
 	constructor(cartridgeData: Uint8Array) {
-		const cartridge = Cartridge.parseINES(cartridgeData)
+		this.cartridge = Cartridge.parseINES(cartridgeData)
+		this.controller = new Controller()
+
 		const nmi = new NMI()
 
-		this.ppu = new PPU(cartridge, nmi)
-		this.cpu = new CPU(cartridge, this.ppu, nmi)
-		this.cartridge = cartridge
+		this.ppu = new PPU(this.cartridge, nmi)
+		this.cpu = new CPU(this.cartridge, this.ppu, nmi, this.controller, new APU())
 	}
 
 	play(elapsedMillis: number) {
@@ -53,7 +58,7 @@ export class NES {
 	resetAll() {
 		const nmi = new NMI()
 		this.ppu = new PPU(this.cartridge, nmi)
-		this.cpu = new CPU(this.cartridge, this.ppu, nmi)
+		this.cpu = new CPU(this.cartridge, this.ppu, nmi, this.controller, new APU())
 	}
 
 	// throw CPUHaltError on CPU halt

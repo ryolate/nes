@@ -4,6 +4,15 @@ import { Cartridge } from './cartridge'
 import { PPU } from './ppu/ppu'
 import { NMI } from './nmi'
 import { debug } from './debug'
+import { Controller } from './controller'
+import { APU } from './apu'
+
+/*
+
+References
+- memory map https://wiki.nesdev.com/w/index.php/CPU_memory_map
+- I/O registers https://wiki.nesdev.com/w/index.php?title=2A03
+*/
 
 export interface Operation extends Opcode.Opcode {
     arg: uint8 | uint16 // value used for addressing
@@ -120,9 +129,9 @@ export class CPU {
 
     private stallCount: number = 6 // number of cycles consumed ahead of time
 
-    constructor(cartridge: Cartridge, ppu: PPU, nmi: NMI) {
+    constructor(cartridge: Cartridge, ppu: PPU, nmi: NMI, controller: Controller, apu: APU) {
         this.nmi = nmi
-        this.bus = new CPUBus(cartridge, ppu)
+        this.bus = new CPUBus(cartridge, ppu, controller, apu)
         // https://wiki.nesdev.com/w/index.php/CPU_power_up_state
         this.S = 0xFD
         this.I = 1
@@ -277,14 +286,15 @@ export class CPU {
         switch (instr.opcode) {
             // Fake opcodes
             case "_NMI":
+                debug("NMI")
                 this.push16(this.PC)
                 this.push(this.getP())
-                this.PC = this.bus.read(0xFFFA)
+                this.PC = this.bus.read16(0xFFFA)
                 this.I = 1
             case "_IRQ":
                 this.push16(this.PC)
                 this.push(this.getP())
-                this.PC = this.bus.read(0xFFFE)
+                this.PC = this.bus.read16(0xFFFE)
                 this.I = 1
             // Logical and arithmetic commands
             case "ORA":
@@ -708,6 +718,7 @@ export class CPU {
             return
         }
 
+        this.instructionCount++
         this.debugCallbacks.forEach(x => {
             x[0](this.cpuStatus())
         });
@@ -718,6 +729,8 @@ export class CPU {
         return
     }
 
+    ////////////////////////////// Debug //////////////////////////////
+    private instructionCount = 0
     setPCForTest(pc: uint16) {
         this.PC = pc
     }
@@ -753,6 +766,7 @@ export class CPU {
                 s: this.S,
             },
             cyc: this.cycle,
+            instr: this.instructionCount,
         }
     }
 }
@@ -766,7 +780,8 @@ export interface CPUStatus {
         p: uint8
         s: uint8
     }
-    cyc: uint8
+    cyc: number
+    instr: number
 }
 
 class CPUBus {
@@ -774,10 +789,15 @@ class CPUBus {
     private cartridge: Cartridge // Cartridge space
     private ppu: PPU
 
-    constructor(cartridge: Cartridge, ppu: PPU) {
+    private controller: Controller
+    private apu: APU
+
+    constructor(cartridge: Cartridge, ppu: PPU, controller: Controller, apu: APU) {
         this.CPURAM = new Uint8Array(0x800)
         this.cartridge = cartridge
         this.ppu = ppu
+        this.controller = controller
+        this.apu = apu
     }
 
     // https://wiki.nesdev.com/w/index.php/CPU_memory_map
@@ -787,8 +807,12 @@ class CPUBus {
             return this.CPURAM[pc % 0x800]
         } else if (pc < 0x4000) {
             return this.ppu.readCPU(pc)
-        } else if (pc < 0x4017) {
-            // APU
+        } else if (pc < 0x4016) {
+            return this.apu.read(pc)
+        } else if (pc === 0x4016) {
+            return this.controller.read4016()
+        } else if (pc === 0x4017) {
+            return this.controller.read4017()
         } else if (pc < 0x4020) {
             // CPU Test Mode
         } else {
@@ -809,12 +833,15 @@ class CPUBus {
         } else if (pc < 0x4000) {
             // PPU
             this.ppu.writeCPU(pc, x)
-        } else if (pc < 0x4017) {
+        } else if (pc === 0x4016) {
+            // Controller
+            this.controller.write4016(x)
+        } else if (pc < 0x4018) {
             // APU
-            debug(`Unsupported CPU.write(${pc}, ${x}) to APU`)
+            this.apu.write(pc, x)
         } else if (pc < 0x4020) {
-            throw new Error(`Unsupported write(${pc}, ${x}) to CPU Test Mode`)
             // CPU Test Mode
+            throw new Error(`Unsupported write(0x${pc.toString(16)}, ${x}) to CPU Test Mode`)
         } else {
             this.cartridge.writeCPU(pc, x)
         }

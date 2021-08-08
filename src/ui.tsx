@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react'
 import * as NES from './nes'
-import sampleROMPath from './asset/hello.nes'
+import sampleROMPath from './asset/nestest.nes'
 import * as Color from './ppu/color'
 
 const TableRow = (props: { row: Array<string> }) => {
@@ -37,6 +37,7 @@ const DebugInfo = (props: { debugInfoHistory: Array<NES.DebugInfo> }) => {
 					})
 				}
 				<TableRow key="cyc" row={["CYC", "" + s.cyc]}></TableRow>
+				<TableRow key="instr" row={["INSTR", "" + s.instr]}></TableRow>
 			</tbody>
 		</table>
 	</div>
@@ -114,7 +115,6 @@ const DebugGame = (props: { nes: NES.NES }) => {
 		}}></input></label>
 		<DebugInfo debugInfoHistory={debugInfo}></DebugInfo>
 		<div>
-			<label>CHRROM:</label>
 			<canvas ref={gameCanvasRef}
 				width="256"
 				height="240"></canvas>
@@ -134,7 +134,6 @@ const RealGame = (props: { nes: NES.NES }) => {
 
 	useEffect(() => {
 		const canvas = canvasRef.current!
-
 		const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
 
 		let prevTimestamp: DOMHighResTimeStamp

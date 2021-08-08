@@ -4,13 +4,14 @@ import { PPU } from './ppu/ppu'
 import { Instruction } from './opcode'
 import { NMI } from './nmi'
 import * as fs from 'fs'
+import { NES } from './nes'
 
 const data = fs.readFileSync("testdata/nestest.nes")
-const cartridge = Cartridge.parseINES(data)
 
 test("Parse iNES", () => {
     const nmi = new NMI()
-    const cpu = new CPU(cartridge, new PPU(cartridge, nmi), nmi)
+    const nes = new NES(data)
+    const cpu = nes.cpu
 
     cpu.setPCForTest(0xc000)
 
@@ -24,7 +25,8 @@ test("Parse iNES", () => {
 const wantNESTestLog = parseNesTestLog()
 test("nestest", () => {
     const nmi = new NMI()
-    const cpu = new CPU(cartridge, new PPU(cartridge, nmi), nmi)
+    const nes = new NES(data)
+    const cpu = nes.cpu
     cpu.setPCForTest(0xc000)
 
     let i = 0

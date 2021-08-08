@@ -254,6 +254,13 @@ export class PPU {
         }
         throw new Error(`Unsupported PPU.writeCPU(0x${pc.toString(16)}, ${x})`)
     }
+
+    ////////////////////////////// Debug //////////////////////////////
+    getStatus(): PPUStatus {
+        return {
+            
+        }
+    }
 }
 
 type Palette = [uint8, uint8, uint8]
@@ -321,7 +328,6 @@ class PPUBus {
                 return
             }
             const i = k >> 2, j = k & 3
-            console.log(i, j, x)
             if (i < 4) {
                 this.backgroundPalettes[i][j] = x
             } else {
@@ -329,4 +335,8 @@ class PPUBus {
             }
         }
     }
+}
+
+export interface PPUStatus {
+
 }
