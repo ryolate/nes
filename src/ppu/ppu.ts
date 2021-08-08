@@ -2,6 +2,7 @@ import { Cartridge } from '../cartridge'
 import { uint16, uint8 } from '../num'
 import { NMI } from '../nmi'
 import * as Color from './color'
+import { debug } from '../debug'
 
 /*
 
@@ -12,6 +13,7 @@ Reference:
 - name tables https://wiki.nesdev.com/w/index.php?title=PPU_nametables
 - palettes https://wiki.nesdev.com/w/index.php?title=PPU_palettes
 - attribute tables https://wiki.nesdev.com/w/index.php?title=PPU_attribute_tables
+- NMI https://wiki.nesdev.com/w/index.php?title=NMI
 */
 
 // Display resolution
@@ -138,15 +140,19 @@ export class PPU {
             this.frontBufferIndex = 1 - this.frontBufferIndex
         }
 
+        // Trigger events based on scanline and scanlnieCycle.
         if (this.scanline < HEIGHT && 1 <= this.scanlineCycle && this.scanlineCycle <= WIDTH) {
             const color = this.backgroundPixelColor(this.scanlineCycle - 1, this.scanline)
             this.putPixelColor(this.scanlineCycle - 1, this.scanline, color)
             return
-        }
-
-        if (this.scanline == HEIGHT && this.scanlineCycle == 0) {
-            // Trigger VBlank NMI
-            this.nmi.set()
+        } else if (this.scanline === HEIGHT && this.scanlineCycle === 0) { // VBlank start
+            if (this.ctrlNMIEnable) {
+                // Trigger VBlank NMI
+                this.nmi.set()
+            }
+            this.vblank = 1
+        } else if (this.scanline === 0 && this.scanlineCycle === 0) { // VBlank end
+            this.vblank = 0
         }
     }
 
@@ -170,9 +176,6 @@ export class PPU {
         // Compute which color to use in the palette.
         const pi = this.backgroundPixelPaletteIndex(x, y)
         const ci = pi === 0 ? this.bus.universalBackgroundColor : this.bus.backgroundPalettes[at][pi - 1]
-        if (ci !== 0 && ci !== 15 && ci !== 16) {
-            debugger
-        }
         return Color.get(ci)
     }
 
@@ -258,7 +261,7 @@ export class PPU {
     ////////////////////////////// Debug //////////////////////////////
     getStatus(): PPUStatus {
         return {
-            
+
         }
     }
 }

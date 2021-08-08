@@ -12,6 +12,7 @@ import { APU } from './apu'
 References
 - memory map https://wiki.nesdev.com/w/index.php/CPU_memory_map
 - I/O registers https://wiki.nesdev.com/w/index.php?title=2A03
+- NMI https://wiki.nesdev.com/w/index.php?title=NMI
 */
 
 export interface Operation extends Opcode.Opcode {
