@@ -14,6 +14,7 @@ Reference:
 - palettes https://wiki.nesdev.com/w/index.php?title=PPU_palettes
 - attribute tables https://wiki.nesdev.com/w/index.php?title=PPU_attribute_tables
 - NMI https://wiki.nesdev.com/w/index.php?title=NMI
+- OAM https://wiki.nesdev.com/w/index.php?title=PPU_OAM
 */
 
 // Display resolution
@@ -142,8 +143,9 @@ export class PPU {
 
         // Trigger events based on scanline and scanlnieCycle.
         if (this.scanline < HEIGHT && 1 <= this.scanlineCycle && this.scanlineCycle <= WIDTH) {
-            const color = this.backgroundPixelColor(this.scanlineCycle - 1, this.scanline)
-            this.putPixelColor(this.scanlineCycle - 1, this.scanline, color)
+            const x = this.scanlineCycle - 1, y = this.scanline
+            const color = this.backgroundPixelColor(x, y)
+            this.putPixelColor(x, y, color)
             return
         } else if (this.scanline === HEIGHT && this.scanlineCycle === 0) { // VBlank start
             if (this.ctrlNMIEnable) {
@@ -258,6 +260,12 @@ export class PPU {
         throw new Error(`Unsupported PPU.writeCPU(0x${pc.toString(16)}, ${x})`)
     }
 
+    sendDMA(buf: Array<uint8>) {
+        for (let i = 0; i < 256; i++) {
+            this.bus.oam[i] = buf[i]
+        }
+    }
+
     ////////////////////////////// Debug //////////////////////////////
     getStatus(): PPUStatus {
         return {
@@ -282,6 +290,11 @@ class PPUBus {
     spritePalettes: Array<Palette> = [0, 0, 0, 0].map(() => {
         return newPalette()
     })
+
+    // The OAM (Object Attribute Memory) is internal memory inside the PPU that
+    // contains a display list of up to 64 sprites, where each sprite's
+    // information occupies 4 bytes.
+    oam: Array<uint8> = new Array(256)
 
     constructor(cartridge: Cartridge) {
         this.cartridge = cartridge

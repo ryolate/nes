@@ -804,9 +804,8 @@ class CPUBus {
 
     // https://wiki.nesdev.com/w/index.php/CPU_memory_map
     read(pc: uint16): uint8 {
-        debug(`CPU.read(0x${pc.toString(16)})`)
         if (pc < 0x2000) {
-            return this.CPURAM[pc % 0x800]
+            return this.CPURAM[pc & 0x7FF]
         } else if (pc < 0x4000) {
             return this.ppu.readCPU(pc)
         } else if (pc < 0x4016) {
@@ -827,6 +826,8 @@ class CPUBus {
         if ((np >> 8) > (pc >> 8)) np -= 0x100
         return this.read(pc) | this.read(np) << 8
     }
+
+    private dmaBuf: Array<uint8> = new Array(256)
     write(pc: uint16, x: uint8) {
         debug(`CPU.write(0x${pc.toString(16)})`)
         checkUint16(pc)
@@ -835,6 +836,15 @@ class CPUBus {
         } else if (pc < 0x4000) {
             // PPU
             this.ppu.writeCPU(pc, x)
+        } else if (pc === 0x4014) {
+            // OAMDMA
+            // upload 256 bytes of data from CPU page $XX00-$XXFF to the
+            // internal PPU OAM
+            for (let i = 0; i < 256; i++) {
+                this.dmaBuf[i] = this.read(x << 8 | i)
+            }
+            this.ppu.sendDMA(this.dmaBuf)
+            // TODO: suspend CPU during the transfer. (513 or 514 cycles)
         } else if (pc === 0x4016) {
             // Controller
             this.controller.write4016(x)
