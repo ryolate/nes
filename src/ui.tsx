@@ -1,12 +1,14 @@
 import React, { useRef, useEffect, useState } from 'react'
 import * as NES from './nes'
 import sampleROMPath from './asset/hello.nes'
+import * as Color from './ppu/color'
 
 const TableRow = (props: { row: Array<string> }) => {
 	return <tr>
-		{props.row.map((x, i) => {
-			return <td key={i}>{x}</td>
-		})
+		{
+			props.row.map((x, i) => {
+				return <td key={i}>{x}</td>
+			})
 		}
 	</tr>
 }
@@ -52,6 +54,7 @@ const ErrorBanner = (props: { error: string }) => {
 const DebugGame = (props: { nes: NES.NES }) => {
 	const gameCanvasRef = useRef<HTMLCanvasElement>(null)
 	const charsCanvasRef = useRef<HTMLCanvasElement>(null)
+	const colorsCanvasRef = useRef<HTMLCanvasElement>(null)
 
 	const [stepCount, setStepCount] = useState(1)
 	const [error, setError] = useState<string>("")
@@ -74,6 +77,7 @@ const DebugGame = (props: { nes: NES.NES }) => {
 
 	useEffect(() => {
 		props.nes.cartridge.renderCharacters(charsCanvasRef.current!)
+		Color.render(colorsCanvasRef.current!)
 		nesRender()
 	}, [])
 
@@ -117,6 +121,9 @@ const DebugGame = (props: { nes: NES.NES }) => {
 		</div>
 		<div>
 			<canvas ref={charsCanvasRef}></canvas>
+		</div>
+		<div>
+			<canvas ref={colorsCanvasRef}></canvas>
 		</div>
 	</div>
 }
@@ -206,7 +213,15 @@ const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 }
 
 const Game = (props: { nes: NES.NES }) => {
-	const [debugMode, setDebugMode] = useState<boolean>(true)
+	const [debugMode, setDebugMode] = useState<boolean>(!sessionStorage.getItem("noDebug"))
+
+	useEffect(() => {
+		if (debugMode) {
+			sessionStorage.removeItem("noDebug")
+		} else {
+			sessionStorage.setItem("noDebug", "1")
+		}
+	}, [debugMode])
 
 	props.nes.setDebugMode(debugMode)
 	const game = debugMode ?

@@ -1,16 +1,26 @@
 import { Cartridge } from '../cartridge'
 import { uint16, uint8 } from '../num'
 import { NMI } from '../nmi'
+import * as Color from './color'
+
+/*
+
+Reference:
+- registers https://wiki.nesdev.com/w/index.php?title=PPU_registers
+- memory map https://wiki.nesdev.com/w/index.php?title=CPU_memory_map
+- pattern tables https://wiki.nesdev.com/w/index.php?title=PPU_pattern_tables
+- name tables https://wiki.nesdev.com/w/index.php?title=PPU_nametables
+- palettes https://wiki.nesdev.com/w/index.php?title=PPU_palettes
+- attribute tables https://wiki.nesdev.com/w/index.php?title=PPU_attribute_tables
+*/
 
 // Display resolution
 const WIDTH = 256
 const HEIGHT = 240
 
-type Color = [uint8, uint8, uint8]
-
 // NTCS
 export class PPU {
-    // PPUCTRL $2000
+    // PPUCTRL $2000 - Various flags controlling PPU operation
     ctrlNMIEnable = 0 // cause NMI on VBlank
     ctrlPPUMaster = 1 // always 1
     ctrlSpriteHeight = 0 // Sprite size; 0:8x8, 1:8x16
@@ -140,28 +150,55 @@ export class PPU {
         }
     }
 
-    private putPixelColor(x: number, y: number, c: Color) {
+    private putPixelColor(x: number, y: number, c: Color.Color) {
         const i = y * WIDTH + x
         this.buffers[1 - this.frontBufferIndex][i * 4 + 0] = c[0] // R
         this.buffers[1 - this.frontBufferIndex][i * 4 + 1] = c[1] // G
         this.buffers[1 - this.frontBufferIndex][i * 4 + 2] = c[2] // B
     }
 
-    colors: Array<Color> = [[240, 240, 240], [160, 160, 160], [80, 80, 80], [0, 0, 0]]
-    private backgroundPixelColor(x: number, y: number): Color {
-        const i = this.backgroundPixelColorIndex(x, y)
-        return this.colors[i]
+    private backgroundPixelColor(x: number, y: number): Color.Color {
+        // Compute which background pallete to use from the attribute table.
+        // https://wiki.nesdev.com/w/index.php?title=PPU_attribute_tables
+
+        // Each byte controls the palette of a 32×32 pixel
+        const i = (y >> 5) << 3 | (x >> 5)
+        const b = this.bus.nametable[this.ctrlNametableSelect][i]
+        const x2 = (x >> 4 & 1) << 1, y2 = (y >> 4 & 1) << 1
+        const at = b >> (y2 << 1 | x2) & 3
+
+        // Compute which color to use in the palette.
+        const pi = this.backgroundPixelPaletteIndex(x, y)
+        const ci = pi === 0 ? this.bus.universalBackgroundColor : this.bus.backgroundPalettes[at][pi - 1]
+        if (ci !== 0 && ci !== 15 && ci !== 16) {
+            debugger
+        }
+        return Color.get(ci)
     }
 
-    // Pixel index at (x,y). Returns a number in range 0 to 3.
-    private backgroundPixelColorIndex(x: number, y: number): number {
+    // Compute the index (0,1,2,3)
+    // Pettern index at (x,y). Returns a number in range 0 to 3.
+    private backgroundPixelPaletteIndex(x: number, y: number): number {
         if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
             throw new Error(`Out of range (${x},${y})`)
         }
+
+        /*
+        TODO
+        - ctrlBackgroundTileSelect
+        - backgroundLeftColumnEnable
+        */
+
         // Compute the pattern index (which tile to select from pattern table)
         const i = (x >> 3) | ((y >> 3) << 5)
-        const pt = this.bus.nametable[0][i] // pattern table index
 
+        if (!this.backgroundEnable) {
+            return 0
+        }
+        // pattern table index
+        const pt = this.bus.nametable[this.ctrlNametableSelect][i]
+
+        // read pattern table
         const upper = this.bus.cartridge.readPPU(pt << 4 | 8 | (y & 7))
         const lower = this.bus.cartridge.readPPU(pt << 4 | 0 | (y & 7))
 
@@ -186,19 +223,18 @@ export class PPU {
         }
         throw new Error('Impossible')
     }
+
     // writeCPU write x to the PPU register pc indicates.
-    // https://wiki.nesdev.com/w/index.php?title=PPU_registers
     writeCPU(pc: uint16, x: uint8) {
-        // https://wiki.nesdev.com/w/index.php?title=CPU_memory_map
         if (pc < 0x2000 || pc > 0x3FFF) {
             throw new Error(`Out of range PPC.writeCPU(${pc}, ${x})`)
         }
         switch (pc & 7) {
             case 0:
-                this.ctrl = pc
+                this.ctrl = x
                 return
             case 1:
-                this.mask = pc
+                this.mask = x
                 return
             case 5:
                 this.scroll = (this.scroll << 8 | x) & 0xFFFF
@@ -215,22 +251,32 @@ export class PPU {
                     this.addr += 32
                 }
                 return
-            default:
-                throw new Error(`Unsupported PPU.writeCPU(0x${pc.toString(16)}, ${x})`)
         }
+        throw new Error(`Unsupported PPU.writeCPU(0x${pc.toString(16)}, ${x})`)
     }
 }
+
+type Palette = [uint8, uint8, uint8]
+
+const newPalette = (): Palette => { return [0, 0, 0] }
 
 class PPUBus {
     cartridge: Cartridge
     nametable = [new Uint8Array(0x400), new Uint8Array(0x400), new Uint8Array(0x400), new Uint8Array(0x400)]
-    palettes = new Uint8Array(0x20)
+
+    // PPU palettes
+    universalBackgroundColor = 0
+    backgroundPalettes: Array<Palette> = [0, 0, 0, 0].map(() => {
+        return newPalette()
+    })
+    spritePalettes: Array<Palette> = [0, 0, 0, 0].map(() => {
+        return newPalette()
+    })
 
     constructor(cartridge: Cartridge) {
         this.cartridge = cartridge
     }
     // Read PPU memory map.
-    // https://wiki.nesdev.com/w/index.php/PPU_memory_map
     read(pc: uint16): uint8 {
         if (pc < 0x2000) {
             // Pattern table
@@ -239,17 +285,48 @@ class PPUBus {
             // Nametable (VRAM)
             return this.nametable[pc / 0x400 & 3][pc & 0x3FF]
         } else {
+            let k = pc & 0x1F
             // Palette RAM
-            return this.palettes[pc & 0x1F]
+
+            // Addresses $3F10 / $3F14 / $3F18 / $3F1C are
+            // mirrors of $3F00 / $3F04 / $3F08 / $3F0C
+            if (k === 0x10 || k === 0x14 || k === 0x18 || k === 0x1C) {
+                k -= 0x10
+            }
+            if (k === 0) {
+                return this.universalBackgroundColor
+            }
+            const i = k >> 2, j = k & 3
+            if (i < 4) {
+                return this.backgroundPalettes[i][j]
+            } else {
+                return this.spritePalettes[i - 4][j]
+            }
         }
     }
     write(pc: uint16, x: uint8) {
         if (pc < 0x2000) {
-            return this.cartridge.writePPU(pc, x)
+            this.cartridge.writePPU(pc, x)
+            return
         } else if (pc < 0x3F00) {
-            return this.nametable[pc / 0x400 & 3][pc & 0x3FF] = x
+            this.nametable[pc / 0x400 & 3][pc & 0x3FF] = x
+            return
         } else {
-            return this.palettes[pc & 0x1F] = x
+            let k = pc & 0x1F
+            if (k === 0x10 || k === 0x14 || k === 0x18 || k === 0x1C) {
+                k -= 0x10
+            }
+            if (k === 0) {
+                this.universalBackgroundColor = x
+                return
+            }
+            const i = k >> 2, j = k & 3
+            console.log(i, j, x)
+            if (i < 4) {
+                this.backgroundPalettes[i][j] = x
+            } else {
+                this.spritePalettes[i - 4][j] = x
+            }
         }
     }
 }
