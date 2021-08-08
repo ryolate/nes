@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Cartridge } from "./cartridge";
 import { PPU } from "./ppu/ppu";
 import { CPU, CPUHaltError, CPUStatus } from "./cpu";
@@ -28,7 +29,7 @@ export class NES {
 		this.cpu = new CPU(this.cartridge, this.ppu, nmi, this.controller, new APU())
 	}
 
-	play(elapsedMillis: number) {
+	play(elapsedMillis: number): void {
 		const numCPUSteps = Math.round(elapsedMillis / CPUMillisPerCycle)
 
 		try {
@@ -42,7 +43,7 @@ export class NES {
 
 	// throw error on CPU halt
 	private step(numCPUSteps: number) {
-		
+
 		for (let i = 0; i < numCPUSteps; i++) {
 			this.ppu.tick()
 			this.ppu.tick()
@@ -52,17 +53,17 @@ export class NES {
 	}
 
 	// Render the game.
-	render(ctx: CanvasRenderingContext2D) {
+	render(ctx: CanvasRenderingContext2D): void {
 		this.ppu.render(ctx)
 	}
 
 	// 0 = A, B, Select, Start, Up, Down, Left, Right = 7
-	setControllerState(data: uint8) {
+	setControllerState(data: uint8): void {
 		this.controller.setController1Data(data)
 	}
 
 	////////////////////////////// Debug //////////////////////////////
-	resetAll() {
+	resetAll(): void {
 		const nmi = new NMI()
 		this.ppu = new PPU(this.cartridge, nmi)
 		this.cpu = new CPU(this.cartridge, this.ppu, nmi, this.controller, new APU())
@@ -92,7 +93,7 @@ export class NES {
 			cpuStatus: this.cpu.cpuStatus()
 		}
 	}
-	setDebugMode(debugMode: boolean) {
+	setDebugMode(debugMode: boolean): void {
 		Debug.setDebugMode(debugMode)
 	}
 }

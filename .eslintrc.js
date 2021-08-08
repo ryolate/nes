@@ -1,7 +1,7 @@
 module.exports = {
     "env": {
         "browser": true,
-        "es2021": true
+        "es2021": true,
     },
     "extends": [
         "eslint:recommended",
@@ -24,5 +24,10 @@ module.exports = {
     "rules": {
         "react-hooks/rules-of-hooks": "error",
         "react-hooks/exhaustive-deps": "warn"
+    },
+    "settings": {
+        "react": {
+            "version": "detect",
+        }
     }
 };

@@ -1,7 +1,6 @@
 export class NMI {
 	x = false
-	constructor() { }
-	set() {
+	set(): void {
 		this.x = true
 	}
 	// https://wiki.nesdev.com/w/index.php?title=CPU_interrupts
