@@ -19,7 +19,7 @@ class Scanner {
         }
     }
     readArray(n: number): Uint8Array {
-        let res = new Uint8Array(n)
+        const res = new Uint8Array(n)
         for (let i = 0; i < n; i++) res[i] = this.read()
         return res
     }

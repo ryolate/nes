@@ -71,7 +71,7 @@ export class NES {
 	// throw CPUHaltError on CPU halt
 	stepToNextInstruction(): DebugInfo {
 		let cpuStatus: CPUStatus | null = null
-		let id = this.cpu.addDebugCallback((s) => {
+		const id = this.cpu.addDebugCallback((s) => {
 			cpuStatus = s
 		})
 

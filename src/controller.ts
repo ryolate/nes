@@ -9,9 +9,7 @@ export class Controller {
 	private controller1 = 0
 	private realController1 = 0
 
-	constructor() { }
-
-	write4016(x: uint8) {
+	write4016(x: uint8): void {
 		this.update()
 		this.strobe = x
 		this.update()
@@ -29,11 +27,11 @@ export class Controller {
 
 	// NES standard controller input.
 	// 0 = A, B, Select, Start, Up, Down, Left, Right = 7
-	setController1Data(x: uint8) {
+	setController1Data(x: uint8): void {
 		this.realController1 = x
 	}
 
-	update() {
+	update(): void {
 		if ((this.strobe & 1) === 1) {
 			this.controller1 = this.realController1
 		}

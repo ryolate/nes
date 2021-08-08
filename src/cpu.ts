@@ -98,7 +98,7 @@ export class CPU {
     private S: uint8
     private _PC: uint16 = 0
     private bus: CPUBus
-    private cycle: number = 0
+    private cycle = 0
     debugMode = false
 
     private set PC(x: uint16) {
@@ -128,7 +128,7 @@ export class CPU {
     private halt = false
     private nmi: NMI
 
-    private stallCount: number = 6 // number of cycles consumed ahead of time
+    private stallCount = 6 // number of cycles consumed ahead of time
 
     constructor(cartridge: Cartridge, ppu: PPU, nmi: NMI, controller: Controller, apu: APU) {
         this.nmi = nmi
@@ -145,7 +145,7 @@ export class CPU {
     }
 
     postIncPC(): uint16 {
-        let res = this.PC++
+        const res = this.PC++
         if (this.PC > UINT16_MAX) {
             this.PC = 0
         }
@@ -308,14 +308,14 @@ export class CPU {
                 this.A = this.setNZ(this.A ^ this.bus.read(addr))
                 break
             case "ADC": {
-                let a = this.A
+                const a = this.A
                 const m = this.bus.read(addr)
                 this.A = this.setNZC(a + this.C + m)
                 this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
                 break
             }
             case "SBC": {
-                let a = this.A
+                const a = this.A
                 const m = this.bus.read(addr) ^ UINT8_MAX
                 this.A = this.setNZC(a + this.C + m)
                 this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
@@ -635,7 +635,7 @@ export class CPU {
             }
             case "ISC": { // INC + SBC
                 this.bus.write(addr, this.setNZ(inc(this.bus.read(addr))))
-                let a = this.A
+                const a = this.A
                 const m = this.bus.read(addr) ^ UINT8_MAX
                 this.A = this.setNZC(a + this.C + m)
                 this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
@@ -653,7 +653,7 @@ export class CPU {
                 break
             }
             case "ARR": { // AND + ROR(imp)
-                let m = this.bus.read(addr)
+                const m = this.bus.read(addr)
                 this.A = this.setNZ(this.A & m)
                 const sum = this.A + m
                 this.V = sign(this.A) == sign(m) && sign(this.A) != sign(sum) ? 1 : 0
