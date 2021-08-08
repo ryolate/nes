@@ -139,7 +139,7 @@ export class CPU {
 
         this.reset()
     }
-    reset() {
+    reset(): void {
         // reset vector at $FFFC
         this.PC = this.bus.read16(0xFFFC)
     }
@@ -203,12 +203,12 @@ export class CPU {
         return this.setNZ(x & UINT8_MAX)
     }
 
-    push(x: uint8) {
+    push(x: uint8): void {
         this.bus.write(0x100 + this.S, x)
         this.S = dec(this.S)
     }
 
-    push16(x: uint16) {
+    push16(x: uint16): void {
         this.push(x >> 8)
         this.push(x & UINT8_MAX)
     }
@@ -222,7 +222,7 @@ export class CPU {
         return this.pop() | this.pop() << 8
     }
 
-    setP(p: uint8) {
+    setP(p: uint8): void {
         this.N = (p >> 7) & 1
         this.V = (p >> 6) & 1
         this.D = (p >> 3) & 1
@@ -234,7 +234,7 @@ export class CPU {
         return this.N << 7 | this.V << 6 | 1 << 5 | 0 << 4 | this.D << 3 | this.I << 2 | this.Z << 1 | this.C
     }
 
-    execute(instr: Operation) {
+    execute(instr: Operation): void {
         this.stallCount += instr.cycle - 1
         // https://wiki.nesdev.com/w/index.php/CPU_addressing_modes
         let pageBoundaryCrossed = false
@@ -287,16 +287,17 @@ export class CPU {
         switch (instr.opcode) {
             // Fake opcodes
             case "_NMI":
-                debug("NMI")
                 this.push16(this.PC)
                 this.push(this.getP())
                 this.PC = this.bus.read16(0xFFFA)
                 this.I = 1
+                break
             case "_IRQ":
                 this.push16(this.PC)
                 this.push(this.getP())
                 this.PC = this.bus.read16(0xFFFE)
                 this.I = 1
+                break
             // Logical and arithmetic commands
             case "ORA":
                 this.A = this.setNZ(this.A | this.bus.read(addr))
@@ -709,7 +710,7 @@ export class CPU {
     }
 
     // throw error on CPU halt.
-    tick() {
+    tick(): void {
         if (this.halt) {
             throw new CPUHaltError("CPU halt")
         }
@@ -733,7 +734,7 @@ export class CPU {
 
     ////////////////////////////// Debug //////////////////////////////
     private instructionCount = 0
-    setPCForTest(pc: uint16) {
+    setPCForTest(pc: uint16): void {
         this.PC = pc
     }
 
@@ -748,7 +749,7 @@ export class CPU {
 
         return this.debugCallbackID++
     }
-    removeDebugCallback(id: number) {
+    removeDebugCallback(id: number): void {
         for (let i = 0; i < this.debugCallbacks.length; i++) {
             if (this.debugCallbacks[i][1] !== id) {
                 continue

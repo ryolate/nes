@@ -1,15 +1,12 @@
-import { Cartridge } from './cartridge'
-import { CPU, CPUStatus, CPUHaltError } from './cpu'
-import { PPU } from './ppu/ppu'
+/* eslint-disable @typescript-eslint/ban-types */
+import { CPUStatus, CPUHaltError } from './cpu'
 import { Instruction } from './opcode'
-import { NMI } from './nmi'
 import * as fs from 'fs'
 import { NES } from './nes'
 
 const data = fs.readFileSync("testdata/nestest.nes")
 
 test("Parse iNES", () => {
-    const nmi = new NMI()
     const nes = new NES(data)
     const cpu = nes.cpu
 
@@ -24,7 +21,6 @@ test("Parse iNES", () => {
 
 const wantNESTestLog = parseNesTestLog()
 test("nestest", () => {
-    const nmi = new NMI()
     const nes = new NES(data)
     const cpu = nes.cpu
     cpu.setPCForTest(0xc000)

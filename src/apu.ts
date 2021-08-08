@@ -43,8 +43,6 @@ export class APU {
 	status = 0 // $4015 (write)
 	frameCounter = 0 // $4017
 
-	constructor() { }
-
 	read(pc: uint16): uint8 {
 		switch (pc) {
 			case 0x4015:
@@ -54,7 +52,7 @@ export class APU {
 		return 0
 	}
 
-	write(pc: uint16, x: uint8) {
+	write(pc: uint16, x: uint8): void {
 		switch (pc & 0x1F) {
 			case 0x00:
 				this.pulse1.r1 = x

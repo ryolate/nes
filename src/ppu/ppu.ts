@@ -2,7 +2,6 @@ import { Cartridge } from '../cartridge'
 import { uint16, uint8 } from '../num'
 import { NMI } from '../nmi'
 import * as Color from './color'
-import { debug } from '../debug'
 
 /*
 
@@ -107,9 +106,9 @@ export class PPU {
 
     bus: PPUBus
 
-    scanline: number = 0 // [0,262)
-    scanlineCycle: number = 0 // [0,341)
-    frameCount: number = 0
+    scanline = 0 // [0,262)
+    scanlineCycle = 0 // [0,341)
+    frameCount = 0
 
     nmi: NMI
 
@@ -126,7 +125,7 @@ export class PPU {
 
     private buffers = [new Uint8ClampedArray(WIDTH * HEIGHT * 4), new Uint8ClampedArray(WIDTH * HEIGHT * 4)]
     private frontBufferIndex = 0
-    tick() {
+    tick(): void {
         this.scanlineCycle++
         if (this.scanlineCycle >= 341) {
             this.scanlineCycle = 0
@@ -194,7 +193,6 @@ export class PPU {
                     if (pi === 0) {
                         continue
                     }
-                    debugger
                     const ci = palette[pi - 1]
                     this.putPixelColor(x + xi, y + yi, Color.get(ci))
                 }
@@ -252,7 +250,7 @@ export class PPU {
         return (((upper >> (7 - (x & 7))) & 1) << 1) | ((lower >> (7 - (x & 7))) & 1)
     }
 
-    render(ctx: CanvasRenderingContext2D) {
+    render(ctx: CanvasRenderingContext2D): void {
         const img = new ImageData(this.buffers[this.frontBufferIndex], WIDTH, HEIGHT)
         ctx.putImageData(img, 0, 0)
     }
@@ -272,7 +270,7 @@ export class PPU {
     }
 
     // writeCPU write x to the PPU register pc indicates.
-    writeCPU(pc: uint16, x: uint8) {
+    writeCPU(pc: uint16, x: uint8): void {
         if (pc < 0x2000 || pc > 0x3FFF) {
             throw new Error(`Out of range PPC.writeCPU(${pc}, ${x})`)
         }
@@ -302,7 +300,7 @@ export class PPU {
         throw new Error(`Unsupported PPU.writeCPU(0x${pc.toString(16)}, ${x})`)
     }
 
-    sendDMA(buf: Array<uint8>) {
+    sendDMA(buf: Array<uint8>): void {
         for (let i = 0; i < 256; i++) {
             this.bus.oam[i] = buf[i]
         }
@@ -313,7 +311,7 @@ export class PPU {
     ////////////////////////////// Debug //////////////////////////////
     getStatus(): PPUStatus {
         return {
-
+            hoge: 1,
         }
     }
 }
@@ -398,5 +396,5 @@ class PPUBus {
 }
 
 export interface PPUStatus {
-
+    hoge: number
 }

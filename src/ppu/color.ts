@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { uint8 } from "../num";
 
 export type Color = [uint8, uint8, uint8]
@@ -11,7 +12,7 @@ const palette: Array<Color> = (() => {
         236, 238, 236, 76, 154, 236, 120, 124, 236, 176, 98, 236, 228, 84, 236, 236, 88, 180, 236, 106, 100, 212, 136, 32, 160, 170, 0, 116, 196, 0, 76, 208, 32, 56, 204, 108, 56, 180, 204, 60, 60, 60,
         236, 238, 236, 168, 204, 236, 188, 188, 236, 212, 178, 236, 236, 174, 236, 236, 174, 212, 236, 180, 176, 228, 196, 144, 204, 210, 120, 180, 222, 120, 168, 226, 144, 152, 226, 180, 160, 214, 228, 160, 162, 160
     ]
-    let res: Array<Color> = []
+    const res: Array<Color> = []
     let i = 0
     for (let y = 0; y < 4; y++) {
         for (let x = 0; x < 16; x++) {
@@ -29,7 +30,7 @@ export const get = (index: number): Color => {
     return palette[index]
 }
 
-export const render = (canvas: HTMLCanvasElement) => {
+export const render = (canvas: HTMLCanvasElement): void => {
     const sz = 15
     canvas.width = 16 * sz
     canvas.height = 4 * sz
