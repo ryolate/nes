@@ -131,26 +131,27 @@ export class PPU {
         this.updateIndices()
 
         if (this.scanline < HEIGHT) { // Visible scanline (0-239)
+            if (this.scanlineCycle === 0) {
+                this.spriteLine(this.scanline)
+            }
             if (1 <= this.scanlineCycle && this.scanlineCycle <= WIDTH) { // Cycles 1-256
                 const x = (this.scanlineCycle - 1), y = this.scanline
+
+                let colorIndex = -1
                 if (x >= 8 || this.backgroundLeftColumnEnable) {
-                    const bgColor = this.backgroundPixelColor(x + this.scrollX, y + this.scrollY)
-                    this.putPixelColor(x, y, bgColor)
+                    const bgColorIndex = this.backgroundPixelColorIndex(x + this.scrollX, y + this.scrollY)
+                    colorIndex = bgColorIndex
                 }
-            }
-            if (this.scanlineCycle === 0) {
-                // read next scanline's sprites.
-                // TODO: cycle accurate
-                this.spriteLine(this.scanline + 1)
+                const spriteColorIndex = this.spriteLineBuffer[x]
+                if (spriteColorIndex >= 0 && (spriteColorIndex <= 63 || colorIndex === -1)) { // pixel is opaque and front priority (0-63) or background is transparent.
+                    colorIndex = spriteColorIndex & ~64
+                }
+                if (colorIndex === -1) {
+                    colorIndex = this.bus.universalBackgroundColor
+                }
+                this.putPixel(x, y, colorIndex)
             }
         } else if (this.scanline === HEIGHT) { // Post-render scanline (240)
-            if (this.scanlineCycle === 0) { // VBlank start
-                // Render all the sprites here.
-                // TODO: make this cycle acculate.
-                if (this.spriteEnable) {
-                    this.putSprites()
-                }
-            }
         } else if (this.scanline <= 260) { // Vertical blanking lines (241-260)
             // The VBlank flag of the PPU is set at tick 1(the second tick) of
             // scanline 241, where the VBlank NMI also occurs.
@@ -169,24 +170,40 @@ export class PPU {
 
     private buffers = [new Uint8ClampedArray(WIDTH * HEIGHT * 4), new Uint8ClampedArray(WIDTH * HEIGHT * 4)]
     private frontBufferIndex = 0
-    private putPixelColor(x: number, y: number, c: Color.Color) {
-        if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
-            return
+    private putPixel(x: number, y: number, colorIndex: number) {
+        if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT || colorIndex < 0 || colorIndex >= 64) {
+            throw new Error(`BUG`)
         }
+        const c = Color.get(colorIndex)
         const i = y * WIDTH + x
         this.buffers[1 - this.frontBufferIndex][i * 4 + 0] = c[0] // R
         this.buffers[1 - this.frontBufferIndex][i * 4 + 1] = c[1] // G
         this.buffers[1 - this.frontBufferIndex][i * 4 + 2] = c[2] // B
     }
 
+    // Holds the result of spriteLine.
+    // Stores color index 0-63, or -1 for no pixel.
+    // If pixel exists the bit 64 (1<<6) represents its priority.
     private spriteLineBuffer = new Array(WIDTH)
-    private spriteLine(y: number) {
-        y
-    }
+    // Computes sprite pixels for scanline and stores the result to spriteLineBuffer.
+    //
+    // References
+    // - https://wiki.nesdev.com/w/index.php?title=PPU_sprite_evaluation
+    // - https://wiki.nesdev.com/w/index.php/PPU_sprite_priority
+    private spriteLine(scanline: number) {
+        this.spriteLineBuffer.fill(-1)
+        // Find 8 sprites.
+        const ids = []
+        for (let i = 0; i < 256 && ids.length < 8; i += 4) { // 64 sprites
+            const y = this.bus.oam[i]
+            const spriteHeight = 8
+            if (scanline < y || scanline >= y + spriteHeight) {
+                continue
+            }
+            ids.push(i)
+        }
 
-    private putSprites() {
-        // 64 sprites
-        for (let i = 0; i < 256; i += 4) {
+        for (const i of ids) {
             const y = this.bus.oam[i] // Y position of top of sprite
             const tileIndexNumber = this.bus.oam[i + 1]
             const attributes = this.bus.oam[i + 2]
@@ -196,30 +213,30 @@ export class PPU {
             const priority = attributes >> 5 & 1 // Priority (0: in front of background; 1: behind background)
             const flipHorizontally = attributes >> 6 & 1 // Flip sprite horizontally
             const flipVertically = attributes >> 7 & 1 // Flip sprite vertically
-            if (priority === 1 || flipHorizontally === 1 || flipVertically === 1) {
+            if (flipHorizontally === 1 || flipVertically === 1) {
                 throw new Error(`Unsupported OAM attr pri:${priority} ${flipHorizontally} ${flipVertically}`)
             }
 
             const palette = this.bus.spritePalettes[pi]
-
             for (let xi = 0; xi < 8; xi++) {
-                if (x + xi < 8 && !this.spriteLeftColumnEnable) {
+                if (x + xi < 8 && !this.spriteLeftColumnEnable || x + xi >= WIDTH || this.spriteLineBuffer[x + xi] >= 0) {
                     continue
                 }
-                for (let yi = 0; yi < 8; yi++) {
-                    const pv = this.patternValue(this.ctrlSpriteTileSelect, tileIndexNumber, xi, yi)
-                    if (pv === 0) {
-                        continue
-                    }
-                    const ci = palette[pv - 1]
-                    this.putPixelColor(x + xi, y + yi, Color.get(ci))
+                const yi = scanline - y
+                const pv = this.patternValue(this.ctrlSpriteTileSelect, tileIndexNumber, xi, yi)
+                if (pv === 0) {
+                    continue
                 }
+                const ci = palette[pv - 1]
+                this.spriteLineBuffer[x + xi] = ci | priority << 6
             }
         }
     }
 
-    private backgroundPixelColor(x: number, y: number): Color.Color {
-        // Compute which background pallete to use from the attribute table.
+    // Returns color index 0-63, or -1 if transparent.
+    // Use Color.get for the result to get the actual color.
+    private backgroundPixelColorIndex(x: number, y: number): number {
+        // Compute which background palete to use from the attribute table.
         // https://wiki.nesdev.com/w/index.php?title=PPU_attribute_tables
 
         let nametableId = this.ctrlNametableSelect
@@ -240,12 +257,14 @@ export class PPU {
 
         // Compute which color to use in the palette.
         const pi = this.backgroundPixelPaletteIndex(x, y)
-        const ci = pi === 0 ? this.bus.universalBackgroundColor : this.bus.backgroundPalettes[at][pi - 1]
-        return Color.get(ci)
+        if (pi === 0) {
+            return -1
+        }
+        const ci = this.bus.backgroundPalettes[at][pi - 1]
+        return ci
     }
 
-    // Compute the index (0,1,2,3)
-    // Pettern index at (x,y). Returns a number in range 0 to 3.
+    // Compute the pattern index 0-3.
     private backgroundPixelPaletteIndex(x: number, y: number): number {
         if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
             throw new Error(`Out of range (${x},${y})`)
