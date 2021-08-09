@@ -1,3 +1,4 @@
+import * as Debug from "./debug"
 import { uint8 } from "./num"
 
 /*
@@ -22,7 +23,10 @@ export class Controller {
 		return res
 	}
 	read4017(): uint8 { // controller 2
-		throw new Error(`Unsupported second controller`)
+		if (Debug.isDebugMode()) {
+			throw new Error(`Unsupported second controller`)
+		}
+		return 0
 	}
 
 	// NES standard controller input.

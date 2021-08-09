@@ -97,8 +97,8 @@ export class PPU {
 
     bus: PPUBus
 
-    scanline = 0 // [0,262)
-    scanlineCycle = 0 // [0,341)
+    scanline = 0 // [0,261]
+    scanlineCycle = 0 // [0,340]
     frameCount = 0
 
     nmi: NMI
@@ -114,7 +114,7 @@ export class PPU {
         }
     }
 
-    private incrementCycleCount() {
+    private updateIndices() {
         this.scanlineCycle++
         if (this.scanlineCycle >= 341) {
             this.scanlineCycle = 0
@@ -123,36 +123,42 @@ export class PPU {
         if (this.scanline >= 262) {
             this.scanline = 0
             this.frameCount++
+            this.frontBufferIndex = 1 - this.frontBufferIndex
         }
     }
 
     tick(): void {
-        this.incrementCycleCount()
+        this.updateIndices()
 
-        // Trigger events based on scanline and scanlnieCycle.
-        if (this.scanline < HEIGHT && 1 <= this.scanlineCycle && this.scanlineCycle <= WIDTH) {
-            const x = (this.scanlineCycle - 1), y = this.scanline
-            if (x < 8 && !this.backgroundLeftColumnEnable) {
-                return
+        if (this.scanline < HEIGHT) { // Visible scanline (0-239)
+            if (1 <= this.scanlineCycle && this.scanlineCycle <= WIDTH) { // Cycles 1-256
+                const x = (this.scanlineCycle - 1), y = this.scanline
+                if (x >= 8 || this.backgroundLeftColumnEnable) {
+                    const bgColor = this.backgroundPixelColor(x + this.scrollX, y + this.scrollY)
+                    this.putPixelColor(x, y, bgColor)
+                }
             }
-            const bgColor = this.backgroundPixelColor(x + this.scrollX, y + this.scrollY)
-            this.putPixelColor(x, y, bgColor)
-            return
-        } else if (this.scanline === HEIGHT && this.scanlineCycle === 0) { // VBlank start
-            // Render all the sprites here.
-            // TODO: make this cycle acculate.
-            if (this.spriteEnable) {
-                this.putSprites()
+        } else if (this.scanline === HEIGHT) { // Post-render scanline (240)
+            if (this.scanlineCycle === 0) { // VBlank start
+                // Render all the sprites here.
+                // TODO: make this cycle acculate.
+                if (this.spriteEnable) {
+                    this.putSprites()
+                }
             }
-            this.frontBufferIndex = 1 - this.frontBufferIndex
-
-            if (this.ctrlNMIEnable) {
-                // Trigger VBlank NMI
-                this.nmi.set()
+        } else if (this.scanline <= 260) { // Vertical blanking lines (241-260)
+            // The VBlank flag of the PPU is set at tick 1(the second tick) of
+            // scanline 241, where the VBlank NMI also occurs.
+            if (this.scanline === 241 && this.scanlineCycle === 1) {
+                this.vblank = 1
+                if (this.ctrlNMIEnable) {
+                    this.nmi.set()
+                }
             }
-            this.vblank = 1
-        } else if (this.scanline === 0 && this.scanlineCycle === 0) { // VBlank end
-            this.vblank = 0
+        } else { // Pre-render scanline (-1 or 261)
+            if (this.scanlineCycle === 340) {
+                this.vblank = 0
+            }
         }
     }
 
@@ -181,7 +187,7 @@ export class PPU {
             const flipHorizontally = attributes >> 6 & 1 // Flip sprite horizontally
             const flipVertically = attributes >> 7 & 1 // Flip sprite vertically
             if (priority === 1 || flipHorizontally === 1 || flipVertically === 1) {
-                throw new Error(`Unsupported OAM attr ${priority} ${flipHorizontally} ${flipVertically}`)
+                throw new Error(`Unsupported OAM attr pri:${priority} ${flipHorizontally} ${flipVertically}`)
             }
 
             const palette = this.bus.spritePalettes[pi]

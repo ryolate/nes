@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import * as NES from './nes'
-import sampleROMPath from './asset/hello.nes'
+import sampleROMPath from './asset/games/mapper0/thwaite.nes'
 import * as Color from './ppu/color'
 
 const TableRow = (props: { row: Array<string> }) => {

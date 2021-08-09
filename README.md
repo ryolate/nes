@@ -24,5 +24,7 @@ git push
 
 ## Roms
 
-- starter.latest.nes
+- starter.latest.nes (mapper 1)
   - https://cppchriscpp.github.io/nes-starter-kit/
+- Thwaite (NROM 128)
+  - https://wiki.nesdev.com/w/index.php/Thwaite
