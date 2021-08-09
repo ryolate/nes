@@ -41,8 +41,6 @@ export class PPU {
         this.ctrlSpriteTileSelect = x >> 3 & 1
         this.ctrlIncrementMode = x >> 2 & 1
         this.ctrlNametableSelect = x & 1
-
-        if (this.ctrlSpriteHeight) throw new Error('Unimplemented spriteHeight')
     }
 
     // PPUMASK $2001 > write
@@ -204,17 +202,25 @@ export class PPU {
 
         for (const i of ids) {
             const y = this.bus.oam[i] // Y position of top of sprite
-            const byte1 = this.bus.oam[i + 1]
+
+            // For 8x8 sprites, this is the tile number of this sprite within
+            // the pattern table selected in bit 3 of PPUCTRL ($2000).
+            // For 8x16 sprites, the PPU ignores the pattern table selection and
+            // selects a pattern table from bit 0 of this number.
+            //
+            // 76543210
+            // ||||||||
+            // |||||||+- Bank ($0000 or $1000) of tiles
+            // +++++++-- Tile number of top of sprite (0 to 254; bottom half gets the next tile)
+            const tileIndexNumber = this.bus.oam[i + 1]
+
             const attributes = this.bus.oam[i + 2]
-            const x = this.bus.oam[i + 3] // X position of left side of sprite
-
-            const bankOfTiles = byte1 & 1 // Bank ($0000 or $1000) of tiles
-            const tileNumber = byte1 >> 1 // Tile number of top of sprite (0 to 254; bottom half gets the next tile)
-
             const pi = attributes & 3 // Palette (4 to 7) of sprite
             const priority = attributes >> 5 & 1 // Priority (0: in front of background; 1: behind background)
             const flipHorizontally = attributes >> 6 & 1 // Flip sprite horizontally
             const flipVertically = attributes >> 7 & 1 // Flip sprite vertically
+
+            const x = this.bus.oam[i + 3] // X position of left side of sprite
 
             const palette = this.bus.spritePalettes[pi]
             for (let xi = 0; xi < 8; xi++) {
@@ -222,7 +228,19 @@ export class PPU {
                     continue
                 }
                 const yi = scanline - y
-                const pv = this.patternValue(this.ctrlSpriteTileSelect, tileNumber, flipHorizontally ? 7 - xi : xi, flipVertically ? 7 - yi : yi)
+
+                const xi2 = flipHorizontally ? 7 - xi : xi
+                const yi2 = flipVertically ? spriteHeight - 1 - yi : yi
+
+                let pv
+                if (this.ctrlSpriteHeight === 0) {
+                    pv = this.patternValue(this.ctrlSpriteTileSelect, tileIndexNumber, xi2, yi2)
+                } else {
+                    const h = tileIndexNumber & 1
+                    const ti = yi2 < 8 ? (tileIndexNumber & ~1) : (tileIndexNumber | 1)
+                    pv = this.patternValue(h, ti, xi2, yi2 & 7)
+                }
+
                 if (pv === 0) {
                     continue
                 }
