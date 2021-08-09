@@ -193,9 +193,9 @@ export class PPU {
         this.spriteLineBuffer.fill(-1)
         // Find 8 sprites.
         const ids = []
+        const spriteHeight = this.ctrlSpriteHeight ? 16 : 8
         for (let i = 0; i < 256 && ids.length < 8; i += 4) { // 64 sprites
             const y = this.bus.oam[i]
-            const spriteHeight = 8
             if (scanline < y || scanline >= y + spriteHeight) {
                 continue
             }
@@ -204,9 +204,12 @@ export class PPU {
 
         for (const i of ids) {
             const y = this.bus.oam[i] // Y position of top of sprite
-            const tileIndexNumber = this.bus.oam[i + 1]
+            const byte1 = this.bus.oam[i + 1]
             const attributes = this.bus.oam[i + 2]
             const x = this.bus.oam[i + 3] // X position of left side of sprite
+
+            const bankOfTiles = byte1 & 1 // Bank ($0000 or $1000) of tiles
+            const tileNumber = byte1 >> 1 // Tile number of top of sprite (0 to 254; bottom half gets the next tile)
 
             const pi = attributes & 3 // Palette (4 to 7) of sprite
             const priority = attributes >> 5 & 1 // Priority (0: in front of background; 1: behind background)
@@ -219,7 +222,7 @@ export class PPU {
                     continue
                 }
                 const yi = scanline - y
-                const pv = this.patternValue(this.ctrlSpriteTileSelect, tileIndexNumber, flipHorizontally ? 7 - xi : xi, flipVertically ? 7 - yi : yi)
+                const pv = this.patternValue(this.ctrlSpriteTileSelect, tileNumber, flipHorizontally ? 7 - xi : xi, flipVertically ? 7 - yi : yi)
                 if (pv === 0) {
                     continue
                 }

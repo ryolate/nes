@@ -216,6 +216,37 @@ const RealGame = (props: { nes: NES.NES }) => {
 	const [fps, setFPS] = useState(0)
 
 	useEffect(() => {
+		// A, B, Select, Start, Up, Down, Left, Right
+		const keys = "kjfhwsad"
+		let data = 0
+		const keydownListener = (e: KeyboardEvent) => {
+			const i = keys.indexOf(e.key)
+			if (i === undefined) {
+				return
+			}
+			data |= 1 << i
+			props.nes.setControllerState(1, data)
+		}
+		const keyupListener = (e: KeyboardEvent) => {
+			const i = keys.indexOf(e.key)
+			if (i === undefined) {
+				return
+			}
+			data &= ~(1 << i)
+			props.nes.setControllerState(1, data)
+		}
+
+		document.addEventListener("keydown", keydownListener)
+		document.addEventListener("keyup", keyupListener)
+
+		return () => {
+			document.removeEventListener("keydown", keydownListener)
+			document.removeEventListener("keyup", keyupListener)
+			props.nes.setControllerState(1, 0)
+		}
+	}, [props.nes])
+
+	useEffect(() => {
 		const canvas = canvasRef.current!
 		const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
 
@@ -306,37 +337,6 @@ const Game = (props: { nes: NES.NES }) => {
 		}
 	}, [debugMode])
 
-	useEffect(() => {
-		// A, B, Select, Start, Up, Down, Left, Right
-		const keys = "kjfhwsad"
-		let data = 0
-		const keydownListener = (e: KeyboardEvent) => {
-			const i = keys.indexOf(e.key)
-			if (i === undefined) {
-				return
-			}
-			data |= 1 << i
-			props.nes.setControllerState(1, data)
-		}
-		const keyupListener = (e: KeyboardEvent) => {
-			const i = keys.indexOf(e.key)
-			if (i === undefined) {
-				return
-			}
-			data &= ~(1 << i)
-			props.nes.setControllerState(1, data)
-		}
-
-		document.addEventListener("keydown", keydownListener)
-		document.addEventListener("keyup", keyupListener)
-
-		return () => {
-			document.removeEventListener("keydown", keydownListener)
-			document.removeEventListener("keyup", keyupListener)
-			props.nes.setControllerState(1, 0)
-		}
-	}, [props.nes])
-
 	props.nes.setDebugMode(debugMode)
 	const game = debugMode ?
 		<DebugGame nes={props.nes} /> :
@@ -347,28 +347,31 @@ const Game = (props: { nes: NES.NES }) => {
 			setDebugMode(e.target.checked)
 		}} /></label>
 		{game}
+		<Controll />
 	</div >
+}
+
+const Controll = () => {
+	return <div>
+		Control:
+		<ul>
+			<li>A: Left</li>
+			<li>D: Right</li>
+			<li>W: Up</li>
+			<li>S: Down</li>
+			<li>K: A button</li>
+			<li>J: B button</li>
+			<li>F: SELECT</li>
+			<li>H: START</li>
+		</ul>
+	</div>
 }
 
 export const App = (): JSX.Element => {
 	const [cartridgeData, setCartridgeData] = useState<Uint8Array | null>(null)
 
 	return <div>
-		{cartridgeData ? <Game nes={new NES.NES(cartridgeData)} /> : null}
 		<FileChooser onChange={setCartridgeData} />
-
-		<div>
-			Control:
-			<ul>
-				<li>A: Left</li>
-				<li>D: Right</li>
-				<li>W: Up</li>
-				<li>S: Down</li>
-				<li>: A button</li>
-				<li>: B button</li>
-				<li>F: SELECT</li>
-				<li>H: START</li>
-			</ul>
-		</div>
+		{cartridgeData ? <Game nes={new NES.NES(cartridgeData)} /> : null}
 	</div>
 }
