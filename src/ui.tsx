@@ -23,27 +23,30 @@ const DebugInfo = (props: { debugInfoHistory: Array<NES.DebugInfo> }) => {
 	const cpu = info.cpuStatus
 	const ppu = info.ppuStatus
 
+
 	return <div>
-		<table>
-			<tbody>
-				{
-					[
-						["PC", cpu.registers.pc],
-						["A", cpu.registers.a],
-						["X", cpu.registers.x],
-						["Y", cpu.registers.y],
-						["P", cpu.registers.p],
-						["S", cpu.registers.s],
-					].map(([s, x], i) => {
-						const id = "" + i
-						return <TableRow key={id} row={[s as string, x.toString(16).toUpperCase()]} />
-					})
-				}
-				<TableRow key="cyc" row={["CYC", "" + cpu.cyc]}></TableRow>
-				<TableRow key="instr" row={["INSTR", "" + cpu.instr]}></TableRow>
-				<TableRow key="frame" row={["FRAME", "" + ppu.frameCount]}></TableRow>
-			</tbody>
-		</table>
+		<span>
+			<table>
+				<tbody>
+					{
+						[
+							["PC", cpu.registers.pc],
+							["A", cpu.registers.a],
+							["X", cpu.registers.x],
+							["Y", cpu.registers.y],
+							["P", cpu.registers.p],
+							["S", cpu.registers.s],
+						].map(([s, x], i) => {
+							const id = "" + i
+							return <TableRow key={id} row={[s as string, x.toString(16).toUpperCase()]} />
+						})
+					}
+					<TableRow key="cyc" row={["CYC", "" + cpu.cyc]}></TableRow>
+					<TableRow key="instr" row={["INSTR", "" + cpu.instr]}></TableRow>
+					<TableRow key="frame" row={["FRAME", "" + ppu.frameCount]}></TableRow>
+				</tbody>
+			</table>
+		</span>
 	</div>
 }
 
@@ -108,27 +111,29 @@ const DebugGame = (props: { nes: NES.NES }) => {
 	}
 
 	return <div>
-		<ErrorBanner error={error} />
-		<button onClick={reset}>reset</button>
-		<button onClick={onStep}>step</button>
-		<label>count: <input min="1" type="number" value={stepCount ? stepCount : ""} onChange={(e) => {
-			if (e.target.value === "") {
-				setStepCount(0)
-			}
-			setStepCount(parseInt(e.target.value))
-		}}></input></label>
-		<DebugInfo debugInfoHistory={debugInfo}></DebugInfo>
+		<div>
+			<ErrorBanner error={error} />
+			<button onClick={reset}>reset</button>
+			<button onClick={onStep}>step</button>
+			<label>count: <input min="1" type="number" value={stepCount ? stepCount : ""} onChange={(e) => {
+				if (e.target.value === "") {
+					setStepCount(0)
+				}
+				setStepCount(parseInt(e.target.value))
+			}}></input></label>
+		</div>
 		<div>
 			<canvas ref={gameCanvasRef}
 				width="256"
 				height="240"></canvas>
 		</div>
-		<div>
+		<DebugInfo debugInfoHistory={debugInfo}></DebugInfo>
+		<span>
 			<canvas ref={charsCanvasRef}></canvas>
-		</div>
-		<div>
+		</span>
+		<span>
 			<canvas ref={colorsCanvasRef}></canvas>
-		</div>
+		</span>
 	</div>
 }
 
