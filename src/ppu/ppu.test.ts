@@ -4,26 +4,22 @@
 
 import * as fs from 'fs'
 import { NES } from '../nes'
-import * as PPU from './ppu'
+import { assertSameImageBuffers, wantFrame } from '../testing/golden'
 
-const helloROM = fs.readFileSync("src/asset/hello.nes")
+test.each([
+	['hello.nes', 10],
+	['nestest.nes', 10],
+])("Compare", (name, frameCount) => {
+	const filepath = 'src/asset/' + name
+	const data = fs.readFileSync(filepath)
+	const nes = new NES(data)
 
-test("Hello world", () => {
-	const nes = new NES(helloROM)
-
-	const canvas = newGameCanvas()
-	const ctx = canvas.getContext('2d') ?? fail()
-
-	const iter = 10000
-	for (let i = 0; i < iter; i++) {
-		nes.stepToNextInstruction()
+	for (let i = 0; i < frameCount; i++) {
+		nes.frame()
 	}
-	nes.render(ctx)
-})
 
-const newGameCanvas = (): HTMLCanvasElement => {
-	const canvas = document.createElement('canvas') as HTMLCanvasElement
-	canvas.width = PPU.WIDTH
-	canvas.height = PPU.HEIGHT
-	return canvas
-}
+	const got = nes.buffer()
+	const want = wantFrame(filepath, 10)
+
+	assertSameImageBuffers(got, want)
+})

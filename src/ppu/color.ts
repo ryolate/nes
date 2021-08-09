@@ -43,3 +43,16 @@ export const render = (canvas: HTMLCanvasElement): void => {
         }
     }
 }
+
+const sameColor = (c1: Color, c2: Color): boolean => {
+    return c1[0] === c2[0] && c1[1] === c2[1] && c1[2] === c2[2]
+}
+
+export function indexOf(c: Color): number {
+    for (let i = 0; i < 64; i++) {
+        if (sameColor(c, palette[i])) {
+            return i
+        }
+    }
+    throw new Error(`Unknown color ${c}`)
+}

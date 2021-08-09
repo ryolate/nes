@@ -298,6 +298,9 @@ export class PPU {
         const img = new ImageData(this.buffers[this.frontBufferIndex], WIDTH, HEIGHT)
         ctx.putImageData(img, 0, 0)
     }
+    buffer(): Uint8ClampedArray {
+        return this.buffers[this.frontBufferIndex]
+    }
 
     readCPU(pc: uint16): uint8 {
         switch (pc & 7) {
@@ -359,7 +362,7 @@ export class PPU {
     ////////////////////////////// Debug //////////////////////////////
     getStatus(): PPUStatus {
         return {
-            hoge: 1,
+            frameCount: this.frameCount,
         }
     }
 }
@@ -443,6 +446,6 @@ class PPUBus {
     }
 }
 
-interface PPUStatus {
-    hoge: number
+export interface PPUStatus {
+    frameCount: number
 }

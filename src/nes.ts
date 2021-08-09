@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Cartridge } from "./cartridge";
-import { PPU } from "./ppu/ppu";
+import { PPU, PPUStatus } from "./ppu/ppu";
 import { CPU, CPUHaltError, CPUStatus } from "./cpu";
 import { APU } from "./apu";
 import { NMI } from "./nmi";
@@ -14,9 +14,9 @@ const CPUMillisPerCycle = 1000 / CPUHz
 
 export class NES {
 	cartridge: Cartridge
-	controller: Controller
+	private controller: Controller
 
-	ppu: PPU
+	private ppu: PPU
 	cpu: CPU
 
 	constructor(cartridgeData: Uint8Array) {
@@ -44,11 +44,15 @@ export class NES {
 	// throw error on CPU halt
 	private step(numCPUSteps: number) {
 		for (let i = 0; i < numCPUSteps; i++) {
-			this.ppu.tick()
-			this.ppu.tick()
-			this.ppu.tick()
-			this.cpu.tick()
+			this.tick()
 		}
+	}
+
+	private tick() {
+		this.ppu.tick()
+		this.ppu.tick()
+		this.ppu.tick()
+		this.cpu.tick()
 	}
 
 	// Render the game.
@@ -62,6 +66,16 @@ export class NES {
 	}
 
 	////////////////////////////// Debug //////////////////////////////
+	frame(): void {
+		const c = this.ppu.frameCount
+		while (c === this.ppu.frameCount) {
+			this.tick()
+		}
+	}
+
+	buffer(): Uint8ClampedArray {
+		return this.ppu.buffer()
+	}
 	resetAll(): void {
 		const nmi = new NMI()
 		this.ppu = new PPU(this.cartridge, nmi)
@@ -69,7 +83,7 @@ export class NES {
 	}
 
 	// throw CPUHaltError on CPU halt
-	stepToNextInstruction(): DebugInfo {
+	stepToNextInstruction(): void {
 		let cpuStatus: CPUStatus | null = null
 		const id = this.cpu.addDebugCallback((s) => {
 			cpuStatus = s
@@ -81,14 +95,11 @@ export class NES {
 		} finally {
 			this.cpu.removeDebugCallback(id)
 		}
-
-		return {
-			cpuStatus: cpuStatus!,
-		}
 	}
 	debugInfo(): DebugInfo {
 		return {
-			cpuStatus: this.cpu.cpuStatus()
+			cpuStatus: this.cpu.cpuStatus(),
+			ppuStatus: this.ppu.getStatus(),
 		}
 	}
 	setDebugMode(debugMode: boolean): void {
@@ -98,4 +109,5 @@ export class NES {
 
 export interface DebugInfo {
 	cpuStatus: CPUStatus
+	ppuStatus: PPUStatus
 }

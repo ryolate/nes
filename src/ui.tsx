@@ -19,26 +19,29 @@ const DebugInfo = (props: { debugInfoHistory: Array<NES.DebugInfo> }) => {
 		return null
 	}
 	const info = props.debugInfoHistory[props.debugInfoHistory.length - 1]
-	const s = info.cpuStatus
+
+	const cpu = info.cpuStatus
+	const ppu = info.ppuStatus
 
 	return <div>
 		<table>
 			<tbody>
 				{
 					[
-						["PC", s.registers.pc],
-						["A", s.registers.a],
-						["X", s.registers.x],
-						["Y", s.registers.y],
-						["P", s.registers.p],
-						["S", s.registers.s],
+						["PC", cpu.registers.pc],
+						["A", cpu.registers.a],
+						["X", cpu.registers.x],
+						["Y", cpu.registers.y],
+						["P", cpu.registers.p],
+						["S", cpu.registers.s],
 					].map(([s, x], i) => {
 						const id = "" + i
 						return <TableRow key={id} row={[s as string, x.toString(16).toUpperCase()]} />
 					})
 				}
-				<TableRow key="cyc" row={["CYC", "" + s.cyc]}></TableRow>
-				<TableRow key="instr" row={["INSTR", "" + s.instr]}></TableRow>
+				<TableRow key="cyc" row={["CYC", "" + cpu.cyc]}></TableRow>
+				<TableRow key="instr" row={["INSTR", "" + cpu.instr]}></TableRow>
+				<TableRow key="frame" row={["FRAME", "" + ppu.frameCount]}></TableRow>
 			</tbody>
 		</table>
 	</div>
