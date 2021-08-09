@@ -266,9 +266,9 @@ export class PPU {
             nametableId = (nametableId ^ 2)
         }
 
-        // Each byte controls the palette of a 32×32 pixel
+        // Each byte controls the palette of a 32×32 pixel.
         const i = (y >> 5) << 3 | (x >> 5)
-        const b = this.bus.nametable[nametableId][i]
+        const b = this.bus.nametable[nametableId][0x3C0 + i]
         const x2 = (x >> 4 & 1) << 1, y2 = (y >> 4 & 1) << 1
         const at = b >> (y2 << 1 | x2) & 3
 
@@ -287,12 +287,6 @@ export class PPU {
             throw new Error(`Out of range (${x},${y})`)
         }
 
-        /*
-        TODO
-        - ctrlBackgroundTileSelect
-        - backgroundLeftColumnEnable
-        */
-
         // Compute the pattern index (which tile to select from pattern table)
         const i = (x >> 3) | ((y >> 3) << 5)
 
@@ -310,6 +304,9 @@ export class PPU {
     // the return value can be used for indexing a palette.
     // h specifies whether to use left(0) or right(1) pattern table.
     private patternValue(h: number, i: number, x: number, y: number): number {
+        if (h < 0 || h > 1 || i < 0 || i >= 256 || x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
+            throw new Error("BUG: patternValue")
+        }
         const upper = this.bus.cartridge.readPPU(h << 12 | i << 4 | 8 | (y & 7))
         const lower = this.bus.cartridge.readPPU(h << 12 | i << 4 | 0 | (y & 7))
         return (((upper >> (7 - (x & 7))) & 1) << 1) | ((lower >> (7 - (x & 7))) & 1)
@@ -394,6 +391,7 @@ const newPalette = (): Palette => { return [0, 0, 0] }
 
 class PPUBus {
     cartridge: Cartridge
+    // nametable $2000 - $3EFF
     nametable = [new Uint8Array(0x400), new Uint8Array(0x400), new Uint8Array(0x400), new Uint8Array(0x400)]
 
     // PPU palettes

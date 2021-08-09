@@ -170,7 +170,7 @@ export class Cartridge {
         if (this.header.chrROMSize > 0) {
             return
         }
-        this.chrROM[pc & 0x1FFFF] = x
+        this.chrROM[pc & 0x1FFF] = x
     }
 
     // parses INES data.
