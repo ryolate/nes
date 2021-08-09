@@ -53,9 +53,6 @@ export const assertSameImageBuffers = (ours: Uint8ClampedArray, theirs: Uint8Cla
 		}
 		theirIndices.push(a)
 	}
-
-	// expect(ours).toEqual(theirs)
-
 	expect(ourIndices).toEqual(theirIndices)
 }
 

@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import * as NES from './nes'
-import sampleROMPath from './asset/games/mapper0/thwaite.nes'
+// import sampleROMPath from './asset/games/mapper0/thwaite.nes'
+import sampleROMPath from './asset/nestest.nes'
 import * as Color from './ppu/color'
+import * as PPU from './ppu/ppu'
 
 const TableRow = (props: { row: Array<string> }) => {
 	return <tr>
@@ -14,6 +16,20 @@ const TableRow = (props: { row: Array<string> }) => {
 	</tr>
 }
 
+const Palette = (props: { palette: PPU.Palette }) => {
+	const sz = 18
+	const colors = props.palette.map((c, i) => {
+		const [r, g, b] = Color.get(c)
+		return <div key={i} style={{
+			backgroundColor: `rgb(${r}, ${g}, ${b})`,
+			height: sz, width: sz,
+		}} />
+	})
+	return <div style={{ display: "flex" }}>
+		{colors}
+	</div>
+}
+
 const DebugInfo = (props: { debugInfoHistory: Array<NES.DebugInfo> }) => {
 	if (props.debugInfoHistory.length === 0) {
 		return null
@@ -23,9 +39,15 @@ const DebugInfo = (props: { debugInfoHistory: Array<NES.DebugInfo> }) => {
 	const cpu = info.cpuStatus
 	const ppu = info.ppuStatus
 
+	const backgroundPalettes = info.nes.ppu.bus.backgroundPalettes.map((palette, i) => {
+		return <Palette key={i} palette={palette} />
+	})
+	const spritePalettes = info.nes.ppu.bus.spritePalettes.map((palette, i) => {
+		return <Palette key={i} palette={palette} />
+	})
 
 	return <div>
-		<span>
+		<div>
 			<table>
 				<tbody>
 					{
@@ -46,7 +68,19 @@ const DebugInfo = (props: { debugInfoHistory: Array<NES.DebugInfo> }) => {
 					<TableRow key="frame" row={["FRAME", "" + ppu.frameCount]}></TableRow>
 				</tbody>
 			</table>
-		</span>
+		</div>
+		<div>
+			<strong>BG palette</strong>
+			<div>
+				{backgroundPalettes}
+			</div>
+		</div>
+		<div>
+			<strong>Sprite palette</strong>
+			<div>
+				{spritePalettes}
+			</div>
+		</div>
 	</div>
 }
 
@@ -128,12 +162,12 @@ const DebugGame = (props: { nes: NES.NES }) => {
 				height="240"></canvas>
 		</div>
 		<DebugInfo debugInfoHistory={debugInfo}></DebugInfo>
-		<span>
+		<div>
 			<canvas ref={charsCanvasRef}></canvas>
-		</span>
-		<span>
+		</div>
+		<div>
 			<canvas ref={colorsCanvasRef}></canvas>
-		</span>
+		</div>
 	</div>
 }
 

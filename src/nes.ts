@@ -16,7 +16,7 @@ export class NES {
 	cartridge: Cartridge
 	private controller: Controller
 
-	private ppu: PPU
+	ppu: PPU
 	cpu: CPU
 
 	constructor(cartridgeData: Uint8Array) {
@@ -100,6 +100,7 @@ export class NES {
 		return {
 			cpuStatus: this.cpu.cpuStatus(),
 			ppuStatus: this.ppu.getStatus(),
+			nes: this,
 		}
 	}
 	setDebugMode(debugMode: boolean): void {
@@ -110,4 +111,5 @@ export class NES {
 export interface DebugInfo {
 	cpuStatus: CPUStatus
 	ppuStatus: PPUStatus
+	nes: NES
 }

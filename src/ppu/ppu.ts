@@ -367,7 +367,7 @@ export class PPU {
     }
 }
 
-type Palette = [uint8, uint8, uint8]
+export type Palette = [uint8, uint8, uint8]
 
 const newPalette = (): Palette => { return [0, 0, 0] }
 
@@ -421,13 +421,13 @@ class PPUBus {
         }
     }
     write(pc: uint16, x: uint8) {
-        if (pc < 0x2000) {
+        if (pc < 0x2000) { // Pattern tables $0000 - $1FFF
             this.cartridge.writePPU(pc, x)
             return
-        } else if (pc < 0x3F00) {
+        } else if (pc < 0x3F00) { // Name tables $2000 - $2FFF. Mirrors $3000-$3EFF
             this.nametable[pc / 0x400 & 3][pc & 0x3FF] = x
             return
-        } else {
+        } else { // Palette RAM $3F00-$3F1F. Mirrors $3F20-$3FFF
             let k = pc & 0x1F
             if (k === 0x10 || k === 0x14 || k === 0x18 || k === 0x1C) {
                 k -= 0x10
@@ -436,11 +436,11 @@ class PPUBus {
                 this.universalBackgroundColor = x
                 return
             }
-            const i = k >> 2, j = k & 3
+            const i = k >> 2
             if (i < 4) {
-                this.backgroundPalettes[i][j] = x
+                this.backgroundPalettes[i][(k & 3) - 1] = x
             } else {
-                this.spritePalettes[i - 4][j] = x
+                this.spritePalettes[i - 4][(k & 3) - 1] = x
             }
         }
     }

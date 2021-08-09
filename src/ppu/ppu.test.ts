@@ -7,8 +7,8 @@ import { NES } from '../nes'
 import { assertSameImageBuffers, wantFrame } from '../testing/golden'
 
 test.each([
-	['hello.nes', 10],
-	['nestest.nes', 10],
+	['hello.nes', 5],
+	['nestest.nes', 5],
 ])("Compare", (name, frameCount) => {
 	const filepath = 'src/asset/' + name
 	const data = fs.readFileSync(filepath)
