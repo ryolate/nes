@@ -138,6 +138,11 @@ export class PPU {
                     this.putPixelColor(x, y, bgColor)
                 }
             }
+            if (this.scanlineCycle === 0) {
+                // read next scanline's sprites.
+                // TODO: cycle accurate
+                this.spriteLine(this.scanline + 1)
+            }
         } else if (this.scanline === HEIGHT) { // Post-render scanline (240)
             if (this.scanlineCycle === 0) { // VBlank start
                 // Render all the sprites here.
@@ -172,6 +177,11 @@ export class PPU {
         this.buffers[1 - this.frontBufferIndex][i * 4 + 0] = c[0] // R
         this.buffers[1 - this.frontBufferIndex][i * 4 + 1] = c[1] // G
         this.buffers[1 - this.frontBufferIndex][i * 4 + 2] = c[2] // B
+    }
+
+    private spriteLineBuffer = new Array(WIDTH)
+    private spriteLine(y: number) {
+        y
     }
 
     private putSprites() {

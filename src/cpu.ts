@@ -139,12 +139,12 @@ export class CPU {
 
         this.reset()
     }
-    reset(): void {
+    private reset(): void {
         // reset vector at $FFFC
         this.PC = this.bus.read16(0xFFFC)
     }
 
-    postIncPC(): uint16 {
+    private postIncPC(): uint16 {
         const res = this.PC++
         if (this.PC > UINT16_MAX) {
             this.PC = 0
@@ -152,11 +152,11 @@ export class CPU {
         return res
     }
 
-    fetch(): uint8 {
+    private fetch(): uint8 {
         return this.bus.read(this.postIncPC())
     }
 
-    fetch16(): uint16 {
+    private fetch16(): uint16 {
         return this.fetch() | this.fetch() << 8
     }
 
@@ -192,37 +192,37 @@ export class CPU {
         }
     }
 
-    setNZ(x: uint8): uint8 {
+    private setNZ(x: uint8): uint8 {
         this.N = hasBit(x, 7) ? 1 : 0
         this.Z = x == 0 ? 1 : 0
         return x
     }
 
-    setNZC(x: number): uint8 {
+    private setNZC(x: number): uint8 {
         this.C = hasBit(x, 8) ? 1 : 0
         return this.setNZ(x & UINT8_MAX)
     }
 
-    push(x: uint8): void {
+    private push(x: uint8) {
         this.bus.write(0x100 + this.S, x)
         this.S = dec(this.S)
     }
 
-    push16(x: uint16): void {
+    private push16(x: uint16) {
         this.push(x >> 8)
         this.push(x & UINT8_MAX)
     }
 
-    pop(): uint8 {
+    private pop(): uint8 {
         this.S = inc(this.S)
         return this.bus.read(0x100 + this.S)
     }
 
-    pop16(): uint16 {
+    private pop16(): uint16 {
         return this.pop() | this.pop() << 8
     }
 
-    setP(p: uint8): void {
+    private setP(p: uint8): void {
         this.N = (p >> 7) & 1
         this.V = (p >> 6) & 1
         this.D = (p >> 3) & 1
@@ -230,11 +230,11 @@ export class CPU {
         this.Z = (p >> 1) & 1
         this.C = (p >> 0) & 1
     }
-    getP(): uint8 {
+    private getP(): uint8 {
         return this.N << 7 | this.V << 6 | 1 << 5 | 0 << 4 | this.D << 3 | this.I << 2 | this.Z << 1 | this.C
     }
 
-    execute(instr: Operation): void {
+    private execute(instr: Operation): void {
         this.stallCount += instr.cycle - 1
         // https://wiki.nesdev.com/w/index.php/CPU_addressing_modes
         let pageBoundaryCrossed = false

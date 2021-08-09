@@ -35,7 +35,7 @@ export class Controller {
 		this.realController1 = x
 	}
 
-	update(): void {
+	private update() {
 		if ((this.strobe & 1) === 1) {
 			this.controller1 = this.realController1
 		}
