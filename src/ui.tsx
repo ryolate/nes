@@ -138,7 +138,7 @@ const DebugGame = (props: { nes: NES.NES }) => {
 	}
 	const onFrame = () => {
 		try {
-			props.nes.frame()
+			props.nes.frame(frameCount)
 		} catch (e) {
 			const err = e as Error
 			setError(err.message)
