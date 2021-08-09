@@ -4,7 +4,6 @@ import { NMI } from '../nmi'
 import * as Color from './color'
 
 /*
-
 Reference:
 - registers https://wiki.nesdev.com/w/index.php?title=PPU_registers
 - memory map https://wiki.nesdev.com/w/index.php?title=CPU_memory_map
@@ -19,8 +18,8 @@ Reference:
 */
 
 // Display resolution
-const WIDTH = 256
-const HEIGHT = 240
+export const WIDTH = 256
+export const HEIGHT = 240
 
 // NTCS
 export class PPU {
@@ -62,8 +61,8 @@ export class PPU {
         this.backgroundLeftColumnEnable = x >> 1 & 1
         this.grayscale = x & 1
 
-        if (this.colorEmphasis) throw new Error('Unimplemented 1')
-        if (this.grayscale) throw new Error('Unimplemented 5')
+        if (this.colorEmphasis) throw new Error('Unimplemented colorEmphasis')
+        if (this.grayscale) throw new Error('Unimplemented grayscale')
     }
 
     // PPUSTATUS $2002 < read
@@ -444,6 +443,6 @@ class PPUBus {
     }
 }
 
-export interface PPUStatus {
+interface PPUStatus {
     hoge: number
 }

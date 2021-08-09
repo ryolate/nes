@@ -43,7 +43,6 @@ export class NES {
 
 	// throw error on CPU halt
 	private step(numCPUSteps: number) {
-
 		for (let i = 0; i < numCPUSteps; i++) {
 			this.ppu.tick()
 			this.ppu.tick()
@@ -75,7 +74,6 @@ export class NES {
 		const id = this.cpu.addDebugCallback((s) => {
 			cpuStatus = s
 		})
-
 		try {
 			while (cpuStatus === null) {
 				this.step(1)
