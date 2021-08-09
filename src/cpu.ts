@@ -3,7 +3,6 @@ import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, checkUint1
 import { Cartridge } from './cartridge'
 import { PPU } from './ppu/ppu'
 import { NMI } from './nmi'
-import { debug } from './debug'
 import { Controller } from './controller'
 import { APU } from './apu'
 

@@ -1,10 +1,13 @@
 declare module '*.nes';
+
 // For test
 declare module "jsnes" {
 	class NES {
 		constructor(opts: Options)
 		loadROM(data: string)
 		frame()
+		buttonDown(controller: number, buttonId: number)
+		buttonUp(controller: number, buttonId: number)
 	}
 	interface Options {
 		// 256 * 240 size array, each represents a color code 0xRRGGBB.

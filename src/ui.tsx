@@ -2,7 +2,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import * as NES from './nes'
 import sampleROMPath from './asset/games/mapper0/thwaite.nes'
-// import sampleROMPath from './asset/nestest.nes'
 import * as Color from './ppu/color'
 import * as PPU from './ppu/ppu'
 
@@ -99,6 +98,8 @@ const DebugGame = (props: { nes: NES.NES }) => {
 	const colorsCanvasRef = useRef<HTMLCanvasElement>(null)
 
 	const [stepCount, setStepCount] = useState(1)
+	const [frameCount, setFrameCount] = useState(1)
+	const [buttons, setButtons] = useState(0)
 	const [error, setError] = useState<string>("")
 
 	const [debugInfo, setDebugInfo] = useState<Array<NES.DebugInfo>>([])
@@ -135,26 +136,65 @@ const DebugGame = (props: { nes: NES.NES }) => {
 		nesRender()
 		addDebugInfo()
 	}
+	const onFrame = () => {
+		try {
+			props.nes.frame()
+		} catch (e) {
+			const err = e as Error
+			setError(err.message)
+		}
+		nesRender()
+		addDebugInfo()
+	}
+
+	useEffect(() => {
+		props.nes.setControllerState(1, buttons)
+	}, [buttons, props.nes])
+	const buttonsComponent =
+		["A", "B", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT"].map((s, i) => {
+			return <span key={i}>
+				<input type="checkbox" value={buttons >> i & 1} onChange={(e) => {
+					setButtons((buttons) => {
+						return buttons & ~(1 << i) | (e.target.checked ? 1 << i : 0)
+					})
+				}} />{s}
+			</span>
+		})
 
 	const reset = () => {
 		props.nes.resetAll();
 		setDebugInfo([])
 		setError("")
-
 		nesRender()
 	}
 
 	return <div>
 		<div>
 			<ErrorBanner error={error} />
-			<button onClick={reset}>reset</button>
-			<button onClick={onStep}>step</button>
-			<label>count: <input min="1" type="number" value={stepCount ? stepCount : ""} onChange={(e) => {
-				if (e.target.value === "") {
-					setStepCount(0)
-				}
-				setStepCount(parseInt(e.target.value))
-			}}></input></label>
+			<div>
+				<button onClick={reset}>reset</button>
+			</div>
+			<div>
+				<button onClick={onStep}>step</button>
+				<input min="1" type="number" value={stepCount ? stepCount : ""} onChange={(e) => {
+					if (e.target.value === "") {
+						setStepCount(0)
+					}
+					setStepCount(parseInt(e.target.value))
+				}}></input>
+			</div>
+			<div>
+				<button onClick={onFrame}>frame</button>
+				<input min="1" type="number" value={frameCount ? frameCount : ""} onChange={(e) => {
+					if (e.target.value === "") {
+						setFrameCount(0)
+					}
+					setFrameCount(parseInt(e.target.value))
+				}}></input>
+			</div>
+			<div>
+				{buttonsComponent}
+			</div>
 		</div>
 		<div>
 			<canvas ref={gameCanvasRef}
@@ -276,7 +316,7 @@ const Game = (props: { nes: NES.NES }) => {
 				return
 			}
 			data |= 1 << i
-			props.nes.setControllerState(data)
+			props.nes.setControllerState(1, data)
 		}
 		const keyupListener = (e: KeyboardEvent) => {
 			const i = keys.indexOf(e.key)
@@ -284,7 +324,7 @@ const Game = (props: { nes: NES.NES }) => {
 				return
 			}
 			data &= ~(1 << i)
-			props.nes.setControllerState(data)
+			props.nes.setControllerState(1, data)
 		}
 
 		document.addEventListener("keydown", keydownListener)
@@ -293,7 +333,7 @@ const Game = (props: { nes: NES.NES }) => {
 		return () => {
 			document.removeEventListener("keydown", keydownListener)
 			document.removeEventListener("keyup", keyupListener)
-			props.nes.setControllerState(0)
+			props.nes.setControllerState(1, 0)
 		}
 	}, [props.nes])
 
@@ -324,8 +364,8 @@ export const App = (): JSX.Element => {
 				<li>D: Right</li>
 				<li>W: Up</li>
 				<li>S: Down</li>
-				<li>K: A button</li>
-				<li>J: B button</li>
+				<li>: A button</li>
+				<li>: B button</li>
 				<li>F: SELECT</li>
 				<li>H: START</li>
 			</ul>

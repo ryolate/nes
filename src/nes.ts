@@ -5,7 +5,7 @@ import { CPU, CPUHaltError, CPUStatus } from "./cpu";
 import { APU } from "./apu";
 import { NMI } from "./nmi";
 import * as Debug from "./debug"
-import { Controller } from "./controller";
+import { Controller, ControllerId } from "./controller";
 import { uint8 } from "./num";
 
 // NTSC CPU clock frequency = 1.789773 MHz
@@ -60,16 +60,20 @@ export class NES {
 		this.ppu.render(ctx)
 	}
 
-	// 0 = A, B, Select, Start, Up, Down, Left, Right = 7
-	setControllerState(data: uint8): void {
-		this.controller.setController1Data(data)
+	// Example
+	//   setControllerState(1, Controller.ButtonA | Controller.ButtonRight)
+	setControllerState(c: ControllerId, data: uint8): void {
+		this.controller.setControllerData(c, data)
 	}
 
 	////////////////////////////// Debug //////////////////////////////
-	frame(): void {
-		const c = this.ppu.frameCount
-		while (c === this.ppu.frameCount) {
-			this.tick()
+	frame(n?: number): void {
+		const iter = n ?? 1
+		for (let i = 0; i < iter; i++) {
+			const c = this.ppu.frameCount
+			while (c === this.ppu.frameCount) {
+				this.tick()
+			}
 		}
 	}
 

@@ -1,36 +1,20 @@
 // Module to provide golden data for testing using jsnes.
 
-import * as jsnes from "jsnes"
-import * as fs from 'fs'
 import * as Color from '../ppu/color'
+import * as jsnes from './jsnes'
 
 const width = 256, height = 240
-
-const buffer = new ArrayBuffer(width * height * 4)
-const buffer_32 = new Uint32Array(buffer)
-const buffer_8 = new Uint8ClampedArray(buffer)
-
-const loadData = (filepath: string): string => {
-	return fs.readFileSync(filepath, { encoding: 'binary' })
-}
 
 // Reads romData and run it for frameCount frames, and returns the
 // view.
 export const wantFrame = (filepath: string, frameCount: number): Uint8ClampedArray => {
-	const data = loadData(filepath)
-	const nes = new jsnes.NES({
-		onFrame: (buf) => {
-			for (let i = 0; i < buf.length; i++) {
-				buffer_32[i] = 0xFF000000 | buf[i]
-			}
-		}
-	})
-	nes.loadROM(data)
+	const nes = new jsnes.JSNES()
+	nes.loadFile(filepath)
 
 	for (let i = 0; i < frameCount; i++) {
 		nes.frame()
 	}
-	return buffer_8
+	return nes.buffer()
 }
 
 export const assertSameImageBuffers = (ours: Uint8ClampedArray, theirs: Uint8ClampedArray): void => {
@@ -53,7 +37,24 @@ export const assertSameImageBuffers = (ours: Uint8ClampedArray, theirs: Uint8Cla
 		}
 		theirIndices.push(a)
 	}
-	expect(ourIndices).toEqual(theirIndices)
+
+	let failCount = 0
+	for (let y = 0; y < height; y++) {
+		let ok = true
+		for (let x = 0; x < width; x++) {
+			if (ourIndices[y][x] !== theirIndices[y][x]) {
+				ok = false
+			}
+		}
+		if (ok) {
+			continue
+		}
+		failCount++
+		if (failCount > 10) {
+			fail(`Too many mismatch (>10 row)`)
+		}
+		expect(ourIndices[y]).toEqual(theirIndices[y])
+	}
 }
 
 class TheirColor {
