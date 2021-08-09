@@ -830,7 +830,6 @@ class CPUBus {
 
     private dmaBuf: Array<uint8> = new Array(256)
     write(pc: uint16, x: uint8) {
-        debug(`CPU.write(0x${pc.toString(16)})`)
         checkUint16(pc)
         if (pc < 0x2000) {
             this.CPURAM[pc % 0x800] = x

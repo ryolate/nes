@@ -213,9 +213,6 @@ export class PPU {
             const priority = attributes >> 5 & 1 // Priority (0: in front of background; 1: behind background)
             const flipHorizontally = attributes >> 6 & 1 // Flip sprite horizontally
             const flipVertically = attributes >> 7 & 1 // Flip sprite vertically
-            if (flipHorizontally === 1 || flipVertically === 1) {
-                throw new Error(`Unsupported OAM attr pri:${priority} ${flipHorizontally} ${flipVertically}`)
-            }
 
             const palette = this.bus.spritePalettes[pi]
             for (let xi = 0; xi < 8; xi++) {
@@ -223,7 +220,7 @@ export class PPU {
                     continue
                 }
                 const yi = scanline - y
-                const pv = this.patternValue(this.ctrlSpriteTileSelect, tileIndexNumber, xi, yi)
+                const pv = this.patternValue(this.ctrlSpriteTileSelect, tileIndexNumber, flipHorizontally ? 7 - xi : xi, flipVertically ? 7 - yi : yi)
                 if (pv === 0) {
                     continue
                 }
@@ -330,6 +327,9 @@ export class PPU {
                 this.mask = x
                 return
             case 2: // status is read only
+                return
+            case 3:
+                this.oamAddr = x
                 return
             case 5:
                 this.scrollX = this.scrollY
