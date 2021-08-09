@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import * as NES from './nes'
-// import sampleROMPath from './asset/games/mapper0/thwaite.nes'
-import sampleROMPath from './asset/nestest.nes'
+import sampleROMPath from './asset/games/mapper0/thwaite.nes'
+// import sampleROMPath from './asset/nestest.nes'
 import * as Color from './ppu/color'
 import * as PPU from './ppu/ppu'
 
@@ -247,10 +247,10 @@ const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 
 	return <div>
 		< input type="file" accept=".nes" onChange={(e) => {
-			if (e === null) {
+			if (e === null || !e.target.files || !e.target.files[0]) {
 				return
 			}
-			const file = e.target.files![0]
+			const file = e.target.files[0]
 			setFilePath(URL.createObjectURL(file))
 		}} /></div>
 }

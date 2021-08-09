@@ -19,7 +19,7 @@ test.each([
 	}
 
 	const got = nes.buffer()
-	const want = wantFrame(filepath, 10)
+	const want = wantFrame(filepath, frameCount)
 
 	assertSameImageBuffers(got, want)
 })
