@@ -2,6 +2,7 @@ import { Cartridge } from '../cartridge'
 import { uint16, uint8 } from '../num'
 import { NMI } from '../nmi'
 import * as Color from './color'
+import { debug } from '../debug'
 
 /*
 Reference:
@@ -68,7 +69,9 @@ export class PPU {
     spriteZeroHit = 0 // Sprite 0 Hit.
     spriteOverflow = 0 // Sprite overflow.
     private get status(): number {
-        return this.vblank << 7 | this.spriteZeroHit << 6 | this.spriteOverflow << 5
+        const res = this.vblank << 7 | this.spriteZeroHit << 6 | this.spriteOverflow << 5
+        this.vblank = 0
+        return res
     }
 
     // OAMADDR $2003 > write
@@ -135,13 +138,22 @@ export class PPU {
                 const x = (this.scanlineCycle - 1), y = this.scanline
 
                 let colorIndex = -1
-                if (x >= 8 || this.backgroundLeftColumnEnable) {
+                if (this.backgroundEnable && (x >= 8 || this.backgroundLeftColumnEnable)) {
                     const bgColorIndex = this.backgroundPixelColorIndex(x + this.scrollX, y + this.scrollY)
                     colorIndex = bgColorIndex
                 }
-                const spriteColorIndex = this.spriteLineBuffer[x]
-                if (spriteColorIndex >= 0 && (spriteColorIndex <= 63 || colorIndex === -1)) { // pixel is opaque and front priority (0-63) or background is transparent.
-                    colorIndex = spriteColorIndex & ~64
+                const spritePixel = this.spriteLineBuffer[x]
+                if (this.spriteEnable && spritePixel >= 0) {
+                    const spriteColorIndex = spritePixel & 63
+                    const priority = (spritePixel >> 6) & 1
+                    const spriteZero = (spritePixel >> 7) & 1
+
+                    if (colorIndex >= 0 && spriteZero === 1) {
+                        this.spriteZeroHit = 1
+                    }
+                    if (priority === 0 || colorIndex === -1) {
+                        colorIndex = spriteColorIndex
+                    }
                 }
                 if (colorIndex === -1) {
                     colorIndex = this.bus.universalBackgroundColor
@@ -150,7 +162,7 @@ export class PPU {
             }
         } else if (this.scanline === HEIGHT) { // Post-render scanline (240)
         } else if (this.scanline <= 260) { // Vertical blanking lines (241-260)
-            // The VBlank flag of the PPU is set at tick 1(the second tick) of
+            // The VBlank flag of the PPU is set at tick 1 (the second tick) of
             // scanline 241, where the VBlank NMI also occurs.
             if (this.scanline === 241 && this.scanlineCycle === 1) {
                 this.vblank = 1
@@ -159,7 +171,11 @@ export class PPU {
                 }
             }
         } else { // Pre-render scanline (-1 or 261)
-            if (this.scanlineCycle === 340) {
+            if (this.scanlineCycle === 1) {
+                // https://wiki.nesdev.com/w/index.php?title=PPU_registers#Status_.28.242002.29_.3C_read
+                // cleared at dot 1 (the second dot) of the pre-render line.
+                this.spriteOverflow = 0
+                this.spriteZeroHit = 0
                 this.vblank = 0
             }
         }
@@ -181,6 +197,7 @@ export class PPU {
     // Holds the result of spriteLine.
     // Stores color index 0-63, or -1 for no pixel.
     // If pixel exists the bit 64 (1<<6) represents its priority.
+    // If the pixel is from sprite 0, the bit 128 (1<<7) is set for sprite zero hit detection.
     private spriteLineBuffer = new Array(WIDTH)
     // Computes sprite pixels for scanline and stores the result to spriteLineBuffer.
     //
@@ -192,10 +209,14 @@ export class PPU {
         // Find 8 sprites.
         const ids = []
         const spriteHeight = this.ctrlSpriteHeight ? 16 : 8
-        for (let i = 0; i < 256 && ids.length < 8; i += 4) { // 64 sprites
+        for (let i = 0; i < 256; i += 4) { // 64 sprites
             const y = this.bus.oam[i]
             if (scanline < y || scanline >= y + spriteHeight) {
                 continue
+            }
+            if (ids.length === 8) {
+                this.spriteOverflow = 1
+                break
             }
             ids.push(i)
         }
@@ -245,7 +266,7 @@ export class PPU {
                     continue
                 }
                 const ci = palette[pv - 1]
-                this.spriteLineBuffer[x + xi] = ci | priority << 6
+                this.spriteLineBuffer[x + xi] = ci | priority << 6 | (i === 0 ? 1 : 0) << 7
             }
         }
     }
@@ -289,10 +310,6 @@ export class PPU {
 
         // Compute the pattern index (which tile to select from pattern table)
         const i = (x >> 3) | ((y >> 3) << 5)
-
-        if (!this.backgroundEnable) {
-            return 0
-        }
         // pattern table index
         const pt = this.bus.nametable[this.ctrlNametableSelect][i]
 
