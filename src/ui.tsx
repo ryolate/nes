@@ -298,15 +298,32 @@ const RealGame = (props: { nes: NES.NES }) => {
 	</>
 }
 
+interface FileEntry {
+	dummy: string // empty
+	name: string
+	file: File
+}
+
 const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
-	const [filePath, setFilePath] = useState<string>(sampleROMPath)
+	const [fileName, setFileName] = useState<string>("No file")
+	const [filePath, setFilePath] = useState<string | null>(null)
+	const [db, setDB] = useState<IDBDatabase | null>(null)
 
 	const onChange = props.onChange
 	useEffect(() => {
+		if (filePath === null) {
+			return
+		}
 		let cancelled = false
 		fetch(filePath).then((response) => {
 			return response.blob()
 		}).then((blob) => {
+			const e = {
+				dummy: "",
+				name: fileName,
+				file: blob,
+			}
+			db?.transaction("file", "readwrite").objectStore("file").put(e)
 			return blob.arrayBuffer()
 		}).then((data) => {
 			if (!cancelled) {
@@ -314,16 +331,55 @@ const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 			}
 		})
 		return () => { cancelled = true }
-	}, [filePath, onChange])
+	}, [filePath, fileName, db, onChange])
+
+	useEffect(() => {
+		const fileDB = indexedDB.open('fileDB', 2)
+		fileDB.onupgradeneeded = e => {
+			const db = (e.target as IDBRequest).result as IDBDatabase
+			db.onerror = (e) => {
+				console.error(e)
+			}
+			db.createObjectStore('file', { keyPath: 'dummy' });
+		}
+		fileDB.onsuccess = ((e) => {
+			const db = (e.target as IDBRequest).result as IDBDatabase
+			db.transaction("file").objectStore("file").get("").onsuccess = (e) => {
+				const f = (e.target as IDBRequest<FileEntry>).result
+				setFileName(f.name)
+				setFilePath(URL.createObjectURL(f.file))
+			}
+			setDB(db)
+		})
+	}, [])
 
 	return <div>
-		< input type="file" accept=".nes" onChange={(e) => {
-			if (e === null || !e.target.files || !e.target.files[0]) {
-				return
-			}
-			const file = e.target.files[0]
-			setFilePath(URL.createObjectURL(file))
-		}} /></div>
+		<label>{fileName}</label>
+		{/* <div>
+			< input type="file" accept=".nes" onChange={(e) => {
+				if (e === null || !e.target.files || !e.target.files[0]) {
+					return
+				}
+				const file = e.target.files[0]
+				setFileName(file.name)
+				setFilePath(URL.createObjectURL(file))
+			}} value="" /></div> */}
+
+		<div style={{ height: 100, borderStyle: "inset" }}
+			onDrop={e => {
+				e.preventDefault()
+				const file = e.dataTransfer.files[0]
+				setFileName(file.name)
+				setFilePath(URL.createObjectURL(file))
+			}}
+			onDragOver={e => {
+				e.preventDefault()
+			}}
+		>
+			D&D NES file here
+		</div>
+
+	</div >
 }
 
 const Game = (props: { nes: NES.NES }) => {
