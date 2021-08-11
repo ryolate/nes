@@ -88,7 +88,7 @@ const ErrorBanner = (props: { error: string }) => {
 		return null
 	}
 	return <div style={{ color: "red" }}>
-		<label>Error: {props.error}</label>
+		<label>{props.error}</label>
 	</div>
 }
 
@@ -365,7 +365,7 @@ const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 				setFilePath(URL.createObjectURL(file))
 			}} value="" /></div> */}
 
-		<div style={{ height: 100, borderStyle: "inset" }}
+		<div style={{ height: 50, borderStyle: "inset" }}
 			onDrop={e => {
 				e.preventDefault()
 				const file = e.dataTransfer.files[0]
@@ -426,8 +426,18 @@ const Controll = () => {
 export const App = (): JSX.Element => {
 	const [cartridgeData, setCartridgeData] = useState<Uint8Array | null>(null)
 
+	let nesView = null
+	if (cartridgeData) {
+		try {
+			nesView = <Game nes={new NES.NES(cartridgeData)} />
+		} catch (e) {
+			console.error(e)
+			nesView = <ErrorBanner error={e.toString()} />
+		}
+	}
+
 	return <div>
 		<FileChooser onChange={setCartridgeData} />
-		{cartridgeData ? <Game nes={new NES.NES(cartridgeData)} /> : null}
+		{nesView}
 	</div>
 }
