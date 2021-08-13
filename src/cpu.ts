@@ -5,6 +5,7 @@ import { PPU } from './ppu/ppu'
 import { NMI } from './nmi'
 import { Controller } from './controller'
 import { APU } from './apu'
+import { Logger } from './logger'
 
 /*
 
@@ -96,7 +97,7 @@ export class CPU {
     private Y: uint8 = 0
     private S: uint8
     private _PC: uint16 = 0
-    private bus: CPUBus
+    bus: CPUBus
     private cycle = 0
     debugMode = false
 
@@ -721,6 +722,8 @@ export class CPU {
         }
 
         this.instructionCount++
+
+        this.bus.logger?.setPrefix(`${this.PC.toString(16).toUpperCase()} ${this.instructionCount}`)
         this.debugCallbacks.forEach(x => {
             x[0](this.cpuStatus())
         });
@@ -733,7 +736,7 @@ export class CPU {
 
     ////////////////////////////// Debug //////////////////////////////
     private instructionCount = 0
-    setPCForTest(pc: uint16): void {
+    setPC(pc: uint16): void {
         this.PC = pc
     }
 
@@ -794,6 +797,8 @@ class CPUBus {
     private controller: Controller
     private apu: APU
 
+    logger?: Logger
+
     constructor(cartridge: Cartridge, ppu: PPU, controller: Controller, apu: APU) {
         this.CPURAM = new Uint8Array(0x800)
         this.cartridge = cartridge
@@ -829,13 +834,20 @@ class CPUBus {
 
     private dmaBuf: Array<uint8> = new Array(256)
     write(pc: uint16, x: uint8) {
+        if (pc === 0x511) {
+            this.logger?.log(`0x${pc.toString(16).toUpperCase()} <- ${x}`)
+        }
         checkUint16(pc)
         if (pc < 0x2000) {
+            if (pc === 0x200) {
+                this.logger?.log(`0x${pc.toString(16)} <- ${x}`)
+            }
             this.CPURAM[pc % 0x800] = x
         } else if (pc < 0x4000) {
             // PPU
             this.ppu.writeCPU(pc, x)
         } else if (pc === 0x4014) {
+            this.logger?.log(`CPU.write(0x${x.toString(16)}) OAMDMA`)
             // OAMDMA
             // upload 256 bytes of data from CPU page $XX00-$XXFF to the
             // internal PPU OAM

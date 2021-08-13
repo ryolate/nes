@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import React, { useRef, useEffect, useState, useCallback } from 'react'
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import * as NES from './nes'
-import sampleROMPath from './asset/games/mapper0/thwaite.nes'
 import * as Color from './ppu/color'
 import * as PPU from './ppu/ppu'
+import { ConsoleLogSink, Logger } from './logger'
+import * as disasm from './disasm'
 
 const TableRow = (props: { row: Array<string> }) => {
 	return <tr>
@@ -29,21 +30,40 @@ const Palette = (props: { palette: PPU.Palette }) => {
 	</div>
 }
 
-const DebugInfo = (props: { debugInfoHistory: Array<NES.DebugInfo> }) => {
-	if (props.debugInfoHistory.length === 0) {
-		return null
-	}
-	const info = props.debugInfoHistory[props.debugInfoHistory.length - 1]
+const DebugInfo = (props: { info: NES.DebugInfo }) => {
+	const nes = props.info.nes
 
-	const cpu = info.cpuStatus
-	const ppu = info.ppuStatus
+	const cpu = props.info.cpuStatus
 
-	const backgroundPalettes = info.nes.ppu.bus.backgroundPalettes.map((palette, i) => {
+	const backgroundPalettes = nes.ppu.bus.backgroundPalettes.map((palette, i) => {
 		return <Palette key={i} palette={palette} />
 	})
-	const spritePalettes = info.nes.ppu.bus.spritePalettes.map((palette, i) => {
+	const spritePalettes = nes.ppu.bus.spritePalettes.map((palette, i) => {
 		return <Palette key={i} palette={palette} />
 	})
+	const spriteInfo = (() => {
+		const oam = nes.ppu.bus.oam
+		const res = []
+		for (let i = 0; i < oam.length; i += 4) {
+			const y = oam[i]
+			const tileIndexNumber = oam[i + 1]
+			const attributes = oam[i + 2]
+			const x = oam[i + 3]
+			res.push(
+				<tr key={i}>
+					<td>{y}</td>
+					<td>{tileIndexNumber}</td>
+					<td>{attributes}</td>
+					<td>{x}</td>
+				</tr>
+			)
+		}
+		return <table>
+			<tbody>
+				{res}
+			</tbody>
+		</table>
+	})()
 
 	return <div>
 		<div>
@@ -64,9 +84,12 @@ const DebugInfo = (props: { debugInfoHistory: Array<NES.DebugInfo> }) => {
 					}
 					<TableRow key="cyc" row={["CYC", "" + cpu.cyc]}></TableRow>
 					<TableRow key="instr" row={["INSTR", "" + cpu.instr]}></TableRow>
-					<TableRow key="frame" row={["FRAME", "" + ppu.frameCount]}></TableRow>
+					<TableRow key="frame" row={["FRAME", "" + nes.ppu.frameCount]}></TableRow>
 				</tbody>
 			</table>
+		</div>
+		<div>
+			{spriteInfo}
 		</div>
 		<div>
 			<strong>BG palette</strong>
@@ -96,21 +119,56 @@ const DebugGame = (props: { nes: NES.NES }) => {
 	const gameCanvasRef = useRef<HTMLCanvasElement>(null)
 	const charsCanvasRef = useRef<HTMLCanvasElement>(null)
 	const colorsCanvasRef = useRef<HTMLCanvasElement>(null)
+	const disaTableRef = useRef<HTMLDivElement>(null)
 
 	const [stepCount, setStepCount] = useState(1)
 	const [frameCount, setFrameCount] = useState(1)
 	const [buttons, setButtons] = useState(0)
 	const [error, setError] = useState<string>("")
+	const [debugInfo, setDebugInfo] = useState<NES.DebugInfo | null>(null)
 
-	const [debugInfo, setDebugInfo] = useState<Array<NES.DebugInfo>>([])
+	const disaList = useMemo(() => disasm.disasm(props.nes.cartridge), [props.nes.cartridge])
+	const pc2Idx = (() => {
+		const res = new Map<number, number>()
+		disaList.forEach(([pc], i) => {
+			res.set(pc, i)
+		})
+		return res
+	})()
+	const disaTable =
+		<div ref={disaTableRef} style={{
+			overflow: "scroll", height: "1000px", width: "300px"
+		}}>
+			<table ><tbody>
+				{disaList.map(([pc, s], i) => {
+					pc2Idx.set(pc, i)
+					return <tr key={i} style={{
+						height: "26px",
+						backgroundColor: pc === debugInfo?.cpuStatus.registers.pc
+							? "lightyellow" : undefined
+					}}>
+						<td>{pc.toString(16).toUpperCase()}</td>
+						<td>{s}</td>
+					</tr>
+				})}
+			</tbody></table >
+		</div >
+
+	useEffect(() => {
+		const pc = debugInfo?.cpuStatus.registers.pc
+		const i = pc && pc2Idx.get(pc)
+		if (i && disaTableRef.current) {
+			const y = 26 * i - 150
+			disaTableRef.current.scrollTo({ top: y, behavior: 'smooth' })
+		}
+	}, [debugInfo, pc2Idx, props.nes])
 
 	const addDebugInfo = useCallback(() => {
-		const x = props.nes.debugInfo()
-		const last = debugInfo[debugInfo.length - 1]
-		if (last && last.cpuStatus.cyc === x.cpuStatus.cyc) {
+		const info = props.nes.debugInfo()
+		if (debugInfo && debugInfo.cpuStatus.cyc === info.cpuStatus.cyc) {
 			return
 		}
-		setDebugInfo(debugInfo.concat([props.nes.debugInfo()]))
+		setDebugInfo(info)
 	}, [debugInfo, props.nes])
 
 	const nesRender = useCallback(() => {
@@ -163,12 +221,19 @@ const DebugGame = (props: { nes: NES.NES }) => {
 
 	const reset = () => {
 		props.nes.resetAll();
-		setDebugInfo([])
+		setDebugInfo(null)
 		setError("")
 		nesRender()
 	}
 
-	return <div>
+	useEffect(() => {
+		props.nes.setLogger(new Logger(new ConsoleLogSink(), "NES"))
+		return () => {
+			props.nes.setLogger(undefined)
+		}
+	}, [props.nes])
+
+	const leftSide = <div>
 		<div>
 			<ErrorBanner error={error} />
 			<div>
@@ -201,13 +266,23 @@ const DebugGame = (props: { nes: NES.NES }) => {
 				width="256"
 				height="240"></canvas>
 		</div>
-		<DebugInfo debugInfoHistory={debugInfo}></DebugInfo>
+		{debugInfo ? <DebugInfo info={debugInfo}></DebugInfo> : null}
 		<div>
 			<canvas ref={charsCanvasRef}></canvas>
 		</div>
 		<div>
 			<canvas ref={colorsCanvasRef}></canvas>
 		</div>
+	</div>
+	const rightSide = <>{disaTable}</>
+
+	return <div style={{ display: "flex" }}>
+		<span>
+			{leftSide}
+		</span>
+		<span>
+			{rightSide}
+		</span>
 	</div>
 }
 
@@ -429,7 +504,7 @@ export const App = (): JSX.Element => {
 	let nesView = null
 	if (cartridgeData) {
 		try {
-			nesView = <Game nes={new NES.NES(cartridgeData)} />
+			nesView = <Game nes={NES.NES.fromCartridgeData(cartridgeData)} />
 		} catch (e) {
 			console.error(e)
 			nesView = <ErrorBanner error={e.toString()} />

@@ -7,10 +7,10 @@ import { NES } from './nes'
 const data = fs.readFileSync("testdata/nestest.nes")
 
 test("Parse iNES", () => {
-    const nes = new NES(data)
+    const nes = NES.fromCartridgeData(data)
     const cpu = nes.cpu
 
-    cpu.setPCForTest(0xc000)
+    cpu.setPC(0xc000)
 
     const wants: Array<Instruction> = ["JMP", "RTS", "SEI", "CLD", "LDX"]
     for (const want of wants) {
@@ -21,9 +21,9 @@ test("Parse iNES", () => {
 
 const wantNESTestLog = parseNesTestLog()
 test("nestest", () => {
-    const nes = new NES(data)
+    const nes = NES.fromCartridgeData(data)
     const cpu = nes.cpu
-    cpu.setPCForTest(0xc000)
+    cpu.setPC(0xc000)
 
     let i = 0
     cpu.addDebugCallback(got => {

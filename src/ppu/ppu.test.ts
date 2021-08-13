@@ -8,12 +8,12 @@ import { JSNES } from '../testing/jsnes'
 import * as controller from '../controller'
 
 test.each([
-	['hello.nes', 5],
-	['nestest.nes', 5],
-])("Compare", (name, frameCount) => {
-	const filepath = 'src/asset/' + name
+	['src/asset/hello.nes', 5],
+	['src/asset/nestest.nes', 5],
+	['testdata/secret/DONKEY_KONG.NES', 10],
+])("Compare", async (filepath, frameCount) => {
 	const data = fs.readFileSync(filepath)
-	const nes = new NES(data)
+	const nes = NES.fromCartridgeData(data)
 
 	for (let i = 0; i < frameCount; i++) {
 		nes.frame()
@@ -22,13 +22,13 @@ test.each([
 	const got = nes.buffer()
 	const want = wantFrame(filepath, frameCount)
 
-	assertSameImageBuffers(got, want)
+	await assertSameImageBuffers(got, want)
 })
 
 test('thwaite.nes', () => {
 	const filepath = 'src/asset/games/mapper0/thwaite.nes'
 	const data = fs.readFileSync(filepath)
-	const nes = new NES(data)
+	const nes = NES.fromCartridgeData(data)
 	const jsnes = new JSNES()
 	jsnes.loadFile(filepath)
 

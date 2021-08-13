@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Cartridge } from "./cartridge";
-import { PPU, PPUStatus } from "./ppu/ppu";
+import { PPU } from "./ppu/ppu";
 import { CPU, CPUHaltError, CPUStatus } from "./cpu";
 import { APU } from "./apu";
 import { NMI } from "./nmi";
 import * as Debug from "./debug"
 import { Controller, ControllerId } from "./controller";
 import { uint8 } from "./num";
+import { Logger } from "./logger";
 
 // NTSC CPU clock frequency = 1.789773 MHz
 const CPUHz = 1.789773 * 1000 * 1000
@@ -19,14 +20,18 @@ export class NES {
 	ppu: PPU
 	cpu: CPU
 
-	constructor(cartridgeData: Uint8Array) {
-		this.cartridge = Cartridge.parseINES(cartridgeData)
+	constructor(cartridge: Cartridge) {
+		this.cartridge = cartridge
 		this.controller = new Controller()
 
 		const nmi = new NMI()
 
 		this.ppu = new PPU(this.cartridge, nmi)
 		this.cpu = new CPU(this.cartridge, this.ppu, nmi, this.controller, new APU())
+	}
+
+	static fromCartridgeData(cartridgeData: Uint8Array): NES {
+		return new NES(Cartridge.parseINES(cartridgeData))
 	}
 
 	play(elapsedMillis: number): void {
@@ -84,6 +89,9 @@ export class NES {
 		const nmi = new NMI()
 		this.ppu = new PPU(this.cartridge, nmi)
 		this.cpu = new CPU(this.cartridge, this.ppu, nmi, this.controller, new APU())
+
+		this.setLogger(this.logger)
+		console.clear()
 	}
 
 	// throw CPUHaltError on CPU halt
@@ -103,17 +111,21 @@ export class NES {
 	debugInfo(): DebugInfo {
 		return {
 			cpuStatus: this.cpu.cpuStatus(),
-			ppuStatus: this.ppu.getStatus(),
 			nes: this,
 		}
 	}
 	setDebugMode(debugMode: boolean): void {
 		Debug.setDebugMode(debugMode)
 	}
+	private logger?: Logger
+	setLogger(logger?: Logger): void {
+		this.logger = logger
+		this.ppu.logger = logger?.newLogger("PPU")
+		this.cpu.bus.logger = logger?.newLogger("CPU")
+	}
 }
 
 export interface DebugInfo {
 	cpuStatus: CPUStatus
-	ppuStatus: PPUStatus
 	nes: NES
 }

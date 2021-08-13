@@ -2,7 +2,7 @@ import { Cartridge } from '../cartridge'
 import { uint16, uint8 } from '../num'
 import { NMI } from '../nmi'
 import * as Color from './color'
-import { debug } from '../debug'
+import { Logger } from '../logger'
 
 /*
 Reference:
@@ -102,6 +102,8 @@ export class PPU {
     frameCount = 0
 
     nmi: NMI
+
+    logger?: Logger
 
     constructor(cartridge: Cartridge, nmi: NMI) {
         this.bus = new PPUBus(cartridge)
@@ -368,6 +370,16 @@ export class PPU {
             case 3:
                 this.oamAddr = x
                 return
+            case 4:
+                // For emulation purposes, it is probably best to completely
+                // ignore writes during rendering.
+                if (this.scanline === 261 || this.scanline < HEIGHT) {
+                    return
+                }
+                this.bus.write(this.oamData, x)
+                this.oamAddr++
+                return
+            // OAMDATA
             case 5:
                 this.scrollX = this.scrollY
                 this.scrollY = x
@@ -389,17 +401,13 @@ export class PPU {
     }
 
     sendDMA(buf: Array<uint8>): void {
+        this.logger?.log("OAM <- " + buf.toString())
         for (let i = 0; i < 256; i++) {
             this.bus.oam[i] = buf[i]
         }
     }
 
     ////////////////////////////// Debug //////////////////////////////
-    getStatus(): PPUStatus {
-        return {
-            frameCount: this.frameCount,
-        }
-    }
 }
 
 export type Palette = [uint8, uint8, uint8]
@@ -480,8 +488,4 @@ class PPUBus {
             }
         }
     }
-}
-
-export interface PPUStatus {
-    frameCount: number
 }

@@ -44,7 +44,7 @@ export const render = (canvas: HTMLCanvasElement): void => {
     }
 }
 
-const sameColor = (c1: RGB, c2: RGB): boolean => {
+export const sameColor = (c1: RGB, c2: RGB): boolean => {
     return c1[0] === c2[0] && c1[1] === c2[1] && c1[2] === c2[2]
 }
 
