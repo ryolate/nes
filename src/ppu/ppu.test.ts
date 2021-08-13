@@ -25,7 +25,7 @@ test.each([
 	await assertSameImageBuffers(got, want)
 })
 
-test('thwaite.nes', () => {
+test('thwaite.nes', async () => {
 	const filepath = 'src/asset/games/mapper0/thwaite.nes'
 	const data = fs.readFileSync(filepath)
 	const nes = NES.fromCartridgeData(data)
@@ -35,14 +35,15 @@ test('thwaite.nes', () => {
 	const runner = new TestRunner(nes, jsnes)
 
 	runner.frame(6)
-	runner.check()
+	await runner.check()
 
 	runner.setButtonState(controller.ButtonStart)
 	runner.frame(5)
-
 	runner.setButtonState(0)
+	runner.frame(5)
+
 	// FIXME
-	// runner.check()
+	await runner.check()
 })
 
 class TestRunner {
@@ -75,7 +76,7 @@ class TestRunner {
 		this.jsnesPreviousButtonState = state
 	}
 
-	check() {
-		assertSameImageBuffers(this.nes.buffer(), this.jsnes.buffer())
+	async check() {
+		await assertSameImageBuffers(this.nes.buffer(), this.jsnes.buffer())
 	}
 }
