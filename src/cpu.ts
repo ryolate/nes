@@ -839,7 +839,7 @@ class CPUBus {
         }
         checkUint16(pc)
         if (pc < 0x2000) {
-            if (pc === 0x200) {
+            if (pc % 0x800 === 0x200) {
                 this.logger?.log(`0x${pc.toString(16)} <- ${x}`)
             }
             this.CPURAM[pc % 0x800] = x
