@@ -97,7 +97,6 @@ export class CPU {
     private Y: uint8 = 0
     private S: uint8
     private _PC: uint16 = 0
-    bus: CPUBus
     private cycle = 0
     debugMode = false
 
@@ -132,16 +131,21 @@ export class CPU {
 
     constructor(cartridge: Cartridge, ppu: PPU, nmi: NMI, controller: Controller, apu: APU) {
         this.nmi = nmi
-        this.bus = new CPUBus(cartridge, ppu, controller, apu)
         // https://wiki.nesdev.com/w/index.php/CPU_power_up_state
         this.S = 0xFD
         this.I = 1
+
+        this.CPURAM = new Uint8Array(0x800)
+        this.cartridge = cartridge
+        this.ppu = ppu
+        this.controller = controller
+        this.apu = apu
 
         this.reset()
     }
     private reset(): void {
         // reset vector at $FFFC
-        this.PC = this.bus.read16(0xFFFC)
+        this.PC = this.read16(0xFFFC)
     }
 
     private postIncPC(): uint16 {
@@ -153,7 +157,7 @@ export class CPU {
     }
 
     private fetch(): uint8 {
-        return this.bus.read(this.postIncPC())
+        return this.read(this.postIncPC())
     }
 
     private fetch16(): uint16 {
@@ -204,7 +208,7 @@ export class CPU {
     }
 
     private push(x: uint8) {
-        this.bus.write(0x100 + this.S, x)
+        this.write(0x100 + this.S, x)
         this.S = dec(this.S)
     }
 
@@ -215,7 +219,7 @@ export class CPU {
 
     private pop(): uint8 {
         this.S = inc(this.S)
-        return this.bus.read(0x100 + this.S)
+        return this.read(0x100 + this.S)
     }
 
     private pop16(): uint16 {
@@ -252,9 +256,9 @@ export class CPU {
                 case "zpy": // d,y
                     return (instr.arg + this.Y) & UINT8_MAX
                 case "izx": // (d,x)
-                    return this.bus.read16((instr.arg + this.X) & UINT8_MAX)
+                    return this.read16((instr.arg + this.X) & UINT8_MAX)
                 case "izy": {// (d), y
-                    const base = this.bus.read16(instr.arg)
+                    const base = this.read16(instr.arg)
                     const p = (base + this.Y) & UINT16_MAX
                     pageBoundaryCrossed = (p >> 8) != (base >> 8)
                     return p
@@ -272,7 +276,7 @@ export class CPU {
                     return p
                 }
                 case "ind":
-                    return this.bus.read16(instr.arg)
+                    return this.read16(instr.arg)
                 case "rel": {
                     return (this.PC + uint8ToSigned(instr.arg)) & UINT16_MAX
                 }
@@ -289,53 +293,53 @@ export class CPU {
             case "_NMI":
                 this.push16(this.PC)
                 this.push(this.getP())
-                this.PC = this.bus.read16(0xFFFA)
+                this.PC = this.read16(0xFFFA)
                 this.I = 1
                 break
             case "_IRQ":
                 this.push16(this.PC)
                 this.push(this.getP())
-                this.PC = this.bus.read16(0xFFFE)
+                this.PC = this.read16(0xFFFE)
                 this.I = 1
                 break
             // Logical and arithmetic commands
             case "ORA":
-                this.A = this.setNZ(this.A | this.bus.read(addr))
+                this.A = this.setNZ(this.A | this.read(addr))
                 break
             case "AND":
-                this.A = this.setNZ(this.A & this.bus.read(addr))
+                this.A = this.setNZ(this.A & this.read(addr))
                 break
             case "EOR":
-                this.A = this.setNZ(this.A ^ this.bus.read(addr))
+                this.A = this.setNZ(this.A ^ this.read(addr))
                 break
             case "ADC": {
                 const a = this.A
-                const m = this.bus.read(addr)
+                const m = this.read(addr)
                 this.A = this.setNZC(a + this.C + m)
                 this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
                 break
             }
             case "SBC": {
                 const a = this.A
-                const m = this.bus.read(addr) ^ UINT8_MAX
+                const m = this.read(addr) ^ UINT8_MAX
                 this.A = this.setNZC(a + this.C + m)
                 this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
                 break
             }
             case "CMP": {
-                this.setNZC(this.A + comp(this.bus.read(addr)))
+                this.setNZC(this.A + comp(this.read(addr)))
                 break
             }
             case "CPX": {
-                this.setNZC(this.X + comp(this.bus.read(addr)))
+                this.setNZC(this.X + comp(this.read(addr)))
                 break
             }
             case "CPY": {
-                this.setNZC(this.Y + comp(this.bus.read(addr)))
+                this.setNZC(this.Y + comp(this.read(addr)))
                 break
             }
             case "DEC": {
-                this.bus.write(addr, this.setNZ(dec(this.bus.read(addr))))
+                this.write(addr, this.setNZ(dec(this.read(addr))))
                 break
             }
             case "DEX": {
@@ -347,7 +351,7 @@ export class CPU {
                 break
             }
             case "INC": {
-                this.bus.write(addr, this.setNZ(inc(this.bus.read(addr))))
+                this.write(addr, this.setNZ(inc(this.read(addr))))
                 break
             }
             case "INX": {
@@ -359,40 +363,40 @@ export class CPU {
                 break
             }
             case "ASL": {
-                const m = instr.mode ? this.bus.read(addr) : this.A
+                const m = instr.mode ? this.read(addr) : this.A
                 const v = this.setNZC(m * 2)
                 if (instr.mode) {
-                    this.bus.write(addr, v)
+                    this.write(addr, v)
                 } else {
                     this.A = v
                 }
                 break
             }
             case "ROL": {
-                const m = instr.mode ? this.bus.read(addr) : this.A
+                const m = instr.mode ? this.read(addr) : this.A
                 const v = this.setNZC(m * 2 + this.C)
                 if (instr.mode) {
-                    this.bus.write(addr, v)
+                    this.write(addr, v)
                 } else {
                     this.A = v
                 }
                 break
             }
             case "LSR": {
-                const m = instr.mode ? this.bus.read(addr) : this.A
+                const m = instr.mode ? this.read(addr) : this.A
                 const v = this.setNZC(m >> 1 | (m & 1) << 8)
                 if (instr.mode) {
-                    this.bus.write(addr, v)
+                    this.write(addr, v)
                 } else {
                     this.A = v
                 }
                 break
             }
             case "ROR": {
-                const m = instr.mode ? this.bus.read(addr) : this.A
+                const m = instr.mode ? this.read(addr) : this.A
                 const v = this.setNZC(m >> 1 | this.C << 7 | (m & 1) << 8)
                 if (instr.mode) {
-                    this.bus.write(addr, v)
+                    this.write(addr, v)
                 } else {
                     this.A = v
                 }
@@ -400,27 +404,27 @@ export class CPU {
             }
             // Move commands
             case "LDA": {
-                this.A = this.setNZ(this.bus.read(addr))
+                this.A = this.setNZ(this.read(addr))
                 break
             }
             case "STA": {
-                this.bus.write(addr, this.A)
+                this.write(addr, this.A)
                 break
             }
             case "LDX": {
-                this.X = this.setNZ(this.bus.read(addr))
+                this.X = this.setNZ(this.read(addr))
                 break
             }
             case "STX": {
-                this.bus.write(addr, this.X)
+                this.write(addr, this.X)
                 break
             }
             case "LDY": {
-                this.Y = this.setNZ(this.bus.read(addr))
+                this.Y = this.setNZ(this.read(addr))
                 break
             }
             case "STY": {
-                this.bus.write(addr, this.Y)
+                this.write(addr, this.Y)
                 break
             }
             case "TAX": {
@@ -531,7 +535,7 @@ export class CPU {
             case "BRK": {
                 this.push16(this.PC)
                 this.push(this.getP())
-                this.PC = this.bus.read16(0xFFFE)
+                this.PC = this.read16(0xFFFE)
                 break
             }
             case "RTI": {
@@ -553,7 +557,7 @@ export class CPU {
                 break
             }
             case "BIT": {
-                const m = this.bus.read(addr)
+                const m = this.read(addr)
                 this.Z = (m & this.A) == 0 ? 1 : 0
                 this.N = m >> 7 & 1
                 this.V = m >> 6 & 1
@@ -592,69 +596,69 @@ export class CPU {
             }
             // Illegal opcodes
             case "SLO": {
-                const m = this.setNZC(this.bus.read(addr) << 1)
-                this.bus.write(addr, m)
+                const m = this.setNZC(this.read(addr) << 1)
+                this.write(addr, m)
                 this.A = this.setNZ(this.A | m)
                 break
             }
             case "RLA": {
-                const m = this.setNZC(this.bus.read(addr) * 2 + this.C)
-                this.bus.write(addr, m)
+                const m = this.setNZC(this.read(addr) * 2 + this.C)
+                this.write(addr, m)
                 this.A = this.setNZ(this.A & m)
                 break
             }
             case "SRE": {
-                let m = this.bus.read(addr)
+                let m = this.read(addr)
                 this.C = m & 1
                 m = this.setNZ(m >> 1)
-                this.bus.write(addr, m)
+                this.write(addr, m)
                 this.A = this.setNZ(this.A ^ m)
                 break
             }
             case "RRA": {
-                let m = this.bus.read(addr)
+                let m = this.read(addr)
                 m = this.setNZC(((m & 1) << 8) | m >> 1 | this.C << 7)
-                this.bus.write(addr, m)
+                this.write(addr, m)
                 const a = this.A
                 this.A = this.setNZC(a + this.C + m)
                 this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
                 break
             }
             case "SAX": {
-                this.bus.write(addr, this.A & this.X)
+                this.write(addr, this.A & this.X)
                 break
             }
             case "LAX": {
-                this.A = this.X = this.setNZ(this.bus.read(addr))
+                this.A = this.X = this.setNZ(this.read(addr))
                 break
             }
             case "DCP": { // DEC + CMP
-                const m = this.setNZ(dec(this.bus.read(addr)))
-                this.bus.write(addr, m)
+                const m = this.setNZ(dec(this.read(addr)))
+                this.write(addr, m)
                 this.setNZC(this.A + comp(m))
                 break
             }
             case "ISC": { // INC + SBC
-                this.bus.write(addr, this.setNZ(inc(this.bus.read(addr))))
+                this.write(addr, this.setNZ(inc(this.read(addr))))
                 const a = this.A
-                const m = this.bus.read(addr) ^ UINT8_MAX
+                const m = this.read(addr) ^ UINT8_MAX
                 this.A = this.setNZC(a + this.C + m)
                 this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
                 break
             }
             case "ANC": {
-                this.A = this.setNZ(this.A & this.bus.read(addr))
+                this.A = this.setNZ(this.A & this.read(addr))
                 this.C = (this.A >> 7) & 1
                 break
             }
             case "ALR": { // AND + LSR(imp)
-                const m = this.A & this.bus.read(addr)
+                const m = this.A & this.read(addr)
                 this.A = this.setNZ(m >> 1)
                 this.C = m & 1
                 break
             }
             case "ARR": { // AND + ROR(imp)
-                const m = this.bus.read(addr)
+                const m = this.read(addr)
                 this.A = this.setNZ(this.A & m)
                 const sum = this.A + m
                 this.V = sign(this.A) == sign(m) && sign(this.A) != sign(sum) ? 1 : 0
@@ -664,32 +668,32 @@ export class CPU {
                 break
             }
             case "XAA": {
-                this.A = this.setNZ(this.X & this.bus.read(addr))
+                this.A = this.setNZ(this.X & this.read(addr))
                 break
             }
             case "AXS": {
-                this.X = this.setNZC((this.A & this.X) + comp(this.bus.read(addr)))
+                this.X = this.setNZC((this.A & this.X) + comp(this.read(addr)))
                 break
             }
             case "AHX": {
-                this.bus.write(addr, this.A & this.X & inc(addr >> 8))
+                this.write(addr, this.A & this.X & inc(addr >> 8))
                 break
             }
             case "SHY": {
-                this.bus.write(addr, this.Y & inc(addr >> 8))
+                this.write(addr, this.Y & inc(addr >> 8))
                 break
             }
             case "SHX": {
-                this.bus.write(addr, this.X & inc(addr >> 8))
+                this.write(addr, this.X & inc(addr >> 8))
                 break
             }
             case "TAS": {
                 this.S = this.A & this.X
-                this.bus.write(addr, this.S & inc(addr >> 8))
+                this.write(addr, this.S & inc(addr >> 8))
                 break
             }
             case "LAS": {
-                this.A = this.X = this.S = this.setNZ(this.bus.read(addr) & this.S)
+                this.A = this.X = this.S = this.setNZ(this.read(addr) & this.S)
                 break
             }
             // Halt
@@ -723,7 +727,7 @@ export class CPU {
 
         this.instructionCount++
 
-        this.bus.logger?.setPrefix(`${this.PC.toString(16).toUpperCase()} ${this.instructionCount}`)
+        this.logger?.setPrefix(`${this.PC.toString(16).toUpperCase()} ${this.instructionCount}`)
         this.debugCallbacks.forEach(x => {
             x[0](this.cpuStatus())
         });
@@ -732,6 +736,79 @@ export class CPU {
         this.execute(instr)
 
         return
+    }
+
+    ////////////////////////////// BUS //////////////////////////////
+    private CPURAM: Uint8Array // 2KB internal RAM
+    private cartridge: Cartridge // Cartridge space
+    private ppu: PPU
+
+    private controller: Controller
+    private apu: APU
+
+    logger?: Logger
+
+    // https://wiki.nesdev.com/w/index.php/CPU_memory_map
+    private read(pc: uint16): uint8 {
+        if (pc < 0x2000) {
+            return this.CPURAM[pc & 0x7FF]
+        } else if (pc < 0x4000) {
+            return this.ppu.readCPU(pc)
+        } else if (pc < 0x4016) {
+            return this.apu.read(pc)
+        } else if (pc === 0x4016) {
+            return this.controller.read4016()
+        } else if (pc === 0x4017) {
+            return this.controller.read4017()
+        } else if (pc < 0x4020) {
+            // CPU Test Mode
+        } else {
+            return this.cartridge.readCPU(pc)
+        }
+        throw new Error(`Unsupported CPU.read 0x${pc.toString(16)}`)
+    }
+    private read16(pc: uint16): uint16 {
+        let np = pc + 1
+        if ((np >> 8) > (pc >> 8)) np -= 0x100
+        return this.read(pc) | this.read(np) << 8
+    }
+
+    private dmaBuf: Array<uint8> = new Array(256)
+    private write(pc: uint16, x: uint8) {
+        if (pc === 0x511) {
+            this.logger?.log(`0x${pc.toString(16).toUpperCase()} <- ${x}`)
+        }
+        checkUint16(pc)
+        if (pc < 0x2000) {
+            if (pc % 0x800 === 0x200) {
+                this.logger?.log(`0x${pc.toString(16)} <- ${x}`)
+            }
+            this.CPURAM[pc % 0x800] = x
+        } else if (pc < 0x4000) {
+            // PPU
+            this.ppu.writeCPU(pc, x)
+        } else if (pc === 0x4014) {
+            this.logger?.log(`CPU.write(0x${x.toString(16)}) OAMDMA`)
+            // OAMDMA
+            // upload 256 bytes of data from CPU page $XX00-$XXFF to the
+            // internal PPU OAM
+            for (let i = 0; i < 256; i++) {
+                this.dmaBuf[i] = this.read(x << 8 | i)
+            }
+            this.ppu.sendDMA(this.dmaBuf)
+            // TODO: suspend CPU during the transfer. (513 or 514 cycles)
+        } else if (pc === 0x4016) {
+            // Controller
+            this.controller.write4016(x)
+        } else if (pc < 0x4018) {
+            // APU
+            this.apu.write(pc, x)
+        } else if (pc < 0x4020) {
+            // CPU Test Mode
+            throw new Error(`Unsupported write(0x${pc.toString(16)}, ${x}) to CPU Test Mode`)
+        } else {
+            this.cartridge.writeCPU(pc, x)
+        }
     }
 
     ////////////////////////////// Debug //////////////////////////////
@@ -787,86 +864,4 @@ export interface CPUStatus {
     }
     cyc: number
     instr: number
-}
-
-class CPUBus {
-    private CPURAM: Uint8Array // 2KB internal RAM
-    private cartridge: Cartridge // Cartridge space
-    private ppu: PPU
-
-    private controller: Controller
-    private apu: APU
-
-    logger?: Logger
-
-    constructor(cartridge: Cartridge, ppu: PPU, controller: Controller, apu: APU) {
-        this.CPURAM = new Uint8Array(0x800)
-        this.cartridge = cartridge
-        this.ppu = ppu
-        this.controller = controller
-        this.apu = apu
-    }
-
-    // https://wiki.nesdev.com/w/index.php/CPU_memory_map
-    read(pc: uint16): uint8 {
-        if (pc < 0x2000) {
-            return this.CPURAM[pc & 0x7FF]
-        } else if (pc < 0x4000) {
-            return this.ppu.readCPU(pc)
-        } else if (pc < 0x4016) {
-            return this.apu.read(pc)
-        } else if (pc === 0x4016) {
-            return this.controller.read4016()
-        } else if (pc === 0x4017) {
-            return this.controller.read4017()
-        } else if (pc < 0x4020) {
-            // CPU Test Mode
-        } else {
-            return this.cartridge.readCPU(pc)
-        }
-        throw new Error(`Unsupported CPU.read 0x${pc.toString(16)}`)
-    }
-    read16(pc: uint16): uint16 {
-        let np = pc + 1
-        if ((np >> 8) > (pc >> 8)) np -= 0x100
-        return this.read(pc) | this.read(np) << 8
-    }
-
-    private dmaBuf: Array<uint8> = new Array(256)
-    write(pc: uint16, x: uint8) {
-        if (pc === 0x511) {
-            this.logger?.log(`0x${pc.toString(16).toUpperCase()} <- ${x}`)
-        }
-        checkUint16(pc)
-        if (pc < 0x2000) {
-            if (pc % 0x800 === 0x200) {
-                this.logger?.log(`0x${pc.toString(16)} <- ${x}`)
-            }
-            this.CPURAM[pc % 0x800] = x
-        } else if (pc < 0x4000) {
-            // PPU
-            this.ppu.writeCPU(pc, x)
-        } else if (pc === 0x4014) {
-            this.logger?.log(`CPU.write(0x${x.toString(16)}) OAMDMA`)
-            // OAMDMA
-            // upload 256 bytes of data from CPU page $XX00-$XXFF to the
-            // internal PPU OAM
-            for (let i = 0; i < 256; i++) {
-                this.dmaBuf[i] = this.read(x << 8 | i)
-            }
-            this.ppu.sendDMA(this.dmaBuf)
-            // TODO: suspend CPU during the transfer. (513 or 514 cycles)
-        } else if (pc === 0x4016) {
-            // Controller
-            this.controller.write4016(x)
-        } else if (pc < 0x4018) {
-            // APU
-            this.apu.write(pc, x)
-        } else if (pc < 0x4020) {
-            // CPU Test Mode
-            throw new Error(`Unsupported write(0x${pc.toString(16)}, ${x}) to CPU Test Mode`)
-        } else {
-            this.cartridge.writeCPU(pc, x)
-        }
-    }
 }

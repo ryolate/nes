@@ -121,7 +121,7 @@ export class NES {
 	setLogger(logger?: Logger): void {
 		this.logger = logger
 		this.ppu.logger = logger?.newLogger("PPU")
-		this.cpu.bus.logger = logger?.newLogger("CPU")
+		this.cpu.logger = logger?.newLogger("CPU")
 	}
 }
 
