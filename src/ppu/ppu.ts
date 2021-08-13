@@ -133,7 +133,13 @@ export class PPU {
         this.updateIndices()
 
         if (this.scanline < HEIGHT) { // Visible scanline (0-239)
-            if (this.scanlineCycle === 0) {
+            // TODO: make sprite line evaluation cycle accurate.
+            if (this.scanlineCycle === 261) {
+                // Sprite evaluation does not happen on the pre-render scanline.
+                // Because evaluation applies to the next line's sprite
+                // rendering, no sprites will be rendered on the first scanline,
+                // and this is why there is a 1 line offset on a sprite's Y
+                // coordinate.
                 this.spriteLine(this.scanline)
             }
             if (1 <= this.scanlineCycle && this.scanlineCycle <= WIDTH) { // Cycles 1-256
@@ -369,6 +375,7 @@ export class PPU {
                 return
             case 3:
                 this.oamAddr = x
+                this.logger?.log(`OAMADDR <- $${this.oamAddr.toString(16)}`)
                 return
             case 4:
                 // For emulation purposes, it is probably best to completely
@@ -378,6 +385,7 @@ export class PPU {
                 }
                 this.bus.write(this.oamData, x)
                 this.oamAddr++
+                this.logger?.log(`OAMADDR(++) <- $${this.oamAddr.toString(16)}`)
                 return
             // OAMDATA
             case 5:
@@ -389,7 +397,8 @@ export class PPU {
                 return
             case 7:
                 this.bus.write(this.addr, x)
-                // After access, the video memory address will increment by an amount determined by bit 2 of $2000.
+                // After access, the video memory address will increment by an
+                // amount determined by bit 2 of $2000.
                 if (this.ctrlIncrementMode === 0) {
                     this.addr += 1
                 } else {

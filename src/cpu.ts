@@ -796,7 +796,11 @@ export class CPU {
                 this.dmaBuf[i] = this.read(x << 8 | i)
             }
             this.ppu.sendDMA(this.dmaBuf)
-            // TODO: suspend CPU during the transfer. (513 or 514 cycles)
+            // The CPU is suspended during the transfer, which will take 513 or
+            // 514 cycles after the $4014 write tick. (1 wait state cycle while
+            // waiting for writes to complete, +1 if on an odd CPU cycle, then
+            // 256 alternating read/write cycles.)
+            this.stallCount += 513 + (this.cycle & 1)
         } else if (pc === 0x4016) {
             // Controller
             this.controller.write4016(x)
