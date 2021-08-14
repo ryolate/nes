@@ -11,6 +11,8 @@ test.each([
 	['src/asset/hello.nes', 5],
 	['src/asset/nestest.nes', 5],
 	['testdata/secret/DONKEY_KONG.NES', 10],
+	// FIXME
+	// ['testdata/secret/SUPER_MARIO_BROS.NES', 40],
 ])("Compare", async (filepath, frameCount) => {
 	const data = fs.readFileSync(filepath)
 	const nes = NES.fromCartridgeData(data)

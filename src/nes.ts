@@ -4,7 +4,6 @@ import { PPU } from "./ppu/ppu";
 import { CPU, CPUHaltError, CPUStatus } from "./cpu";
 import { APU } from "./apu";
 import { NMI } from "./nmi";
-import * as Debug from "./debug"
 import { Controller, ControllerId } from "./controller";
 import { uint8 } from "./num";
 import { Logger } from "./logger";
@@ -113,9 +112,6 @@ export class NES {
 			cpuStatus: this.cpu.cpuStatus(),
 			nes: this,
 		}
-	}
-	setDebugMode(debugMode: boolean): void {
-		Debug.setDebugMode(debugMode)
 	}
 	private logger?: Logger
 	setLogger(logger?: Logger): void {

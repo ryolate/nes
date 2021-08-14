@@ -30,6 +30,105 @@ const Palette = (props: { palette: PPU.Palette }) => {
 	</div>
 }
 
+const SpriteInfo = (props: { oam: Array<number> }) => {
+	const oam = props.oam
+	const res = []
+	for (let i = 0; i < oam.length; i += 4) {
+		const y = oam[i]
+		const tileIndexNumber = oam[i + 1]
+		const attributes = oam[i + 2]
+		const x = oam[i + 3]
+		res.push(
+			<tr key={i}>
+				<td>{x}</td>
+				<td>{y}</td>
+				<td>{tileIndexNumber}</td>
+				<td>{attributes}</td>
+			</tr>
+		)
+	}
+	return <>
+		<strong>OAM</strong>
+		<table>
+			<thead>
+				<tr>
+					<th>x</th>
+					<th>y</th>
+					<th>tile</th>
+					<th>attr</th>
+				</tr>
+			</thead>
+			<tbody>
+				{res}
+			</tbody>
+		</table>
+	</>
+}
+
+// Table row
+const Register = (props: { name: string, value: number, radix?: 2 | 10 | 16 }) => {
+	const radix = props.radix ?? 10
+	const pref = radix === 16 ? '$' : radix === 2 ? 'b' : ''
+	return <tr>
+		<td>{props.name}</td>
+		<td width="60px">{pref + props.value.toString(radix).toUpperCase()}</td>
+	</tr>
+}
+
+const PPUInfo = (props: { ppu: PPU.PPU }) => {
+	const ppu = props.ppu
+
+	const registers = [
+		// $2000
+		["ctrlNMIEnable", ppu.ctrlNMIEnable],
+		// ["ctrlPPUMaster", ppu.ctrlPPUMaster],
+		["ctrlSpriteHeight", ppu.ctrlSpriteHeight],
+		["ctrlBackgroundTileSelect", ppu.ctrlBackgroundTileSelect],
+		["ctrlSpriteTileSelect", ppu.ctrlSpriteTileSelect],
+		["ctrlIncrementMode", ppu.ctrlIncrementMode],
+		["ctrlNametableSelect", ppu.ctrlNametableSelect],
+		// $2001
+		["colorEmphasis", ppu.colorEmphasis, 2],
+		["spriteEnable", ppu.spriteEnable],
+		["backgroundEnable", ppu.backgroundEnable],
+		["spriteLeftColumnEnable", ppu.spriteLeftColumnEnable],
+		["grayscale", ppu.grayscale],
+		// $2002
+		["vblank", ppu.vblank],
+		["spriteZeroHit", ppu.spriteZeroHit],
+		["spriteOverflow", ppu.spriteOverflow],
+		// $2003
+		["oamAddr", ppu.oamAddr, 16],
+		// $2004
+		["oamData", ppu.oamData],
+		// $2005
+		["scrollX", ppu.scrollX],
+		["scrollY", ppu.scrollY],
+		// $2006
+		["addr", ppu.addr, 16],
+		// $2007
+		["data", ppu._data],
+	].map((a, i) => {
+		const name = a[0] as string
+		const value = a[1] as number
+		const radix = a[2] as 2 | 16 | undefined
+		return <Register key={i}
+			name={name} value={value} radix={radix} />
+	})
+	const registerTable = <table><tbody>
+		{registers}
+	</tbody></table>
+
+	return <div style={{ display: "flex" }}>
+		<span>
+			{registerTable}
+		</span>
+		<span>
+			<SpriteInfo oam={ppu.bus.oam} />
+		</span>
+	</div>
+}
+
 const DebugInfo = (props: { info: NES.DebugInfo }) => {
 	const nes = props.info.nes
 
@@ -41,29 +140,6 @@ const DebugInfo = (props: { info: NES.DebugInfo }) => {
 	const spritePalettes = nes.ppu.bus.spritePalettes.map((palette, i) => {
 		return <Palette key={i} palette={palette} />
 	})
-	const spriteInfo = (() => {
-		const oam = nes.ppu.bus.oam
-		const res = []
-		for (let i = 0; i < oam.length; i += 4) {
-			const y = oam[i]
-			const tileIndexNumber = oam[i + 1]
-			const attributes = oam[i + 2]
-			const x = oam[i + 3]
-			res.push(
-				<tr key={i}>
-					<td>{y}</td>
-					<td>{tileIndexNumber}</td>
-					<td>{attributes}</td>
-					<td>{x}</td>
-				</tr>
-			)
-		}
-		return <table>
-			<tbody>
-				{res}
-			</tbody>
-		</table>
-	})()
 
 	return <div>
 		<div>
@@ -79,6 +155,7 @@ const DebugInfo = (props: { info: NES.DebugInfo }) => {
 							["S", cpu.registers.s],
 						].map(([s, x], i) => {
 							const id = "" + i
+							console.log(s, x)
 							return <TableRow key={id} row={[s as string, x.toString(16).toUpperCase()]} />
 						})
 					}
@@ -89,7 +166,7 @@ const DebugInfo = (props: { info: NES.DebugInfo }) => {
 			</table>
 		</div>
 		<div>
-			{spriteInfo}
+			<PPUInfo ppu={nes.ppu} />
 		</div>
 		<div>
 			<strong>BG palette</strong>
@@ -468,7 +545,6 @@ const Game = (props: { nes: NES.NES }) => {
 		}
 	}, [debugMode])
 
-	props.nes.setDebugMode(debugMode)
 	const game = debugMode ?
 		<DebugGame nes={props.nes} /> :
 		<RealGame nes={props.nes} />

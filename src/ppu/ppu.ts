@@ -1,5 +1,5 @@
 import { Cartridge } from '../cartridge'
-import { uint16, uint8 } from '../num'
+import { uint16, UINT16_MAX, uint8 } from '../num'
 import { NMI } from '../nmi'
 import * as Color from './color'
 import { Logger } from '../logger'
@@ -41,7 +41,7 @@ export class PPU {
         this.ctrlBackgroundTileSelect = x >> 4 & 1
         this.ctrlSpriteTileSelect = x >> 3 & 1
         this.ctrlIncrementMode = x >> 2 & 1
-        this.ctrlNametableSelect = x & 1
+        this.ctrlNametableSelect = x & 3
     }
 
     // PPUMASK $2001 > write
@@ -156,7 +156,7 @@ export class PPU {
                     const priority = (spritePixel >> 6) & 1
                     const spriteZero = (spritePixel >> 7) & 1
 
-                    if (colorIndex >= 0 && spriteZero === 1) {
+                    if (colorIndex >= 0 && spriteZero) {
                         this.spriteZeroHit = 1
                     }
                     if (priority === 0 || colorIndex === -1) {
@@ -245,6 +245,7 @@ export class PPU {
 
             const attributes = this.bus.oam[i + 2]
             const pi = attributes & 3 // Palette (4 to 7) of sprite
+            // 2,3,4 unimplemented
             const priority = attributes >> 5 & 1 // Priority (0: in front of background; 1: behind background)
             const flipHorizontally = attributes >> 6 & 1 // Flip sprite horizontally
             const flipVertically = attributes >> 7 & 1 // Flip sprite vertically
@@ -404,6 +405,7 @@ export class PPU {
                 } else {
                     this.addr += 32
                 }
+                this.addr &= UINT16_MAX
                 return
         }
         throw new Error(`Unsupported PPU.writeCPU(0x${pc.toString(16)}, ${x})`)
@@ -417,6 +419,12 @@ export class PPU {
     }
 
     ////////////////////////////// Debug //////////////////////////////
+    drawAllNametables(canvas: HTMLCanvasElement): void {
+        canvas.width = WIDTH * 2
+        canvas.height = HEIGHT * 2
+        const ctx = canvas.getContext('2d')
+
+    }
 }
 
 export type Palette = [uint8, uint8, uint8]
@@ -444,6 +452,7 @@ class PPUBus {
 
     constructor(cartridge: Cartridge) {
         this.cartridge = cartridge
+        this.oam.fill(0)
     }
     // Read PPU memory map.
     read(pc: uint16): uint8 {
