@@ -1,5 +1,5 @@
 import * as Opcode from './opcode'
-import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, checkUint16 } from './num'
+import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, checkUint16, assertUint8, assertUint16 } from './num'
 import { Cartridge } from './cartridge'
 import { PPU } from './ppu/ppu'
 import { NMI } from './nmi'
@@ -92,7 +92,16 @@ function inc16(x: uint16): uint16 {
 }
 
 export class CPU {
-    private A: uint8 = 0
+    private _A: uint8 = 0
+
+    private set A(x: uint8) {
+        assertUint8(x)
+        this._A = x
+    }
+    private get A(): uint8 {
+        return this._A
+    }
+
     private X: uint8 = 0
     private Y: uint8 = 0
     private S: uint8
@@ -197,6 +206,7 @@ export class CPU {
     }
 
     private setNZ(x: uint8): uint8 {
+        assertUint8(x)
         this.N = hasBit(x, 7) ? 1 : 0
         this.Z = x == 0 ? 1 : 0
         return x
@@ -208,17 +218,20 @@ export class CPU {
     }
 
     private push(x: uint8) {
+        assertUint8(x)
         this.write(0x100 + this.S, x)
         this.S = dec(this.S)
     }
 
     private push16(x: uint16) {
+        assertUint16(x)
         this.push(x >> 8)
         this.push(x & UINT8_MAX)
     }
 
     private pop(): uint8 {
         this.S = inc(this.S)
+        assertUint8(this.S)
         return this.read(0x100 + this.S)
     }
 

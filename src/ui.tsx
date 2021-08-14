@@ -155,7 +155,6 @@ const DebugInfo = (props: { info: NES.DebugInfo }) => {
 							["S", cpu.registers.s],
 						].map(([s, x], i) => {
 							const id = "" + i
-							console.log(s, x)
 							return <TableRow key={id} row={[s as string, x.toString(16).toUpperCase()]} />
 						})
 					}

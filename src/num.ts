@@ -26,3 +26,17 @@ export function checkUint8(x: uint8): void {
         throw new Error(`${x} is not in uint8 range`)
     }
 }
+
+export const assertUint8 = (x: number): void => {
+    if (0 <= x && x <= UINT8_MAX) {
+        return
+    }
+    throw new Error(`${x} not uint8`)
+}
+
+export const assertUint16 = (x: number): void => {
+    if (0 <= x && x <= UINT16_MAX) {
+        return
+    }
+    throw new Error(`${x} not uint16`)
+}

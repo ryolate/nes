@@ -90,10 +90,31 @@ export class PPU {
 
     // PPUDATA $2007 <> read/write
     _data: uint8 = 0
-    set data(x: uint8) {
+    private set data(x: uint8) {
+        // FIXME.
+        // VRAM read/write data register. After access, the video memory address
+        // will increment by an amount determined by ctrlIncrementMode.
+        // 
+
+
         this._data = x
         if (x > 0) throw new Error('Unimplemented data')
     }
+    private get data() {
+        return this._data
+    }
+
+    // PPU internal registers
+    // https://wiki.nesdev.com/w/index.php/PPU_scrolling
+    // current VRAM address (15 bits)
+    private internalV = 0
+    // Temporary VRAM address (15 bits); can also be thought of as the address
+    // of the top left onscreen tile.
+    private internalT = 0
+    // Fine X scroll (3 bits)
+    private internalX = 0
+    // First or second write toggle (1 bit)
+    private internalW = 0
 
     bus: PPUBus
 
@@ -347,6 +368,9 @@ export class PPU {
     }
 
     readCPU(pc: uint16): uint8 {
+        if (this.data === undefined) {
+            throw new Error(`this.data === undefined`)
+        }
         switch (pc & 7) {
             case 0: return 0
             case 1: return 0
