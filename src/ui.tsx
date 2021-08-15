@@ -28,7 +28,7 @@ const Palette = (props: { palette: PPU.Palette }) => {
 	const colors = props.palette.map((c, i) => {
 		return <PaletteColor key={i} color={Color.get(c)} />
 	})
-	return <div style={{ display: "flex" }}>
+	return <div style={{ display: "flex", marginLeft: 2 }}>
 		{colors}
 	</div>
 }

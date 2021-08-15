@@ -652,14 +652,14 @@ export class PPU {
 
     renderNametable(canvas: HTMLCanvasElement): void {
         canvas.width = WIDTH * 2
-        canvas.height = HEIGHT
+        canvas.height = HEIGHT * 2
 
         const ctx = canvas.getContext('2d')
         if (!ctx) {
             return
         }
 
-        for (let h = 0; h < 2; h++) {
+        for (let h = 0; h < 4; h++) {
             for (let y = 0; y < HEIGHT; y++) {
                 for (let x = 0; x < WIDTH; x++) {
                     const i = (x >> 3) | ((y >> 3) << 5)
@@ -681,7 +681,7 @@ export class PPU {
                     }
                     const c = Color.get(colorIndex)
                     ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`
-                    ctx.fillRect(x + h * WIDTH, y, 1, 1)
+                    ctx.fillRect(x + (h & 1) * WIDTH, y + (h >> 1) * HEIGHT, 1, 1)
                 }
             }
         }
