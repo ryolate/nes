@@ -52,7 +52,7 @@ export class NES {
 		}
 	}
 
-	private tick() {
+	tick(): void {
 		this.ppu.tick()
 		this.ppu.tick()
 		this.ppu.tick()

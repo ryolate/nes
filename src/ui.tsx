@@ -16,17 +16,37 @@ const TableRow = (props: { row: Array<string> }) => {
 	</tr>
 }
 
+const PaletteColor = (props: { color: Color.RGB }) => {
+	const sz = 10
+	const [r, g, b] = props.color
+	return <div style={{
+		backgroundColor: `rgb(${r}, ${g}, ${b})`,
+		height: sz, width: sz,
+	}} />
+}
 const Palette = (props: { palette: PPU.Palette }) => {
-	const sz = 18
 	const colors = props.palette.map((c, i) => {
-		const [r, g, b] = Color.get(c)
-		return <div key={i} style={{
-			backgroundColor: `rgb(${r}, ${g}, ${b})`,
-			height: sz, width: sz,
-		}} />
+		return <PaletteColor key={i} color={Color.get(c)} />
 	})
 	return <div style={{ display: "flex" }}>
 		{colors}
+	</div>
+}
+
+const Palettes = (props: { palettes: Array<PPU.Palette> }) => {
+	const palettes = props.palettes.map((p, i) => {
+		return <Palette key={i} palette={p} />
+	})
+	return <div style={{ display: "flex" }}>
+		{palettes}
+	</div>
+}
+
+const PPUPalettes = (props: { universal: number, bg: Array<PPU.Palette>, sprite: Array<PPU.Palette> }) => {
+	return <div style={{ display: "flex" }}>
+		<PaletteColor color={Color.get(props.universal)} />
+		<Palettes palettes={props.bg} />
+		<Palettes palettes={props.sprite} />
 	</div>
 }
 
@@ -39,7 +59,8 @@ const SpriteInfo = (props: { oam: Array<number> }) => {
 		const attributes = oam[i + 2]
 		const x = oam[i + 3]
 		res.push(
-			<tr key={i}>
+			<tr key={i / 4}>
+				<td>{i / 4}</td>
 				<td>{x}</td>
 				<td>{y}</td>
 				<td>{tileIndexNumber}</td>
@@ -49,19 +70,22 @@ const SpriteInfo = (props: { oam: Array<number> }) => {
 	}
 	return <>
 		<strong>OAM</strong>
-		<table>
-			<thead>
-				<tr>
-					<th>x</th>
-					<th>y</th>
-					<th>tile</th>
-					<th>attr</th>
-				</tr>
-			</thead>
-			<tbody>
-				{res}
-			</tbody>
-		</table>
+		<div style={{ overflow: "scroll", height: 500, width: 200 }}>
+			<table>
+				<thead>
+					<tr>
+						<th>index</th>
+						<th>x</th>
+						<th>y</th>
+						<th>tile</th>
+						<th>attr</th>
+					</tr>
+				</thead>
+				<tbody>
+					{res}
+				</tbody>
+			</table>
+		</div>
 	</>
 }
 
@@ -76,9 +100,26 @@ const Register = (props: { name: string, value: number, radix?: 2 | 10 | 16 }) =
 }
 
 const PPUInfo = (props: { ppu: PPU.PPU }) => {
+	const canvasRef = useRef<HTMLCanvasElement>(null)
 	const ppu = props.ppu
 
+	useEffect(() => {
+		if (!canvasRef.current) {
+			return
+		}
+		const canvas = canvasRef.current
+		ppu.renderNametable(canvas)
+	})
+
 	const registers = [
+		// internal registers
+		["scanline", ppu.scanline],
+		["scanlineCycle", ppu.scanlineCycle],
+		["coarseX", ppu.coarseX()],
+		["coarseY", ppu.coarseY()],
+		["nametableSelect", ppu.nametableSelect()],
+		["fineX", ppu.fineX()],
+		["fineY", ppu.fineY()],
 		// $2000
 		["ctrlNMIEnable", ppu.ctrlNMIEnable],
 		// ["ctrlPPUMaster", ppu.ctrlPPUMaster],
@@ -86,7 +127,7 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		["ctrlBackgroundTileSelect", ppu.ctrlBackgroundTileSelect],
 		["ctrlSpriteTileSelect", ppu.ctrlSpriteTileSelect],
 		["ctrlIncrementMode", ppu.ctrlIncrementMode],
-		["ctrlNametableSelect", ppu.ctrlNametableSelect],
+		// ["ctrlNametableSelect", ppu.ctrlNametableSelect],
 		// $2001
 		["colorEmphasis", ppu.colorEmphasis, 2],
 		["spriteEnable", ppu.spriteEnable],
@@ -101,13 +142,7 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		["oamAddr", ppu.oamAddr, 16],
 		// $2004
 		["oamData", ppu.oamData],
-		// $2005
-		["scrollX", ppu.scrollX],
-		["scrollY", ppu.scrollY],
-		// $2006
-		["addr", ppu.addr, 16],
-		// $2007
-		["data", ppu._data],
+		// TODO: consider showing internal registers
 	].map((a, i) => {
 		const name = a[0] as string
 		const value = a[1] as number
@@ -119,13 +154,18 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		{registers}
 	</tbody></table>
 
-	return <div style={{ display: "flex" }}>
-		<span>
-			{registerTable}
-		</span>
-		<span>
-			<SpriteInfo oam={ppu.bus.oam} />
-		</span>
+	return <div>
+		<div>
+			<canvas ref={canvasRef}></canvas>
+		</div>
+		<div style={{ display: "flex" }}>
+			<span>
+				{registerTable}
+			</span>
+			<span>
+				<SpriteInfo oam={ppu.bus.oam} />
+			</span>
+		</div>
 	</div>
 }
 
@@ -133,13 +173,6 @@ const DebugInfo = (props: { info: NES.DebugInfo }) => {
 	const nes = props.info.nes
 
 	const cpu = props.info.cpuStatus
-
-	const backgroundPalettes = nes.ppu.bus.backgroundPalettes.map((palette, i) => {
-		return <Palette key={i} palette={palette} />
-	})
-	const spritePalettes = nes.ppu.bus.spritePalettes.map((palette, i) => {
-		return <Palette key={i} palette={palette} />
-	})
 
 	return <div>
 		<div>
@@ -167,27 +200,21 @@ const DebugInfo = (props: { info: NES.DebugInfo }) => {
 		<div>
 			<PPUInfo ppu={nes.ppu} />
 		</div>
-		<div>
-			<strong>BG palette</strong>
-			<div>
-				{backgroundPalettes}
-			</div>
-		</div>
-		<div>
-			<strong>Sprite palette</strong>
-			<div>
-				{spritePalettes}
-			</div>
-		</div>
+		<PPUPalettes universal={nes.ppu.bus.universalBackgroundColor}
+			bg={nes.ppu.bus.backgroundPalettes}
+			sprite={nes.ppu.bus.spritePalettes} />
 	</div>
 }
 
-const ErrorBanner = (props: { error: string }) => {
+const ErrorBanner = (props: { error: Error | null }) => {
 	if (!props.error) {
 		return null
 	}
+	console.log('error!!!!!!!!!!!!!!!!!!!!')
+	console.error(props.error)
 	return <div style={{ color: "red" }}>
-		<label>{props.error}</label>
+		<label>{props.error.message}</label>
+		<div>{props.error.stack}</div>
 	</div>
 }
 
@@ -200,7 +227,7 @@ const DebugGame = (props: { nes: NES.NES }) => {
 	const [stepCount, setStepCount] = useState(1)
 	const [frameCount, setFrameCount] = useState(1)
 	const [buttons, setButtons] = useState(0)
-	const [error, setError] = useState<string>("")
+	const [error, setError] = useState<Error | null>(null)
 	const [debugInfo, setDebugInfo] = useState<NES.DebugInfo | null>(null)
 
 	const disaList = useMemo(() => disasm.disasm(props.nes.cartridge), [props.nes.cartridge])
@@ -215,7 +242,7 @@ const DebugGame = (props: { nes: NES.NES }) => {
 		<div ref={disaTableRef} style={{
 			overflow: "scroll", height: "1000px", width: "300px"
 		}}>
-			<table ><tbody>
+			<table><tbody>
 				{disaList.map(([pc, s], i) => {
 					pc2Idx.set(pc, i)
 					return <tr key={i} style={{
@@ -258,14 +285,23 @@ const DebugGame = (props: { nes: NES.NES }) => {
 		nesRender()
 	}, [nesRender, props.nes])
 
+	const onCycle = () => {
+		try {
+			props.nes.tick()
+		} catch (e) {
+			setError(e)
+		}
+		nesRender()
+		addDebugInfo()
+	}
+
 	const onStep = () => {
 		try {
 			for (let i = 0; i < stepCount; i++) {
 				props.nes.stepToNextInstruction()
 			}
 		} catch (e) {
-			const err = e as Error
-			setError(err.message)
+			setError(e)
 		}
 		nesRender()
 		addDebugInfo()
@@ -274,8 +310,7 @@ const DebugGame = (props: { nes: NES.NES }) => {
 		try {
 			props.nes.frame(frameCount)
 		} catch (e) {
-			const err = e as Error
-			setError(err.message)
+			setError(e)
 		}
 		nesRender()
 		addDebugInfo()
@@ -298,7 +333,7 @@ const DebugGame = (props: { nes: NES.NES }) => {
 	const reset = () => {
 		props.nes.resetAll();
 		setDebugInfo(null)
-		setError("")
+		setError(null)
 		nesRender()
 	}
 
@@ -314,6 +349,9 @@ const DebugGame = (props: { nes: NES.NES }) => {
 			<ErrorBanner error={error} />
 			<div>
 				<button onClick={reset}>reset</button>
+			</div>
+			<div>
+				<button onClick={onCycle}>cycle</button>
 			</div>
 			<div>
 				<button onClick={onStep}>step</button>

@@ -27,9 +27,12 @@ export function checkUint8(x: uint8): void {
     }
 }
 
-export const assertUint8 = (x: number): void => {
+export const assertUint8 = (x: number, f?: () => void): void => {
     if (0 <= x && x <= UINT8_MAX) {
         return
+    }
+    if (f) {
+        f()
     }
     throw new Error(`${x} not uint8`)
 }
@@ -39,4 +42,19 @@ export const assertUint16 = (x: number): void => {
         return
     }
     throw new Error(`${x} not uint16`)
+}
+
+export const assertInRange = (x: number, minimum: number, maximum: number): void => {
+    if (minimum <= x && x <= maximum) {
+        return
+    }
+    throw new Error(`$${x.toString(16)} not in range [$${minimum.toString(16)}, $${maximum.toString(16)}]`)
+}
+
+export const uint8Reverse = (x: uint8): uint8 => {
+    let res = 0
+    for (let i = 0; i < 8; i++) {
+        res |= (x >> i & 1) << 7 - i
+    }
+    return res
 }

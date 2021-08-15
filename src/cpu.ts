@@ -766,6 +766,7 @@ export class CPU {
         if (pc < 0x2000) {
             return this.CPURAM[pc & 0x7FF]
         } else if (pc < 0x4000) {
+            this.logger?.log(`CPU.read($$${pc.toString(16)})`)
             return this.ppu.readCPU(pc)
         } else if (pc < 0x4016) {
             return this.apu.read(pc)

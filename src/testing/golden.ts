@@ -46,20 +46,19 @@ export const assertSameImageBuffers = async (ours: Uint8ClampedArray, theirs: Ui
 
 	let failCount = 0
 	for (let y = 0; y < height; y++) {
-		let ok = true
 		for (let x = 0; x < width; x++) {
 			const got = ourIndices[y][x]
 			const want = theirIndices[y][x]
 
 			if (!sameColor(got, want)) {
 				console.log(`${y}-th row (${x}, ${y}) mismatch; got ${got} want ${want}`)
-				ok = false
+				failCount++
 			}
 		}
-		if (ok) {
-			continue
+		if (failCount >= 50) {
+			console.log(`too much mismatch >= ${failCount}`)
+			break
 		}
-		failCount++
 	}
 	if (failCount == 0) {
 		return

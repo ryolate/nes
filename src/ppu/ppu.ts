@@ -1,5 +1,5 @@
 import { Cartridge } from '../cartridge'
-import { uint16, UINT16_MAX, uint8 } from '../num'
+import { assertInRange, assertUint16, assertUint8, uint16, UINT16_MAX, uint8, uint8Reverse } from '../num'
 import { NMI } from '../nmi'
 import * as Color from './color'
 import { Logger } from '../logger'
@@ -16,6 +16,7 @@ Reference:
 - NMI https://wiki.nesdev.com/w/index.php?title=NMI
 - rendering https://wiki.nesdev.com/w/index.php?title=PPU_rendering
 - scrolling https://wiki.nesdev.com/w/index.php?title=PPU_scrolling
+- power up state https://wiki.nesdev.com/w/index.php/PPU_power_up_state
 */
 
 // Display resolution
@@ -32,7 +33,7 @@ export class PPU {
     ctrlBackgroundTileSelect = 0 // Background pattern table address 0:$0000, 1: $1000
     ctrlSpriteTileSelect = 0 // Sprite pattern table address 0:$0000, 1: $1000
     ctrlIncrementMode = 0 // VRAM address increment per CPU read/write of PPUDATA (0: add 1, going across; 1: add 32, going down)
-    ctrlNametableSelect = 0 // Base nametable address (0 = $2000; 1 = $2400; 2 = $2800; 3 = $2C00)
+    // ctrlNametableSelect = 0 // Base nametable address (0 = $2000; 1 = $2400; 2 = $2800; 3 = $2C00)
 
     private set ctrl(x: uint8) {
         this.ctrlNMIEnable = x >> 7 & 1
@@ -41,7 +42,8 @@ export class PPU {
         this.ctrlBackgroundTileSelect = x >> 4 & 1
         this.ctrlSpriteTileSelect = x >> 3 & 1
         this.ctrlIncrementMode = x >> 2 & 1
-        this.ctrlNametableSelect = x & 3
+
+        this.internalT = this.internalT & ~(3 << 10) | (x & 3) << 10
     }
 
     // PPUMASK $2001 > write
@@ -81,40 +83,68 @@ export class PPU {
     oamData: uint8 = 0
 
     // PPUSCROLL $2005 >> write x2
-    // https://wiki.nesdev.com/w/index.php?title=PPU_scrolling
-    scrollX: uint8 = 0
-    scrollY: uint8 = 0
-
     // PPUADDR $2006 >> write x2
-    addr: uint16 = 0
+    // https://wiki.nesdev.com/w/index.php?title=PPU_scrolling
+    // See internal*
 
     // PPUDATA $2007 <> read/write
-    _data: uint8 = 0
-    private set data(x: uint8) {
-        // FIXME.
-        // VRAM read/write data register. After access, the video memory address
-        // will increment by an amount determined by ctrlIncrementMode.
-        // 
-
-
-        this._data = x
-        if (x > 0) throw new Error('Unimplemented data')
+    private setData(x: uint8) {
+        // During rendering (on the pre-render line and the visible lines
+        // 0-239, provided either background or sprite rendering is enabled),
+        // it will update v in an odd way, ...
+        if (this.renderingEnabled() && (this.scanline === 261 || this.scanline < HEIGHT)) {
+            throw new Error(`Data write while rendering`)
+        }
+        this.bus.write(this.internalV & 0x3FFF, x)
+        // Outside of rendering, reads from or writes to $2007 will add either
+        // 1 or 32 to v depending on the VRAM increment bit set via $2000.
+        this.incrementInternalV()
     }
-    private get data() {
-        return this._data
+    private getData(): uint8 {
+        if (this.renderingEnabled() && (this.scanline === 261 || this.scanline < HEIGHT)) {
+            throw new Error(`Data read while rendering`)
+        }
+        const res = this.bus.read(this.internalV)
+        assertUint8(res, () => console.error(`internalV = $${this.internalV.toString(16)}`))
+        this.incrementInternalV()
+        return res
+    }
+    private incrementInternalV() {
+        this.internalV += this.ctrlIncrementMode ? 32 : 1
     }
 
     // PPU internal registers
     // https://wiki.nesdev.com/w/index.php/PPU_scrolling
+
+    // yyy NN YYYYY XXXXX
+    // ||| || ||||| +++++-- coarse X scroll
+    // ||| || +++++-------- coarse Y scroll
+    // ||| ++-------------- nametable select
+    // +++----------------- fine Y scroll
     // current VRAM address (15 bits)
     private internalV = 0
     // Temporary VRAM address (15 bits); can also be thought of as the address
     // of the top left onscreen tile.
     private internalT = 0
     // Fine X scroll (3 bits)
+    // This fine X value does not change during rendering.
     private internalX = 0
     // First or second write toggle (1 bit)
     private internalW = 0
+    // 2 16-bit shift registers - These contain the pattern table data for two
+    // tiles. Every 8 cycles, the data for the next tile is loaded into the
+    // upper 8 bits of this shift register. Meanwhile, the pixel to render is
+    // fetched from one of the lower 8 bits.
+    private patternTableData0: uint16 = 0
+    private patternTableData1: uint16 = 0
+    // 2 8-bit shift registers - These contain the palette attributes for the
+    // lower 8 pixels of the 16-bit shift register. These registers are fed by a
+    // latch which contains the palette attribute for the next tile. Every 8
+    // cycles, the latch is loaded with the palette attribute for the next tile.
+    private paletteAttributes0: uint8 = 0
+    private paletteAttributes1: uint8 = 0
+    // 2-bit Palette Attribute for next tile
+    private paletteAttributesNext = 0
 
     bus: PPUBus
 
@@ -150,11 +180,189 @@ export class PPU {
         }
     }
 
+    // inc hori(v) in https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
+    private coarseXIncrement() {
+        if ((this.scanline <= 239 || this.scanline == 261) &&
+            (this.scanlineCycle & 7) === 0 &&
+            (this.scanlineCycle >= 8 && this.scanlineCycle <= 256 ||
+                this.scanlineCycle >= 328 && this.scanlineCycle <= 336)) {
+            // OK.
+            // scanline: -1 ~ 239
+            // tick: 8, 16, ..., 256, 328, 336
+        } else {
+            throw new Error(`inc hori(v) at (${this.scanline}, ${this.scanlineCycle})`)
+        }
+        // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Wrapping_around
+        // Coarse X increment
+        if ((this.internalV & 0x001F) == 31) { // if coarse X == 31
+            this.internalV &= ~0x001F          // coarse X = 0
+            this.internalV ^= 0x0400           // switch horizontal nametable
+        } else {
+            this.internalV += 1                // increment coarse X
+        }
+    }
+
+    // inc vert(v) in https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
+    private yIncrement() {
+        if ((this.scanline <= 239 || this.scanline == 261) &&
+            (this.scanlineCycle === 256)) {
+            // OK.
+            // scanline: -1 ~ 239
+            // tick: 256
+        } else {
+            throw new Error(`inc ver(v) at (${this.scanline}, ${this.scanlineCycle})`)
+        }
+
+        // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Wrapping_around
+        // Y increment
+        if ((this.internalV & 0x7000) != 0x7000) {       // if fine Y < 7
+            this.internalV += 0x1000                     // increment fine Y
+        } else {
+            this.internalV &= ~0x7000                    // fine Y = 0
+            let y = (this.internalV & 0x03E0) >> 5       // let y = coarse Y
+            if (y == 29) {
+                y = 0                          // coarse Y = 0
+                this.internalV ^= 0x0800       // switch vertical nametable
+            } else if (y == 31) {
+                y = 0                          // coarse Y = 0, nametable not switched
+            } else {
+                y += 1                         // increment coarse Y
+                this.internalV = (this.internalV & ~0x03E0) | (y << 5)     // put coarse Y back into v
+            }
+        }
+    }
+
+    // either background or sprite rendering is enabled
+    private renderingEnabled(): boolean {
+        return !!(this.backgroundEnable || this.spriteEnable)
+    }
+
+    private patternByte0Latch: uint8 = 0
+    private patternByte1Latch: uint8 = 0
+    private paletteAttributesNextLatch = 0
+
+    // Tile and attribute fetching
+    // https://wiki.nesdev.com/w/index.php/PPU_scrolling#At_dot_256_of_each_scanline
+    //
+    // NT byte, AT byte, Low BG tile byte, High BG tile byte in https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
+    private fetchTileData() {
+        if ((this.scanline <= 239 || this.scanline == 261) &&
+            (this.scanlineCycle & 7) === 7 &&
+            (this.scanlineCycle >= 7 && this.scanlineCycle <= 255 ||
+                this.scanlineCycle >= 327 && this.scanlineCycle <= 335)) {
+            // OK.
+            // scanline: -1 ~ 239
+            // tick: 7, 15, ..., 255, 327, 335
+        } else {
+            throw new Error(`fetchTileData() at (${this.scanline}, ${this.scanlineCycle})`)
+        }
+
+        const fineY = this.internalV >> 12
+        // Name table address.
+        const tileAddress = 0x2000 | (this.internalV & 0x0FFF)
+        const tileIndex = this.bus.read(tileAddress)
+
+        const patternByte0 = this.bus.read(this.ctrlBackgroundTileSelect << 12 |
+            tileIndex << 4 | 0 | fineY)
+        const patternByte1 = this.bus.read(this.ctrlBackgroundTileSelect << 12 |
+            tileIndex << 4 | 8 | fineY)
+
+        // NN 1111 YYY XXX
+        // || |||| ||| +++-- high 3 bits of coarse X (x/4)
+        // || |||| +++------ high 3 bits of coarse Y (y/4)
+        // || ++++---------- attribute offset (960 bytes)
+        // ++--------------- nametable select
+        const attributeAddress = 0x23C0 | (this.internalV & 0x0C00) |
+            ((this.internalV >> 4) & 0b111000) | ((this.internalV >> 2) & 0b111)
+        const attrByte = this.bus.read(attributeAddress)
+
+        // --- -- ---Y- ---X- -> YX0
+        const at = attrByte >> ((this.internalV >> 4) & 4 | this.internalV & 2) & 3
+        assertInRange(at, 0, 3)
+
+        this.patternByte0Latch = uint8Reverse(patternByte0)
+        this.patternByte1Latch = uint8Reverse(patternByte1)
+        this.paletteAttributesNextLatch = at
+    }
+    private reloadShifters() {
+        // assertInRange(this.patternTableData0, 0, 255)
+        // assertInRange(this.patternTableData1, 0, 255)
+
+        this.patternTableData0 |= this.patternByte0Latch << 8
+        this.patternTableData1 |= this.patternByte1Latch << 8
+        this.paletteAttributesNext = this.paletteAttributesNextLatch
+    }
+    // Returns 0-63 or -1 (transparent).
+    private fetchBackgroundColorIndex(): number {
+        // Every cycle, a bit is fetched from the 4 background shift registers
+        // in order to create a pixel on screen. Exactly which bit is fetched
+        // depends on the fine X scroll, set by $2005 (this is how fine X
+        // scrolling is possible). Afterwards, the shift registers are shifted
+        // once, to the data for the next pixel.
+        const bgPixel = (this.patternTableData0 >> this.internalX & 1) |
+            (this.patternTableData1 >> this.internalX & 1) << 1
+        const bgAttr = (this.paletteAttributes0 >> this.internalX & 1) |
+            (this.paletteAttributes1 >> this.internalX & 1) << 1
+        const bgColorIndex = bgPixel === 0 ? -1 : this.bus.backgroundPalettes[bgAttr][bgPixel - 1]
+        assertInRange(bgColorIndex, -1, 63)
+        this.patternTableData0 >>= 1
+        this.patternTableData1 >>= 1
+        this.paletteAttributes0 >>= 1
+        this.paletteAttributes1 >>= 1
+        this.paletteAttributes0 |= (this.paletteAttributesNext & 1) << 7
+        this.paletteAttributes1 |= (this.paletteAttributesNext & 2) << 6
+        return bgColorIndex
+    }
+
     tick(): void {
         this.updateIndices()
 
+        // Scroll
+        // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
+        let bgColorIndex = -1
+        if (this.renderingEnabled() && (this.scanline === 261 || this.scanline <= 239)) {
+            if (this.scanlineCycle === 256) {
+                // If rendering is enabled, the PPU increments the vertical
+                // position in v.
+                this.yIncrement()
+            } else if (this.scanlineCycle === 257) {
+                // hori(v) = hori(t)
+                const mask = 0b10000011111
+                this.internalV &= ~mask
+                this.internalV |= this.internalT & mask
+            } else if ((this.scanlineCycle >= 327 ||
+                this.scanlineCycle >= 1 && this.scanlineCycle <= 256)) {
+                switch (this.scanlineCycle & 7) {
+                    case 7:
+                        // 327, 335, 7, 15, 23, ..., 255
+                        // The data fetched from these accesses is placed into internal
+                        // latches, and then fed to the appropriate shift registers when
+                        // it's time to do so (every 8 cycles). Because the PPU can only
+                        // fetch an attribute byte every 8 cycles, each sequential
+                        // string of 8 pixels is forced to have the same palette
+                        // attribute.
+                        this.fetchTileData()
+                        break
+                    case 0:
+                        // 328, 336, 8, 16, 24, ..., 256
+                        // If rendering is enabled, the PPU increments the
+                        // horizontal position in v many times across the
+                        // scanline
+                        this.coarseXIncrement()
+                        break
+                    case 1:
+                        // 329, 337, 9, 17, 25, ..., 257
+                        this.reloadShifters()
+                }
+                if (this.scanlineCycle >= 329 && this.scanlineCycle <= 336 ||
+                    this.scanlineCycle >= 1 && this.scanlineCycle <= 256) {
+                    // 329-336, 1-8, 9-17, ..., 249-256
+                    bgColorIndex = this.fetchBackgroundColorIndex()
+                }
+            }
+        }
+
         if (this.scanline < HEIGHT) { // Visible scanline (0-239)
-            // TODO: make sprite line evaluation cycle accurate.
             if (this.scanlineCycle === 261) {
                 // Sprite evaluation does not happen on the pre-render scanline.
                 // Because evaluation applies to the next line's sprite
@@ -163,12 +371,11 @@ export class PPU {
                 // coordinate.
                 this.spriteLine(this.scanline)
             }
-            if (1 <= this.scanlineCycle && this.scanlineCycle <= WIDTH) { // Cycles 1-256
+            if (this.scanlineCycle >= 1 && this.scanlineCycle <= WIDTH) { // Cycles 1-256
                 const x = (this.scanlineCycle - 1), y = this.scanline
 
                 let colorIndex = -1
                 if (this.backgroundEnable && (x >= 8 || this.backgroundLeftColumnEnable)) {
-                    const bgColorIndex = this.backgroundPixelColorIndex(x + this.scrollX, y + this.scrollY)
                     colorIndex = bgColorIndex
                 }
                 const spritePixel = this.spriteLineBuffer[x]
@@ -188,8 +395,15 @@ export class PPU {
                     colorIndex = this.bus.universalBackgroundColor
                 }
                 this.putPixel(x, y, colorIndex)
+            } else if (this.scanlineCycle >= 257 && this.scanlineCycle <= 320) {
+                // TODO: cycle accurate OAM eveluation.
+            } else if (this.scanlineCycle >= 337 && this.scanlineCycle <= 340) {
+                // Two bytes are fetched, but the purpose for this is unknown.
             }
         } else if (this.scanline === HEIGHT) { // Post-render scanline (240)
+            // The PPU just idles during this scanline. Even though accessing
+            // PPU memory from the program would be safe here, the VBlank flag
+            // isn't set until after this scanline.
         } else if (this.scanline <= 260) { // Vertical blanking lines (241-260)
             // The VBlank flag of the PPU is set at tick 1 (the second tick) of
             // scanline 241, where the VBlank NMI also occurs.
@@ -206,6 +420,17 @@ export class PPU {
                 this.spriteOverflow = 0
                 this.spriteZeroHit = 0
                 this.vblank = 0
+            } else if (this.scanlineCycle >= 280 && this.scanlineCycle <= 304) {
+                // If rendering is enabled, at the end of vblank, shortly after
+                // the horizontal bits are copied from t to v at dot 257, the
+                // PPU will repeatedly copy the vertical bits from t to v from
+                // dots 280 to 304, completing the full initialization of v from t:
+                if (this.renderingEnabled()) {
+                    // vert(v) = vert(t)
+                    const mask = 0b111101111100000
+                    this.internalV &= ~mask
+                    this.internalV |= this.internalT & mask
+                }
             }
         }
     }
@@ -301,51 +526,7 @@ export class PPU {
         }
     }
 
-    // Returns color index 0-63, or -1 if transparent.
-    // Use Color.get for the result to get the actual color.
-    private backgroundPixelColorIndex(x: number, y: number): number {
-        // Compute which background palete to use from the attribute table.
-        // https://wiki.nesdev.com/w/index.php?title=PPU_attribute_tables
 
-        let nametableId = this.ctrlNametableSelect
-        if (x >= WIDTH) {
-            x -= WIDTH
-            nametableId = (nametableId ^ 1)
-        }
-        if (y >= HEIGHT) {
-            y -= HEIGHT
-            nametableId = (nametableId ^ 2)
-        }
-
-        // Each byte controls the palette of a 32×32 pixel.
-        const i = (y >> 5) << 3 | (x >> 5)
-        const b = this.bus.nametable[nametableId][0x3C0 + i]
-        const x2 = (x >> 4 & 1) << 1, y2 = (y >> 4 & 1) << 1
-        const at = b >> (y2 << 1 | x2) & 3
-
-        // Compute which color to use in the palette.
-        const pi = this.backgroundPixelPaletteIndex(x, y)
-        if (pi === 0) {
-            return -1
-        }
-        const ci = this.bus.backgroundPalettes[at][pi - 1]
-        return ci
-    }
-
-    // Compute the pattern index 0-3.
-    private backgroundPixelPaletteIndex(x: number, y: number): number {
-        if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
-            throw new Error(`Out of range (${x},${y})`)
-        }
-
-        // Compute the pattern index (which tile to select from pattern table)
-        const i = (x >> 3) | ((y >> 3) << 5)
-        // pattern table index
-        const pt = this.bus.nametable[this.ctrlNametableSelect][i]
-
-        // read pattern table
-        return this.patternValue(this.ctrlBackgroundTileSelect, pt, x, y)
-    }
 
     // get the value at the (x,y) position of the i-th tile in the pattern table.
     // the return value can be used for indexing a palette.
@@ -368,29 +549,33 @@ export class PPU {
     }
 
     readCPU(pc: uint16): uint8 {
-        if (this.data === undefined) {
-            throw new Error(`this.data === undefined`)
+        if (this.internalV === undefined) {
+            throw new Error(`this.internalV === undefined`)
         }
         switch (pc & 7) {
             case 0: return 0
             case 1: return 0
-            case 2: return this.status
+            case 2: {
+                this.internalW = 0
+                return this.status
+            }
             case 3: return 0
             case 4: return this.oamData
             case 5: return 0
             case 6: return 0
-            case 7: return this.data
+            case 7: return this.getData()
         }
         throw new Error('Impossible')
     }
 
     // writeCPU write x to the PPU register pc indicates.
     writeCPU(pc: uint16, x: uint8): void {
+        assertUint8(x)
         if (pc < 0x2000 || pc > 0x3FFF) {
             throw new Error(`Out of range PPC.writeCPU(${pc}, ${x})`)
         }
         switch (pc & 7) {
-            case 0:
+            case 0: // $2000 write
                 this.ctrl = x
                 return
             case 1:
@@ -414,22 +599,31 @@ export class PPU {
                 return
             // OAMDATA
             case 5:
-                this.scrollX = this.scrollY
-                this.scrollY = x
+                if (this.internalW === 0) {
+                    this.internalT = this.internalT & ~0b11111 | (x >> 3)
+                    this.internalX = x & 0b111
+                    this.internalW = 1
+                } else {
+                    this.internalT &= ~0b111001111100000
+                    this.internalT |= (x & 0b111) << 12 | (x >> 3) << 5
+                    this.internalW = 0
+                }
                 return
+            // PPUADDR
             case 6:
-                this.addr = (this.addr << 8 | x) & 0xFFFF
+                if (this.internalW === 0) {
+                    this.internalT &= ~0b111111100000000
+                    this.internalT |= (x & 0b111111) << 8
+                    this.internalW = 1
+                } else {
+                    this.internalT &= ~0b11111111
+                    this.internalT |= x
+                    this.internalV = this.internalT
+                    this.internalW = 0
+                }
                 return
             case 7:
-                this.bus.write(this.addr, x)
-                // After access, the video memory address will increment by an
-                // amount determined by bit 2 of $2000.
-                if (this.ctrlIncrementMode === 0) {
-                    this.addr += 1
-                } else {
-                    this.addr += 32
-                }
-                this.addr &= UINT16_MAX
+                this.setData(x)
                 return
         }
         throw new Error(`Unsupported PPU.writeCPU(0x${pc.toString(16)}, ${x})`)
@@ -443,12 +637,59 @@ export class PPU {
     }
 
     ////////////////////////////// Debug //////////////////////////////
-    drawAllNametables(canvas: HTMLCanvasElement): void {
-        canvas.width = WIDTH * 2
-        canvas.height = HEIGHT * 2
-        const ctx = canvas.getContext('2d')
-
+    coarseX(): number {
+        return this.internalV & 31
     }
+    coarseY(): number {
+        return this.internalV >> 5 & 31
+    }
+    nametableSelect(): number {
+        return this.internalV >> 10 & 3
+    }
+    fineX(): number {
+        return this.internalX
+    }
+    fineY(): number {
+        return this.internalV >> 12
+    }
+
+    renderNametable(canvas: HTMLCanvasElement): void {
+        canvas.width = WIDTH * 2
+        canvas.height = HEIGHT
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+            return
+        }
+
+        for (let h = 0; h < 2; h++) {
+            for (let y = 0; y < HEIGHT; y++) {
+                for (let x = 0; x < WIDTH; x++) {
+                    const i = (x >> 3) | ((y >> 3) << 5)
+                    const pt = this.bus.nametable[h][i]
+                    const pi = this.patternValue(this.ctrlBackgroundTileSelect, pt, x, y)
+                    assertInRange(pi, 0, 3)
+
+                    let colorIndex
+                    if (pi === 0) {
+                        colorIndex = this.bus.universalBackgroundColor
+                    } else {
+                        const j = (y >> 5) << 3 | (x >> 5)
+                        const b = this.bus.nametable[h][0x3C0 + j]
+                        const x2 = (x >> 4 & 1) << 1, y2 = (y >> 4 & 1) << 1
+                        const at = b >> (y2 << 1 | x2) & 3
+
+                        const ci = this.bus.backgroundPalettes[at][pi - 1]
+                        colorIndex = ci
+                    }
+                    const c = Color.get(colorIndex)
+                    ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`
+                    ctx.fillRect(x + h * WIDTH, y, 1, 1)
+                }
+            }
+        }
+    }
+
 }
 
 export type Palette = [uint8, uint8, uint8]
@@ -468,6 +709,8 @@ class PPUBus {
     spritePalettes: Array<Palette> = [0, 0, 0, 0].map(() => {
         return newPalette()
     })
+    // $3F04, $3F08, $3F0C
+    unusedData: Array<uint8> = [0, 0, 0]
 
     // The OAM (Object Attribute Memory) is internal memory inside the PPU that
     // contains a display list of up to 64 sprites, where each sprite's
@@ -480,12 +723,14 @@ class PPUBus {
     }
     // Read PPU memory map.
     read(pc: uint16): uint8 {
+        assertInRange(pc, 0, 0x3FFF)
         if (pc < 0x2000) {
             // Pattern table
             return this.cartridge.readPPU(pc)
         } else if (pc < 0x3F00) {
             // Nametable (VRAM)
             return this.nametable[pc / 0x400 & 3][pc & 0x3FF]
+            // TODO: implement mirroring. https://wiki.nesdev.com/w/index.php?title=PPU_nametables
         } else {
             let k = pc & 0x1F
             // Palette RAM
@@ -498,7 +743,10 @@ class PPUBus {
             if (k === 0) {
                 return this.universalBackgroundColor
             }
-            const i = k >> 2, j = k & 3
+            if ((k & 3) === 0) {// 4, 8, 12
+                return this.unusedData[(k - 4) >> 2]
+            }
+            const i = k >> 2, j = (k & 3) - 1
             if (i < 4) {
                 return this.backgroundPalettes[i][j]
             } else {
@@ -507,26 +755,35 @@ class PPUBus {
         }
     }
     write(pc: uint16, x: uint8) {
+        assertInRange(pc, 0, 0x3FFF)
+        assertUint8(x)
         if (pc < 0x2000) { // Pattern tables $0000 - $1FFF
             this.cartridge.writePPU(pc, x)
             return
         } else if (pc < 0x3F00) { // Name tables $2000 - $2FFF. Mirrors $3000-$3EFF
             this.nametable[pc / 0x400 & 3][pc & 0x3FF] = x
+            // FIXME: implement mirroring.
             return
         } else { // Palette RAM $3F00-$3F1F. Mirrors $3F20-$3FFF
             let k = pc & 0x1F
             if (k === 0x10 || k === 0x14 || k === 0x18 || k === 0x1C) {
                 k -= 0x10
             }
+            // values in the NES palette: 6, 7 bits unimplemented, reads back as 0
+            // https://wiki.nesdev.com/w/index.php?title=PPU_palettes
             if (k === 0) {
-                this.universalBackgroundColor = x
+                this.universalBackgroundColor = x & 63
+                return
+            }
+            if ((k & 3) === 0) {
+                this.unusedData[(k - 4) >> 2] = x & 63
                 return
             }
             const i = k >> 2
             if (i < 4) {
-                this.backgroundPalettes[i][(k & 3) - 1] = x
+                this.backgroundPalettes[i][(k & 3) - 1] = x & 63
             } else {
-                this.spritePalettes[i - 4][(k & 3) - 1] = x
+                this.spritePalettes[i - 4][(k & 3) - 1] = x & 63
             }
         }
     }

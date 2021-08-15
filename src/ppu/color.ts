@@ -27,6 +27,9 @@ const palette: Array<RGB> = (() => {
 })()
 
 export const get = (index: number): RGB => {
+    if (!(index >= 0 && index <= 63)) {
+        throw new Error(`Color.get(${index})`)
+    }
     return palette[index]
 }
 
