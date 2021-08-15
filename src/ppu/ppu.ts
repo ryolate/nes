@@ -585,7 +585,6 @@ export class PPU {
                 return
             case 3:
                 this.oamAddr = x
-                this.logger?.log(`OAMADDR <- $${this.oamAddr.toString(16)}`)
                 return
             case 4:
                 // For emulation purposes, it is probably best to completely
@@ -595,7 +594,6 @@ export class PPU {
                 }
                 this.bus.write(this.oamData, x)
                 this.oamAddr++
-                this.logger?.log(`OAMADDR(++) <- $${this.oamAddr.toString(16)}`)
                 return
             // OAMDATA
             case 5:
@@ -630,7 +628,6 @@ export class PPU {
     }
 
     sendDMA(buf: Array<uint8>): void {
-        this.logger?.log("OAM <- " + buf.toString())
         for (let i = 0; i < 256; i++) {
             this.bus.oam[i] = buf[i]
         }

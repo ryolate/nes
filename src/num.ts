@@ -15,18 +15,6 @@ export function uint8ToSigned(x: uint8): number {
     return x
 }
 
-export function checkUint16(x: uint16): void {
-    if (x < 0 || x > UINT16_MAX) {
-        throw new Error(`${x} is not in uint16 range`)
-    }
-}
-
-export function checkUint8(x: uint8): void {
-    if (x < 0 || x > UINT8_MAX) {
-        throw new Error(`${x} is not in uint8 range`)
-    }
-}
-
 export const assertUint8 = (x: number, f?: () => void): void => {
     if (0 <= x && x <= UINT8_MAX) {
         return

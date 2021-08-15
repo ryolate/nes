@@ -1,5 +1,5 @@
 import * as Opcode from './opcode'
-import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, checkUint16, assertUint8, assertUint16 } from './num'
+import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, assertUint8, assertUint16 } from './num'
 import { Cartridge } from './cartridge'
 import { PPU } from './ppu/ppu'
 import { NMI } from './nmi'
@@ -766,7 +766,6 @@ export class CPU {
         if (pc < 0x2000) {
             return this.CPURAM[pc & 0x7FF]
         } else if (pc < 0x4000) {
-            this.logger?.log(`CPU.read($$${pc.toString(16)})`)
             return this.ppu.readCPU(pc)
         } else if (pc < 0x4016) {
             return this.apu.read(pc)
@@ -789,20 +788,14 @@ export class CPU {
 
     private dmaBuf: Array<uint8> = new Array(256)
     private write(pc: uint16, x: uint8) {
-        if (pc === 0x511) {
-            this.logger?.log(`0x${pc.toString(16).toUpperCase()} <- ${x}`)
-        }
-        checkUint16(pc)
+        assertUint16(pc)
+        assertUint8(x)
         if (pc < 0x2000) {
-            if (pc % 0x800 === 0x200) {
-                this.logger?.log(`0x${pc.toString(16)} <- ${x}`)
-            }
             this.CPURAM[pc % 0x800] = x
         } else if (pc < 0x4000) {
             // PPU
             this.ppu.writeCPU(pc, x)
         } else if (pc === 0x4014) {
-            this.logger?.log(`CPU.write(0x${x.toString(16)}) OAMDMA`)
             // OAMDMA
             // upload 256 bytes of data from CPU page $XX00-$XXFF to the
             // internal PPU OAM
