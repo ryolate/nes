@@ -366,10 +366,10 @@ export class PPU {
                 this.internalV &= ~mask
                 this.internalV |= this.internalT & mask
             } else if ((this.scanlineCycle >= 327 ||
-                this.scanlineCycle >= 1 && this.scanlineCycle <= 256)) {
+                this.scanlineCycle >= 1 && this.scanlineCycle <= 255)) {
                 switch (this.scanlineCycle & 7) {
                     case 7:
-                        // 327, 335, 7, 15, 23, ..., 255
+                        // 327, 335, 7, 15, 23, ..., 247, 255
                         // The data fetched from these accesses is placed into internal
                         // latches, and then fed to the appropriate shift registers when
                         // it's time to do so (every 8 cycles). Because the PPU can only
@@ -379,21 +379,24 @@ export class PPU {
                         this.fetchTileData()
                         break
                     case 0:
-                        // 328, 336, 8, 16, 24, ..., 256
+                        // 328, 336, 8, 16, 24, ..., 248
                         // If rendering is enabled, the PPU increments the
                         // horizontal position in v many times across the
-                        // scanline
+                        // scanline.
+                        // increment on tick 256 is not visible since hori(v) is
+                        // reloaded right after (tick 257).
                         this.coarseXIncrement()
                         break
                     case 1:
-                        // 329, 337, 9, 17, 25, ..., 257
+                        // 329, 337, 9, 17, 25, ..., 250
                         this.reloadShifters()
                 }
-                if (this.scanlineCycle >= 329 && this.scanlineCycle <= 336 ||
-                    this.scanlineCycle >= 1 && this.scanlineCycle <= 256) {
-                    // 329-336, 1-8, 9-17, ..., 249-256
-                    bgColorIndex = this.fetchBackgroundColorIndex()
-                }
+            }
+
+            if (this.scanlineCycle >= 329 && this.scanlineCycle <= 336 ||
+                this.scanlineCycle >= 1 && this.scanlineCycle <= 256) {
+                // 329-336, 1-8, 9-17, ..., 249-256
+                bgColorIndex = this.fetchBackgroundColorIndex()
             }
         }
 

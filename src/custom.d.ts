@@ -8,6 +8,10 @@ declare module "jsnes" {
 		frame()
 		buttonDown(controller: number, buttonId: number)
 		buttonUp(controller: number, buttonId: number)
+		ppu: PPU
+	}
+	class PPU {
+		clipToTvSize: boolean
 	}
 	interface Options {
 		// 256 * 240 size array, each represents a color code 0xRRGGBB.

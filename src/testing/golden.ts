@@ -55,7 +55,7 @@ export const assertSameImageBuffers = async (ours: Uint8ClampedArray, theirs: Ui
 				failCount++
 			}
 		}
-		if (failCount >= 50) {
+		if (failCount >= 2000) {
 			console.log(`too much mismatch >= ${failCount}`)
 			break
 		}

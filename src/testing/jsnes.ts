@@ -22,6 +22,7 @@ export class JSNES {
 		this.nes = new jsnes.NES({
 			onFrame: this.onFrame.bind(this),
 		})
+		this.nes.ppu.clipToTvSize = false
 
 		const b = new ArrayBuffer(width * height * 4)
 		this.buffer_32 = new Uint32Array(b)

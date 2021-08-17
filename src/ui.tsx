@@ -129,11 +129,12 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		["ctrlSpriteTileSelect [$2000@3]", ppu.ctrlSpriteTileSelect],
 		["ctrlIncrementMode [$2000@2]", ppu.ctrlIncrementMode],
 		// $2001
-		["colorEmphasis", ppu.colorEmphasis, 2],
-		["spriteEnable", ppu.spriteEnable],
-		["backgroundEnable", ppu.backgroundEnable],
-		["spriteLeftColumnEnable", ppu.spriteLeftColumnEnable],
-		["grayscale", ppu.grayscale],
+		["colorEmphasis [$2001@5-7]", ppu.colorEmphasis, 2],
+		["spriteEnable [$2001@4]", ppu.spriteEnable],
+		["backgroundEnable [$2001@3]", ppu.backgroundEnable],
+		["spriteLeftColumnEnable [$2001@2]", ppu.spriteLeftColumnEnable],
+		["backgroundLeftColumnEnable [$2001@1]", ppu.backgroundLeftColumnEnable],
+		["grayscale [$2001@0]", ppu.grayscale],
 		// $2002
 		["vblank [$2002@7]", ppu.vblank],
 		["spriteZeroHit [$2002@6]", ppu.spriteZeroHit],
