@@ -117,17 +117,17 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		["scanlineCycle", ppu.scanlineCycle],
 		["coarseX", ppu.coarseX()],
 		["coarseY", ppu.coarseY()],
-		["nametableSelect", ppu.nametableSelect()],
+		["nametableSelect [$2000@0-1]", ppu.nametableSelect()],
 		["fineX", ppu.fineX()],
 		["fineY", ppu.fineY()],
+		["internalW", ppu.internalW],
 		// $2000
-		["ctrlNMIEnable", ppu.ctrlNMIEnable],
+		["ctrlNMIEnable [$2000@7]", ppu.ctrlNMIEnable],
 		// ["ctrlPPUMaster", ppu.ctrlPPUMaster],
-		["ctrlSpriteHeight", ppu.ctrlSpriteHeight],
-		["ctrlBackgroundTileSelect", ppu.ctrlBackgroundTileSelect],
-		["ctrlSpriteTileSelect", ppu.ctrlSpriteTileSelect],
-		["ctrlIncrementMode", ppu.ctrlIncrementMode],
-		// ["ctrlNametableSelect", ppu.ctrlNametableSelect],
+		["ctrlSpriteHeight [$2000@5]", ppu.ctrlSpriteHeight],
+		["ctrlBackgroundTileSelect [$2000@4]", ppu.ctrlBackgroundTileSelect],
+		["ctrlSpriteTileSelect [$2000@3]", ppu.ctrlSpriteTileSelect],
+		["ctrlIncrementMode [$2000@2]", ppu.ctrlIncrementMode],
 		// $2001
 		["colorEmphasis", ppu.colorEmphasis, 2],
 		["spriteEnable", ppu.spriteEnable],
@@ -135,14 +135,13 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		["spriteLeftColumnEnable", ppu.spriteLeftColumnEnable],
 		["grayscale", ppu.grayscale],
 		// $2002
-		["vblank", ppu.vblank],
-		["spriteZeroHit", ppu.spriteZeroHit],
-		["spriteOverflow", ppu.spriteOverflow],
+		["vblank [$2002@7]", ppu.vblank],
+		["spriteZeroHit [$2002@6]", ppu.spriteZeroHit],
+		["spriteOverflow [$2002@5]", ppu.spriteOverflow],
 		// $2003
 		["oamAddr", ppu.oamAddr, 16],
 		// $2004
 		["oamData", ppu.oamData],
-		// TODO: consider showing internal registers
 	].map((a, i) => {
 		const name = a[0] as string
 		const value = a[1] as number
@@ -155,7 +154,10 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 	</tbody></table>
 
 	return <div>
-		<div>
+		<PPUPalettes universal={ppu.bus.universalBackgroundColor}
+			bg={ppu.bus.backgroundPalettes}
+			sprite={ppu.bus.spritePalettes} />
+		<div style={{ marginTop: "1px" }}>
 			<canvas ref={canvasRef}></canvas>
 		</div>
 		<div style={{ display: "flex" }}>
@@ -200,9 +202,6 @@ const DebugInfo = (props: { info: NES.DebugInfo }) => {
 		<div>
 			<PPUInfo ppu={nes.ppu} />
 		</div>
-		<PPUPalettes universal={nes.ppu.bus.universalBackgroundColor}
-			bg={nes.ppu.bus.backgroundPalettes}
-			sprite={nes.ppu.bus.spritePalettes} />
 	</div>
 }
 

@@ -1,5 +1,5 @@
 import { Cartridge } from '../cartridge'
-import { assertInRange, assertUint16, assertUint8, uint16, UINT16_MAX, uint8, uint8Reverse } from '../num'
+import { assertInRange, assertUint8, uint16, uint8, uint8Reverse } from '../num'
 import { NMI } from '../nmi'
 import * as Color from './color'
 import { Logger } from '../logger'
@@ -33,9 +33,10 @@ export class PPU {
     ctrlBackgroundTileSelect = 0 // Background pattern table address 0:$0000, 1: $1000
     ctrlSpriteTileSelect = 0 // Sprite pattern table address 0:$0000, 1: $1000
     ctrlIncrementMode = 0 // VRAM address increment per CPU read/write of PPUDATA (0: add 1, going across; 1: add 32, going down)
-    // ctrlNametableSelect = 0 // Base nametable address (0 = $2000; 1 = $2400; 2 = $2800; 3 = $2C00)
 
-    private set ctrl(x: uint8) {
+    private setCtrl(x: uint8) {
+        const oldCtrlNMIEnable = this.ctrlNMIEnable
+
         this.ctrlNMIEnable = x >> 7 & 1
         this.ctrlPPUMaster = x >> 6 & 1
         this.ctrlSpriteHeight = x >> 5 & 1
@@ -43,7 +44,14 @@ export class PPU {
         this.ctrlSpriteTileSelect = x >> 3 & 1
         this.ctrlIncrementMode = x >> 2 & 1
 
-        this.internalT = this.internalT & ~(3 << 10) | (x & 3) << 10
+        this.internalT = this.internalT & ~(3 << 10) | ((x & 3) << 10)
+
+        // If the PPU is currently in vertical blank, and the PPUSTATUS ($2002)
+        // vblank flag is still set (1), changing the NMI flag in bit 7 of $2000
+        // from 0 to 1 will immediately generate an NMI.
+        if (this.vblank && (this.ctrlNMIEnable > oldCtrlNMIEnable)) {
+            this.nmi.set()
+        }
     }
 
     // PPUMASK $2001 > write
@@ -54,7 +62,7 @@ export class PPU {
     backgroundLeftColumnEnable = 0 // 1: Show background in leftmost 8 pixels of screen, 0: Hide
     grayscale = 0 // Greyscale (0: normal color, 1: produce a greyscale display)
 
-    private set mask(x: uint8) {
+    private setMask(x: uint8) {
         this.colorEmphasis = x >> 5
         this.spriteEnable = x >> 4 & 1
         this.backgroundEnable = x >> 3 & 1
@@ -70,9 +78,13 @@ export class PPU {
     vblank = 0 // Vertical blank has started (0: not in vblank; 1: in vblank).
     spriteZeroHit = 0 // Sprite 0 Hit.
     spriteOverflow = 0 // Sprite overflow.
-    private get status(): number {
+    private readStatus(): number {
         const res = this.vblank << 7 | this.spriteZeroHit << 6 | this.spriteOverflow << 5
+        // Reading the status register will clear bit 7
         this.vblank = 0
+        // And also the address latch used by PPUSCROLL and PPUADDR
+        // https://wiki.nesdev.com/w/index.php/PPU_scrolling#.242002_read
+        this.internalW = 0
         return res
     }
 
@@ -100,12 +112,32 @@ export class PPU {
         // 1 or 32 to v depending on the VRAM increment bit set via $2000.
         this.incrementInternalV()
     }
-    private getData(): uint8 {
+    private readData(): uint8 {
         if (this.renderingEnabled() && (this.scanline === 261 || this.scanline < HEIGHT)) {
             throw new Error(`Data read while rendering`)
         }
-        const res = this.bus.read(this.internalV)
-        assertUint8(res, () => console.error(`internalV = $${this.internalV.toString(16)}`))
+
+        let res
+        // When reading while the VRAM address is in the range 0-$3EFF (i.e.,
+        // before the palettes), the read will return the contents of an
+        // internal read buffer. This internal buffer is updated only when
+        // reading PPUDATA, and so is preserved across frames. After the CPU
+        // reads and gets the contents of the internal buffer, the PPU will
+        // immediately update the internal buffer with the byte at the current
+        // VRAM address. Thus, after setting the VRAM address, one should first
+        // read this register to prime the pipeline and discard the result.
+        if (this.internalV <= 0x3EFF) {
+            res = this.internalReadBuffer
+            this.internalReadBuffer = this.bus.read(this.internalV)
+        } else {
+            // Reading palette data from $3F00-$3FFF works differently. The
+            // palette data is placed immediately on the data bus, and hence no
+            // priming read is required. Reading the palettes still updates the
+            // internal buffer though, but the data placed in it is the mirrored
+            // nametable data that would appear "underneath" the palette.
+            // (Checking the PPU memory map should make this clearer.)
+            res = this.internalReadBuffer = this.bus.read(this.internalV)
+        }
         this.incrementInternalV()
         return res
     }
@@ -130,7 +162,7 @@ export class PPU {
     // This fine X value does not change during rendering.
     private internalX = 0
     // First or second write toggle (1 bit)
-    private internalW = 0
+    internalW = 0
     // 2 16-bit shift registers - These contain the pattern table data for two
     // tiles. Every 8 cycles, the data for the next tile is loaded into the
     // upper 8 bits of this shift register. Meanwhile, the pixel to render is
@@ -145,6 +177,9 @@ export class PPU {
     private paletteAttributes1: uint8 = 0
     // 2-bit Palette Attribute for next tile
     private paletteAttributesNext = 0
+
+    // The PPUDATA read buffer (post-fetch)
+    private internalReadBuffer = 0
 
     bus: PPUBus
 
@@ -556,14 +591,13 @@ export class PPU {
             case 0: return 0
             case 1: return 0
             case 2: {
-                this.internalW = 0
-                return this.status
+                return this.readStatus()
             }
             case 3: return 0
             case 4: return this.oamData
             case 5: return 0
             case 6: return 0
-            case 7: return this.getData()
+            case 7: return this.readData()
         }
         throw new Error('Impossible')
     }
@@ -576,10 +610,10 @@ export class PPU {
         }
         switch (pc & 7) {
             case 0: // $2000 write
-                this.ctrl = x
+                this.setCtrl(x)
                 return
             case 1:
-                this.mask = x
+                this.setMask(x)
                 return
             case 2: // status is read only
                 return
@@ -609,9 +643,10 @@ export class PPU {
                 return
             // PPUADDR
             case 6:
+                this.logger?.log(`PPUADDR <- $${x.toString(16)}`)
                 if (this.internalW === 0) {
-                    this.internalT &= ~0b111111100000000
-                    this.internalT |= (x & 0b111111) << 8
+                    this.internalT &= ~0x7F00
+                    this.internalT |= (x & 0x3F) << 8
                     this.internalW = 1
                 } else {
                     this.internalT &= ~0b11111111
@@ -620,6 +655,7 @@ export class PPU {
                     this.internalW = 0
                 }
                 return
+            // PPUDATA
             case 7:
                 this.setData(x)
                 return
@@ -650,6 +686,7 @@ export class PPU {
         return this.internalV >> 12
     }
 
+    private renderNametableBuffer = new Uint8ClampedArray(HEIGHT * WIDTH * 4 * 4)
     renderNametable(canvas: HTMLCanvasElement): void {
         canvas.width = WIDTH * 2
         canvas.height = HEIGHT * 2
@@ -679,14 +716,20 @@ export class PPU {
                         const ci = this.bus.backgroundPalettes[at][pi - 1]
                         colorIndex = ci
                     }
+
                     const c = Color.get(colorIndex)
-                    ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`
-                    ctx.fillRect(x + (h & 1) * WIDTH, y + (h >> 1) * HEIGHT, 1, 1)
+
+                    const x2 = x + (h & 1) * WIDTH
+                    const y2 = y + (h >> 1) * HEIGHT
+                    for (let k = 0; k < 4; k++) {
+                        this.renderNametableBuffer[(y2 * 2 * WIDTH + x2) * 4 + k] = k === 3 ? 255 : c[k]
+                    }
                 }
             }
         }
+        const img = new ImageData(this.renderNametableBuffer, WIDTH * 2, HEIGHT * 2)
+        ctx.putImageData(img, 0, 0)
     }
-
 }
 
 export type Palette = [uint8, uint8, uint8]
