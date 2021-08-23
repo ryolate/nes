@@ -404,6 +404,7 @@ const RealGame = (props: { nes: NES.NES }) => {
 	const canvasRef = useRef<HTMLCanvasElement>(null)
 	const [fps, setFPS] = useState(0)
 
+	// Controller
 	useEffect(() => {
 		// A, B, Select, Start, Up, Down, Left, Right
 		const keys = "kjfhwsad"
@@ -435,6 +436,7 @@ const RealGame = (props: { nes: NES.NES }) => {
 		}
 	}, [props.nes])
 
+	// Game view
 	useEffect(() => {
 		const canvas = canvasRef.current!
 		const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
@@ -472,6 +474,28 @@ const RealGame = (props: { nes: NES.NES }) => {
 			cancelAnimationFrame(reqId)
 		}
 	})
+
+	// Game sound
+	useEffect(() => {
+		// TODO: use AudioWorklet
+		const ctx = new AudioContext()
+		const sampleRate = ctx.sampleRate // e.g. 44100
+		const scriptNode: ScriptProcessorNode = ctx.createScriptProcessor(1024, 0, 1)
+		scriptNode.onaudioprocess = (e: AudioProcessingEvent) => {
+			const outputBuffer = e.outputBuffer.getChannelData(0)
+			props.nes.processAudio(outputBuffer, ctx.currentTime, e.playbackTime, sampleRate)
+		}
+		const filter = new BiquadFilterNode(ctx, {
+			type: "lowpass"
+		})
+		scriptNode.connect(filter).connect(ctx.destination)
+
+		return () => {
+			scriptNode.disconnect(filter)
+			scriptNode.onaudioprocess = null
+			ctx.close()
+		}
+	}, [props.nes])
 
 	return <>
 		<div className="row">
