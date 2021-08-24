@@ -479,19 +479,20 @@ const RealGame = (props: { nes: NES.NES }) => {
 	useEffect(() => {
 		// TODO: use AudioWorklet
 		const ctx = new AudioContext()
-		const sampleRate = ctx.sampleRate // e.g. 44100
-		const scriptNode: ScriptProcessorNode = ctx.createScriptProcessor(1024, 0, 1)
-		scriptNode.onaudioprocess = (e: AudioProcessingEvent) => {
-			const outputBuffer = e.outputBuffer.getChannelData(0)
-			props.nes.processAudio(outputBuffer, ctx.currentTime, e.playbackTime, sampleRate)
+		const sampleRate = ctx.sampleRate
+		if (sampleRate != 44100) {
+			throw new Error(`sampleRate = ${sampleRate} want 44100`)
 		}
-		const filter = new BiquadFilterNode(ctx, {
-			type: "lowpass"
-		})
-		scriptNode.connect(filter).connect(ctx.destination)
+		const bufferSize = 1024 * 4
+		const scriptNode: ScriptProcessorNode = ctx.createScriptProcessor(bufferSize, 0, 1)
+		scriptNode.onaudioprocess = (e: AudioProcessingEvent) => {
+			const out = e.outputBuffer.getChannelData(0)
+			props.nes.processAudio(out)
+		}
+		scriptNode.connect(ctx.destination)
 
 		return () => {
-			scriptNode.disconnect(filter)
+			scriptNode.disconnect(ctx.destination)
 			scriptNode.onaudioprocess = null
 			ctx.close()
 		}

@@ -95,45 +95,30 @@ export class NES {
 	prevTimeSecond = -1
 	toneIndex = -2
 
-	static audioAdditionalDelayMillis = 7 // 7ms
-
 	// Output audio data
 	// currentTime: BaseAudioContext.currentTime
 	// playbackTime: The time when the audio will be played, as defined by the
 	//     time of AudioContext.currentTime.
 	// sampleRate: sampling rate of the audio.
-	processAudio(outputBuffer: Float32Array, currentTime: number, playbackTime: number, sampleRate: number): void {
+	processAudio(outputBuffer: Float32Array): void {
 		const n = outputBuffer.length
 
-		const now = performance.now()
-		// now - 30ms when n = 1024, and sampleRate = 44100
-		const currentTimeTimestamp = now - NES.audioAdditionalDelayMillis - n / sampleRate * 1000
-
+		// TODO: deal with underflow.
 
 		let event: AudioEvent | null = null
-		for (let e = this.audioSampleBuffer.peek();
-			e && e.timestampMillis < currentTimeTimestamp;
-			e = this.audioSampleBuffer.peek()) {
+		for (let i = 0; i < n; i++) {
+			const e = this.audioSampleBuffer.peek()
+			if (e === null) {
+				if (event) {
+					outputBuffer[i] = event.value
+				}
+				continue
+			}
 			event = e
+			outputBuffer[i] = e.value
 			this.audioSampleBuffer.pop()
 		}
-		if (event) {
-			// Next processAudio call might use it, so push front.
-			this.audioSampleBuffer.pushFront(event)
-		}
-
-		for (let i = 0, j = 0; i < n; i++) {
-			const targetTimestamp = currentTimeTimestamp + i / sampleRate
-
-			for (; j + 1 < this.audioSampleBuffer.size(); j++) {
-				const nextEvent = this.audioSampleBuffer.get(j + 1)
-				if (nextEvent.timestampMillis > targetTimestamp) {
-					break
-				}
-				event = nextEvent
-			}
-			outputBuffer[i] = event ? event.value : 0
-		}
+		return
 	}
 
 	////////////////////////////// Debug //////////////////////////////
@@ -184,6 +169,7 @@ export class NES {
 		this.logger = logger
 		this.ppu.logger = logger?.newLogger("PPU")
 		this.cpu.logger = logger?.newLogger("CPU")
+		this.apu.logger = logger?.newLogger("APU")
 	}
 }
 

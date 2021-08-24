@@ -646,7 +646,6 @@ export class PPU {
                 return
             // PPUADDR
             case 6:
-                this.logger?.log(`PPUADDR <- $${x.toString(16)}`)
                 if (this.internalW === 0) {
                     this.internalT &= ~0x7F00
                     this.internalT |= (x & 0x3F) << 8

@@ -1,3 +1,4 @@
+import { Logger } from "./logger";
 import { assertInRange, assertUint8, uint16, uint8 } from "./num";
 /*
 References
@@ -31,18 +32,17 @@ class Pulse {
 	// TTTTTTTT
 	// Timer low (T)
 	setR3(x: number) {
-		this.sweep.timerValue = this.sweep.timerValue & 0x700 | x
+		this.sequencer.timerValue = this.sequencer.timerValue & 0x700 | x
 	}
 
 	// Length counter load (L), timer high (T)
 	// LLLLLTTT
 	setR4(x: number) {
-		this.lengthCounter.load = x >> 3
-		this.sweep.timerValue = ((x & 7) << 8) | this.sweep.timerValue & 0xFF
+		this.sequencer.timerValue = ((x & 7) << 8) | this.sequencer.timerValue & 0xFF
 
 		// Writing to $4003/4007 reloads the length counter, restarts the
 		// envelope, and resets the phase of the pulse generator.
-		this.lengthCounter.reload()
+		this.lengthCounter.setLoad(x >> 3)
 		this.envelope.restart()
 		// TODO: The sequencer is immediately restarted at the first value of the current sequence
 	}
@@ -54,14 +54,14 @@ class Pulse {
 
 	constructor(isPulse1: boolean) {
 		this.envelope = new Envelope()
-		this.sweep = new Sweep(isPulse1)
-		this.sequencer = new Sequencer(this.sweep)
+		this.sequencer = new Sequencer("pulse")
+		this.sweep = new Sweep(isPulse1, this.sequencer)
 		this.lengthCounter = new LengthCounter()
 	}
 
 	// APU cycle
 	tickAPU() {
-		this.sequencer.tickAPU()
+		this.sequencer.tick()
 	}
 
 	tickHalfFrame() {
@@ -84,12 +84,44 @@ class Pulse {
 }
 
 class Triangle {
+	// $4008
 	// Length counter halt / linear counter control (C), linear counter load (R)
-	r1 = 0
+	// CRRRRRRR
+	setR1(x: uint8): void {
+		this.lengthCounter.halt = x >> 7
+		this.linearCounter.controlFlag = x >> 7
+		this.linearCounter.reloadValue = x & 0x7F
+	}
 	// Timer low (T)
-	r2 = 0
+	setR2(x: uint8): void {
+		this.sequencer.timerValue = this.sequencer.timerValue & 0x700 | x
+	}
 	// Length counter load (L), timer high (T)
-	r3 = 0
+	setR3(x: uint8): void {
+		this.sequencer.timerValue = this.sequencer.timerValue & 0xFF | ((x & 7) << 8)
+		this.lengthCounter.setLoad(x >> 3)
+		// Side effects: Sets the linear counter reload flag
+		this.linearCounter.reloadFlag = 1
+	}
+
+	linearCounter = new LinearCounter()
+	lengthCounter = new LengthCounter()
+	sequencer = new Sequencer("triangle")
+
+	tickCPU() {
+		if (this.lengthCounter.output() && this.linearCounter.output()) {
+			this.sequencer.tick()
+		}
+	}
+	tickHalfFrame(): void {
+		this.lengthCounter.tickHalfFrame()
+	}
+	tickQuarterFrame(): void {
+		this.linearCounter.tickQuarterFrame()
+	}
+	output(): number {
+		return this.sequencer.output()
+	}
 }
 
 class Noise {
@@ -201,14 +233,15 @@ class Sweep {
 	dividerPeriod = 0
 	negate = 0
 	shiftCount = 0
-	// $4002-$4003
-	timerValue = 0
 
-	isPulse1: boolean
+	private isPulse1: boolean
+	// To access timerValue
+	private sequencer: Sequencer
 
-	constructor(isPulse1: boolean) {
+	constructor(isPulse1: boolean, sequencer: Sequencer) {
 		this.divider = new Divider()
 		this.isPulse1 = isPulse1
+		this.sequencer = sequencer
 	}
 
 	private targetPeriod(): number {
@@ -219,7 +252,7 @@ class Sweep {
 		// 2. If the negate flag is true, the change amount is made negative.
 		// 3. The target period is the sum of the current period and the change
 		//    amount.
-		let changeAmount = this.timerValue >> this.shiftCount
+		let changeAmount = this.sequencer.timerValue >> this.shiftCount
 		if (this.negate) {
 			if (this.isPulse1) {
 				changeAmount = -changeAmount - 1
@@ -227,7 +260,7 @@ class Sweep {
 				changeAmount = -changeAmount
 			}
 		}
-		return changeAmount + this.timerValue
+		return changeAmount + this.sequencer.timerValue
 	}
 
 	private isEnabled(): boolean {
@@ -242,7 +275,7 @@ class Sweep {
 		//    channel.
 		// 2. If at any time the target period is greater than $7FF, the sweep
 		//    unit mutes the channel.
-		if (this.timerValue < 8) {
+		if (this.sequencer.timerValue < 8) {
 			return true
 		}
 		if (this.targetPeriod() > 0x7FF) {
@@ -259,7 +292,7 @@ class Sweep {
 		//    sweep unit is not muting the channel: The pulse's period is
 		//    adjusted.
 		if (this.divider.counter === 0 && this.isEnabled() && !this.muted()) {
-			this.timerValue = this.targetPeriod()
+			this.sequencer.timerValue = this.targetPeriod()
 		}
 		// 2. If the divider's counter is zero or the reload flag is true: The
 		//    counter is set to P and the reload flag is cleared. Otherwise, the
@@ -273,49 +306,76 @@ class Sweep {
 	}
 }
 
+type SequencerType = "pulse" | "triangle"
+
 class Sequencer {
 	// $4000 6-7
 	duty = 0
 
-	// To get access to timerValue.
-	private sweep: Sweep
+	timerValue = 0
 
 	private timer = 0
 	private index = 0
 
-	private static outputWaveform = [
+	private type: SequencerType
+	private period: number
+
+	private static pulseWaveform = [
 		[0, 1, 0, 0, 0, 0, 0, 0],
 		[0, 1, 1, 0, 0, 0, 0, 0],
 		[0, 1, 1, 1, 1, 0, 0, 0],
 		[1, 0, 0, 1, 1, 1, 1, 1],
 	]
+	private static triangleWaveform = [
+		15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+	]
 
-	constructor(sweep: Sweep) {
-		this.sweep = sweep
+	constructor(type: SequencerType) {
+		this.type = type
+		switch (this.type) {
+			case "pulse":
+				this.period = 8
+				break
+			case "triangle":
+				this.period = 32
+				break
+		}
 	}
 
-	// Tick with APU cycle
-	tickAPU(): void {
+	// APU cycle on Pulse
+	// CPU cycle on Triangle
+	tick(): void {
 		if (this.timer === 0) {
-			this.timer = this.sweep.timerValue
-			this.index = (this.index + 1) & 7
+			this.timer = this.timerValue
+			this.index = (this.index + 1) & (this.period - 1)
 		} else {
 			this.timer--
 		}
 	}
 
 	output(): number {
-		return Sequencer.outputWaveform[this.duty][this.index]
+		switch (this.type) {
+			case "pulse":
+				return Sequencer.pulseWaveform[this.duty][this.index]
+			case "triangle":
+				return Sequencer.triangleWaveform[this.index]
+		}
 	}
 }
 
 class LengthCounter {
 	private enabled = 0
 	halt = 0
-	// lengthTable index
-	load = 0
+	setLoad(load: number) {
+		assertInRange(load, 0, 31)
+		// If the enabled flag is set, the length counter is loaded with entry L of the length table:
+		if (this.enabled) {
+			this.counter = LengthCounter.lengthTable[load]
+		}
+	}
 
-	private lengthCounter = 0
+	private counter = 0
 
 	private static lengthTable = [
 		10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
@@ -330,7 +390,7 @@ class LengthCounter {
 		// effect when enabled is set.
 		this.enabled = x
 		if (!this.enabled) {
-			this.lengthCounter = 0
+			this.counter = 0
 		}
 	}
 
@@ -340,18 +400,43 @@ class LengthCounter {
 		//
 		// * The length counter is 0, or
 		// * The halt flag is set
-		if (this.lengthCounter === 0 || this.halt) {
+		if (this.counter === 0 || this.halt) {
 			return
 		}
-		this.lengthCounter--
+		this.counter--
 	}
 
 	output(): boolean {
-		return this.lengthCounter > 0
+		return this.counter > 0
+	}
+}
+
+class LinearCounter {
+	controlFlag = 0
+	reloadValue = 0
+
+	reloadFlag = 0
+
+	private counter = 0
+
+	tickQuarterFrame() {
+		// 1. If the linear counter reload flag is set, the linear counter is
+		//    reloaded with the counter reload value, otherwise if the linear
+		//    counter is non-zero, it is decremented.
+		// 2. If the control flag is clear, the linear counter reload flag is
+		//    cleared.
+		if (this.reloadFlag) {
+			this.counter = this.reloadValue
+		} else if (this.counter > 0) {
+			this.counter--
+		}
+		if (!this.controlFlag) {
+			this.reloadFlag = 0
+		}
 	}
 
-	reload(): void {
-		this.lengthCounter = LengthCounter.lengthTable[this.load]
+	output(): boolean {
+		return this.counter > 0
 	}
 }
 
@@ -362,8 +447,6 @@ export class APU {
 	noise = new Noise()
 	dmc = new DMC()
 
-	control = 0 // $4015 (read)
-	status = 0 // $4015 (write)
 	interruptInhibit = 0 // bit 6 of $4017
 	fiveStepSequence = 0 // bit 7 of $4017
 
@@ -378,6 +461,7 @@ export class APU {
 		}
 		this.oddCPUCycle = !this.oddCPUCycle
 
+		this.triangle.tickCPU()
 		this.tickFrameCounterSequencer()
 	}
 	// Ticked on every CPU cycle
@@ -454,25 +538,38 @@ export class APU {
 	private tickAPU() {
 		this.pulse1.tickAPU()
 		this.pulse2.tickAPU()
+		// TODO: noise
 	}
 	// Tick half frame
 	private tickHalfFrame() {
 		this.pulse1.tickHalfFrame()
 		this.pulse2.tickHalfFrame()
+		this.triangle.tickHalfFrame()
 	}
 	// Tick quarter frame
 	private tickQuarterFrame() {
 		this.pulse1.tickQuarterFrame()
 		this.pulse2.tickQuarterFrame()
+		this.triangle.tickQuarterFrame()
 	}
 
 	read(pc: uint16): uint8 {
+		this.logger?.log(`APU.read $${pc.toString(16)}`)
 		switch (pc) {
 			case 0x4015: {
-				// TODO: DMC interrupt, DMC active, Noise, Triangle
+				// TODO: DMC interrupt, DMC active, Noise
+				//
+				// IF-D NT21
+				// DMC interrupt (I), frame interrupt (F), DMC active (D),
+				// length counter > 0 (N/T/2/1)
+				//
+				// N/T/2/1 will read as 1 if the corresponding length counter is
+				// greater than 0. For the triangle channel, the status of the
+				// linear counter is irrelevant.
+				const t = this.triangle.lengthCounter.output() ? 1 : 0
 				const p1 = this.pulse1.lengthCounter.output() ? 1 : 0
 				const p2 = this.pulse2.lengthCounter.output() ? 1 : 0
-				return this.frameInteruptFlag << 6 | p2 << 1 | p1
+				return this.frameInteruptFlag << 6 | t << 2 | p2 << 1 | p1
 			}
 		}
 		// They are write-only except $4015.
@@ -508,21 +605,23 @@ export class APU {
 				this.pulse2.setR4(x)
 				return
 			case 0x08:
-				this.triangle.r1 = x
+				this.triangle.setR1(x)
 				return
 			case 0x09:
-				throw new Error(`$4009 is unused`)
+				// $4009 is unused
+				return
 			case 0x0A:
-				this.triangle.r2 = x
+				this.triangle.setR2(x)
 				return
 			case 0x0B:
-				this.triangle.r3 = x
+				this.triangle.setR3(x)
 				return
 			case 0x0C:
 				this.noise.r1 = x
 				return
 			case 0x0D:
-				throw new Error(`$400D is unused`)
+				// $400D is unused
+				return
 			case 0x0E:
 				this.noise.r2 = x
 				return
@@ -546,7 +645,8 @@ export class APU {
 			case 0x15:
 				this.pulse1.lengthCounter.setEnabled(x >> 0 & 1)
 				this.pulse2.lengthCounter.setEnabled(x >> 1 & 1)
-				// TODO: triangle, noise, DMC
+				this.triangle.lengthCounter.setEnabled(x >> 2 & 1)
+				// TODO: noise, DMC
 				return
 			case 0x16:
 				throw new Error(`BUG: $4016 should be handled by Controller`)
@@ -562,6 +662,7 @@ export class APU {
 		throw new Error(`APU.write not implemented. 0x${pc.toString(16)}, ${x}`);
 	}
 
+	// output level within range 0.0 - 1.0
 	output(): number {
 		// output = pulse_out + tnd_out
 		//
@@ -574,8 +675,30 @@ export class APU {
 		// 									1
 		// 		   ----------------------------------------------------- + 100
 		// 			(triangle / 8227) + (noise / 12241) + (dmc / 22638)
-		const pulseOut = 95.88 / (8128 / (this.pulse1.output() + this.pulse2.output()) + 100)
-		// TODO: implement tnd_out
-		return pulseOut
+		const pulse1 = this.pulse1.output()
+		const pulse2 = this.pulse2.output()
+		assertInRange(pulse1, 0, 15)
+		assertInRange(pulse2, 0, 15)
+		const pulseOut = 95.88 / (8128 / (pulse1 + pulse2) + 100)
+
+		const triangle = this.triangle.output()
+		// TODO: noise, dmc
+		const noise = 0
+		const dmc = 0
+
+		assertInRange(triangle, 0, 15)
+		assertInRange(noise, 0, 15)
+		assertInRange(dmc, 0, 127)
+
+		const tndOut = 159.79 /
+			(1 / (triangle / 8227 + noise / 12241 + dmc / 22638) + 100)
+
+		if (this.frameCounter % 1000 === 0) {
+			this.logger?.log(`pulse1 = ${pulse1}, pulse2 = ${pulse2}, triangle = ${triangle}, pulseOut = ${pulseOut}, tndOut = ${tndOut}`)
+		}
+
+		return pulseOut + tndOut
 	}
+	//////////////////////////////	Debug  //////////////////////////////
+	logger?: Logger
 }
