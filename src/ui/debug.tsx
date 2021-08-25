@@ -204,16 +204,123 @@ const DebugInfo = (props: { info: NES.DebugInfo }) => {
 	</div>
 }
 
-export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
+const UserInteraction = (props: { nes: NES.NES, onChange: () => void }) => {
 	const gameCanvasRef = useRef<HTMLCanvasElement>(null)
+	const [buttons, setButtons] = useState(0)
+	const [error, setError] = useState<Error | null>(null)
+
+	const [stepCount, setStepCount] = useState(1)
+	const [frameCount, setFrameCount] = useState(1)
+
+	const nesRender = useCallback(() => {
+		const ctx = gameCanvasRef.current?.getContext('2d')
+		if (!ctx) {
+			return
+		}
+		props.nes.render(ctx)
+	}, [props.nes])
+
+	useEffect(() => {
+		nesRender()
+	}, [nesRender, props.nes])
+
+	const onCycle = () => {
+		try {
+			props.nes.tick()
+		} catch (e) {
+			setError(e)
+		}
+		nesRender()
+		props.onChange()
+	}
+	const onStep = () => {
+		try {
+			for (let i = 0; i < stepCount; i++) {
+				props.nes.stepToNextInstruction()
+			}
+		} catch (e) {
+			setError(e)
+		}
+		nesRender()
+		props.onChange()
+	}
+	const onFrame = () => {
+		try {
+			props.nes.frame(frameCount)
+		} catch (e) {
+			setError(e)
+		}
+		nesRender()
+		props.onChange()
+	}
+
+
+	useEffect(() => {
+		props.nes.setControllerState(1, buttons)
+	}, [buttons, props.nes])
+
+	const buttonsComponent =
+		["A", "B", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT"].map((s, i) => {
+			return <div key={i}>
+				<input type="checkbox" value={buttons >> i & 1} onChange={(e) => {
+					setButtons((buttons) => {
+						return buttons & ~(1 << i) | (e.target.checked ? 1 << i : 0)
+					})
+				}} />{s}
+			</div>
+		})
+
+	const reset = () => {
+		props.nes.resetAll()
+		setError(null)
+		nesRender()
+		props.onChange()
+	}
+
+	return <div>
+		<div>
+			<ErrorBanner error={error} />
+			<div>
+				<button onClick={reset}>reset</button>
+			</div>
+			<div>
+				<button onClick={onCycle}>cycle</button>
+			</div>
+			<div>
+				<button onClick={onStep}>step</button>
+				<input min="1" type="number" value={stepCount ? stepCount : ""} onChange={(e) => {
+					if (e.target.value === "") {
+						setStepCount(0)
+					}
+					setStepCount(parseInt(e.target.value))
+				}}></input>
+			</div>
+			<div>
+				<button onClick={onFrame}>frame</button>
+				<input min="1" type="number" value={frameCount ? frameCount : ""} onChange={(e) => {
+					if (e.target.value === "") {
+						setFrameCount(0)
+					}
+					setFrameCount(parseInt(e.target.value))
+				}}></input>
+			</div>
+			<div>
+				{buttonsComponent}
+			</div>
+		</div>
+		<div>
+			<canvas ref={gameCanvasRef}
+				width="256"
+				height="240"></canvas>
+		</div>
+	</div>
+}
+
+export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 	const charsCanvasRef = useRef<HTMLCanvasElement>(null)
 	const colorsCanvasRef = useRef<HTMLCanvasElement>(null)
 	const disaTableRef = useRef<HTMLDivElement>(null)
 
-	const [stepCount, setStepCount] = useState(1)
-	const [frameCount, setFrameCount] = useState(1)
-	const [buttons, setButtons] = useState(0)
-	const [error, setError] = useState<Error | null>(null)
 	const [debugInfo, setDebugInfo] = useState<NES.DebugInfo | null>(null)
 
 	const disaList = useMemo(() => disasm.disasm(props.nes.mapper), [props.nes.mapper])
@@ -252,22 +359,13 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 		}
 	}, [debugInfo, pc2Idx, props.nes])
 
-	const addDebugInfo = useCallback(() => {
+	const updateDebugInfo = useCallback(() => {
 		const info = props.nes.debugInfo()
 		if (debugInfo && debugInfo.cpuStatus.cyc === info.cpuStatus.cyc) {
 			return
 		}
 		setDebugInfo(info)
 	}, [debugInfo, props.nes])
-
-	const nesRender = useCallback(() => {
-		const ctx = gameCanvasRef.current?.getContext('2d')
-		if (!ctx) {
-			return
-		}
-		props.nes.render(ctx)
-		addDebugInfo()
-	}, [addDebugInfo, props.nes])
 
 	useEffect(() => {
 		const cvs = charsCanvasRef.current
@@ -276,104 +374,17 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 		}
 		props.nes.renderCharacters(cvs)
 		Color.render(cvs)
-		nesRender()
-	}, [nesRender, props.nes])
-
-	const onCycle = () => {
-		try {
-			props.nes.tick()
-		} catch (e) {
-			setError(e)
-		}
-		nesRender()
-		addDebugInfo()
-	}
-
-	const onStep = () => {
-		try {
-			for (let i = 0; i < stepCount; i++) {
-				props.nes.stepToNextInstruction()
-			}
-		} catch (e) {
-			setError(e)
-		}
-		nesRender()
-		addDebugInfo()
-	}
-	const onFrame = () => {
-		try {
-			props.nes.frame(frameCount)
-		} catch (e) {
-			setError(e)
-		}
-		nesRender()
-		addDebugInfo()
-	}
-
-	useEffect(() => {
-		props.nes.setControllerState(1, buttons)
-	}, [buttons, props.nes])
-	const buttonsComponent =
-		["A", "B", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT"].map((s, i) => {
-			return <span key={i}>
-				<input type="checkbox" value={buttons >> i & 1} onChange={(e) => {
-					setButtons((buttons) => {
-						return buttons & ~(1 << i) | (e.target.checked ? 1 << i : 0)
-					})
-				}} />{s}
-			</span>
-		})
-
-	const reset = () => {
-		props.nes.resetAll();
-		setDebugInfo(null)
-		setError(null)
-		nesRender()
-	}
+	}, [props.nes])
 
 	useEffect(() => {
 		props.nes.setLogger(new Logger(new ConsoleLogSink(), "NES"))
+		updateDebugInfo()
 		return () => {
 			props.nes.setLogger(undefined)
 		}
-	}, [props.nes])
+	}, [props.nes, updateDebugInfo])
 
 	const leftSide = <div>
-		<div>
-			<ErrorBanner error={error} />
-			<div>
-				<button onClick={reset}>reset</button>
-			</div>
-			<div>
-				<button onClick={onCycle}>cycle</button>
-			</div>
-			<div>
-				<button onClick={onStep}>step</button>
-				<input min="1" type="number" value={stepCount ? stepCount : ""} onChange={(e) => {
-					if (e.target.value === "") {
-						setStepCount(0)
-					}
-					setStepCount(parseInt(e.target.value))
-				}}></input>
-			</div>
-			<div>
-				<button onClick={onFrame}>frame</button>
-				<input min="1" type="number" value={frameCount ? frameCount : ""} onChange={(e) => {
-					if (e.target.value === "") {
-						setFrameCount(0)
-					}
-					setFrameCount(parseInt(e.target.value))
-				}}></input>
-			</div>
-			<div>
-				{buttonsComponent}
-			</div>
-		</div>
-		<div>
-			<canvas ref={gameCanvasRef}
-				width="256"
-				height="240"></canvas>
-		</div>
 		{debugInfo ? <DebugInfo info={debugInfo}></DebugInfo> : null}
 		<div>
 			<canvas ref={charsCanvasRef}></canvas>
@@ -385,6 +396,7 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 	const rightSide = <>{disaTable}</>
 
 	return <div style={{ display: "flex" }}>
+		<UserInteraction nes={props.nes} onChange={updateDebugInfo} />
 		<span>
 			{leftSide}
 		</span>

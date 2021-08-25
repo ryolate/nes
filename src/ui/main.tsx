@@ -202,14 +202,16 @@ const Game = (props: { nes: NES.NES }) => {
 
 	const game = debugMode ?
 		<DebugGame nes={props.nes} /> :
-		<RealGame nes={props.nes} />
+		<>
+			<RealGame nes={props.nes} />
+			<Controll />
+		</>
 
 	return <div>
 		<label>debug mode:<input name="debugmode" type="checkbox" checked={debugMode} onChange={(e) => {
 			setDebugMode(e.target.checked)
 		}} /></label>
 		{game}
-		<Controll />
 	</div >
 }
 
