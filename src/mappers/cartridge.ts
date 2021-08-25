@@ -117,16 +117,12 @@ export class Cartridge {
     readonly chrROM: Uint8Array
     readonly prgRAM: Uint8Array
 
-    private mapper: Mapper
-
     constructor(header: Header, trainer: Uint8Array, prgROM: Uint8Array, chrROM: Uint8Array, prgRAMSize: number) {
         this.header = header
         this.trainer = trainer
         this.prgROM = prgROM
         this.chrROM = chrROM
         this.prgRAM = new Uint8Array(prgRAMSize)
-
-        this.mapper = new Mapper0(this)
     }
 
     // parses INES data.
@@ -157,29 +153,5 @@ export class Cartridge {
 
         const cartridge = new Cartridge(header, trainer, prgROM, chrROM, header.prgRAMSize)
         return new Mapper0(cartridge)
-    }
-
-    // render pattern table 0 (4K) using predefined colors.
-    renderCharacters(canvas: HTMLCanvasElement): void {
-        const pixelSize = 2
-        canvas.setAttribute('width', `${2 * 16 * 8 * pixelSize}`)
-        canvas.setAttribute('height', `${16 * 8 * pixelSize}`)
-        const ctx = canvas.getContext('2d')!
-        for (let h = 0; h < 2; h++) { // (0: "left"; 1: "right")
-            for (let y = 0; y < 16; y++) { // tile row
-                for (let x = 0; x < 16; x++) { // tile column
-                    for (let r = 0; r < 8; r++) { // fine Y offset, the row number within a tile
-                        const lowerBits = this.mapper.readPPU(h << 12 | y << 8 | x << 4 | r)
-                        const upperBits = this.mapper.readPPU(h << 12 | y << 8 | x << 4 | 8 | r)
-                        for (let c = 0; c < 8; c++) {
-                            const colorIndex = (((upperBits >> 7 - c) & 1) << 1) | ((lowerBits >> 7 - c) & 1)
-                            const gray = (3 - colorIndex) * 80
-                            ctx.fillStyle = `rgb(${gray},${gray},${gray})`
-                            ctx.fillRect((h * 16 * 8 + x * 8 + c) * pixelSize, (y * 8 + r) * pixelSize, pixelSize, pixelSize)
-                        }
-                    }
-                }
-            }
-        }
     }
 }

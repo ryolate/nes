@@ -280,7 +280,7 @@ const DebugGame = (props: { nes: NES.NES }) => {
 	}, [addDebugInfo, props.nes])
 
 	useEffect(() => {
-		props.nes.mapper.cartridge.renderCharacters(charsCanvasRef.current!)
+		props.nes.renderCharacters(charsCanvasRef.current!)
 		Color.render(colorsCanvasRef.current!)
 		nesRender()
 	}, [nesRender, props.nes])

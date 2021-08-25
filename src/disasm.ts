@@ -1,5 +1,4 @@
 import { NES } from "./nes"
-import { Cartridge } from "./mappers/cartridge"
 import { operation2str } from "./cpu"
 import { Mapper } from "./mappers/mapper"
 

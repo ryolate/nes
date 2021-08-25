@@ -1,4 +1,3 @@
-import { Cartridge } from '../mappers/cartridge'
 import { assertInRange, assertUint8, uint16, uint8, uint8Reverse } from '../num'
 import { NMI } from '../nmi'
 import * as Color from './color'
