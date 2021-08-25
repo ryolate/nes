@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import * as NES from '../nes'
 import * as Color from '../ppu/color'
@@ -262,13 +261,21 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 	}, [debugInfo, props.nes])
 
 	const nesRender = useCallback(() => {
-		props.nes.render(gameCanvasRef.current!.getContext('2d')!)
+		const ctx = gameCanvasRef.current?.getContext('2d')
+		if (!ctx) {
+			return
+		}
+		props.nes.render(ctx)
 		addDebugInfo()
 	}, [addDebugInfo, props.nes])
 
 	useEffect(() => {
-		props.nes.renderCharacters(charsCanvasRef.current!)
-		Color.render(colorsCanvasRef.current!)
+		const cvs = charsCanvasRef.current
+		if (!cvs) {
+			return
+		}
+		props.nes.renderCharacters(cvs)
+		Color.render(cvs)
 		nesRender()
 	}, [nesRender, props.nes])
 
