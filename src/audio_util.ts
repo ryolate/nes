@@ -1,6 +1,6 @@
 import { assertInRange } from "./num"
 
-const LEN = 1024 * 1024
+const LEN = 16 * 1024
 
 export class AudioEventDeque {
 	buffer = new Array<AudioEvent>(LEN)
@@ -39,6 +39,12 @@ export class AudioEventDeque {
 	get(i: number): AudioEvent {
 		assertInRange(i, 0, this.size() - 1)
 		return this.buffer[(this.front + i) & (LEN - 1)]
+	}
+	// pop until n empty slots are preserved.
+	ensureCapacity(n: number): void {
+		while (this.size() > LEN - n) {
+			this.pop()
+		}
 	}
 }
 

@@ -600,7 +600,6 @@ export class APU {
 	}
 
 	read(pc: uint16): uint8 {
-		this.logger?.log(`APU.read $${pc.toString(16)}`)
 		switch (pc) {
 			case 0x4015: {
 				// Reading this register clears the frame interrupt flag (but
@@ -744,10 +743,6 @@ export class APU {
 
 		const tndOut = 159.79 /
 			(1 / (triangle / 8227 + noise / 12241 + dmc / 22638) + 100)
-
-		if (this.frameCounter % 1000 === 0) {
-			this.logger?.log(`pulse1 = ${pulse1}, pulse2 = ${pulse2}, triangle = ${triangle}, pulseOut = ${pulseOut}, tndOut = ${tndOut}`)
-		}
 
 		return pulseOut + tndOut
 	}

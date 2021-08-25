@@ -76,6 +76,7 @@ export class NES {
 				cycle: this.cycleCount,
 				timestampMillis: performance.now(),
 			})
+			this.audioSampleBuffer.ensureCapacity(1024)
 		}
 	}
 

@@ -1,6 +1,7 @@
 import { uint16, uint8 } from "../num";
 import { Cartridge } from "./cartridge";
 import { Mapper0 } from "./mapper0";
+import { Mapper1 } from "./mapper1";
 
 export interface Mapper {
 	readCPU(pc: uint16): uint8
@@ -23,6 +24,8 @@ export class MapperFactory {
 		switch (cartridge.header.mapper) {
 			case 0:
 				return new Mapper0(cartridge)
+			case 1:
+				return new Mapper1(cartridge)
 		}
 		throw new Error(`Mapper ${cartridge.header.mapper} not supported`)
 	}

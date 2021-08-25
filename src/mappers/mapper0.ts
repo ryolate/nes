@@ -2,7 +2,7 @@ import { uint16, uint8 } from "../num";
 import { Cartridge } from "./cartridge";
 import { Mapper } from "./mapper";
 
-// Implements Mapper
+// https://wiki.nesdev.com/w/index.php?title=NROM
 export class Mapper0 implements Mapper {
 	cartridge: Cartridge
 	constructor(cartridge: Cartridge) {
