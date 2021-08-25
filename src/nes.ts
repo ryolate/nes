@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { Cartridge } from "./mappers/cartridge";
 import { PPU } from "./ppu/ppu";
 import { CPU, CPUHaltError, CPUStatus } from "./cpu";
 import { APU } from "./apu";
@@ -8,7 +7,7 @@ import { Controller, ControllerId } from "./controller";
 import { uint8 } from "./num";
 import { Logger } from "./logger";
 import { AudioEvent, AudioEventDeque } from "./audio_util";
-import { Mapper } from "./mappers/mapper";
+import { Mapper, MapperFactory } from "./mappers/mapper";
 
 // NTSC CPU clock frequency = 1.789773 MHz
 const CPUHz = 1.789773 * 1000 * 1000
@@ -40,7 +39,7 @@ export class NES {
 	}
 
 	static fromCartridgeData(cartridgeData: Uint8Array): NES {
-		return new NES(Cartridge.parseINES(cartridgeData))
+		return new NES(MapperFactory.parseINES(cartridgeData))
 	}
 
 	play(elapsedMillis: number): void {

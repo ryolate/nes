@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { uint8, hasBit } from '../num'
-import { Mapper } from './mapper'
-import { Mapper0 } from './mapper0'
 
 /*
 Reference:
@@ -126,13 +124,7 @@ export class Cartridge {
     }
 
     // parses INES data.
-    //
-    // Example:
-    //     const data = fs.readFileSync("testdata/nestest.nes")
-    //     const mapper = Cartridge.parseINES(data)
-    //
-    // Reference: https://wiki.nesdev.com/w/index.php?title=INES
-    static parseINES(data: Uint8Array): Mapper {
+    static parseINES(data: Uint8Array): Cartridge {
         const sc = new Scanner(data)
         const header = parseHeader(sc)
 
@@ -144,14 +136,8 @@ export class Cartridge {
             throw new Error('PlayChoice is not supported')
         }
 
-        const suppotedMappers = [0]
-        if (!suppotedMappers.includes(header.mapper)) {
-            throw new Error(`unsupported mapper ${header.mapper} `)
-        }
-
         sc.assertEOF()
 
-        const cartridge = new Cartridge(header, trainer, prgROM, chrROM, header.prgRAMSize)
-        return new Mapper0(cartridge)
+        return new Cartridge(header, trainer, prgROM, chrROM, header.prgRAMSize)
     }
 }
