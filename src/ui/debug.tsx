@@ -198,9 +198,6 @@ const DebugInfo = (props: { info: NES.DebugInfo }) => {
 				</tbody>
 			</table>
 		</div>
-		<div>
-			<PPUInfo ppu={nes.ppu} />
-		</div>
 	</div>
 }
 
@@ -386,6 +383,9 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 
 	const leftSide = <div>
 		{debugInfo ? <DebugInfo info={debugInfo}></DebugInfo> : null}
+		<div>
+			<PPUInfo ppu={props.nes.ppu} />
+		</div>
 		<div>
 			<canvas ref={charsCanvasRef}></canvas>
 		</div>
