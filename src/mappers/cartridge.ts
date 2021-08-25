@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { uint8, uint16, hasBit } from './num'
+import { uint8, hasBit } from '../num'
+import { Mapper } from './mapper'
+import { Mapper0 } from './mapper0'
 
 /*
 Reference:
@@ -110,10 +112,12 @@ function parseHeader(sc: Scanner): Header {
 
 export class Cartridge {
     readonly header: Header
-    private trainer: Uint8Array
+    readonly trainer: Uint8Array
     readonly prgROM: Uint8Array
     readonly chrROM: Uint8Array
-    private prgRAM: Uint8Array
+    readonly prgRAM: Uint8Array
+
+    private mapper: Mapper
 
     constructor(header: Header, trainer: Uint8Array, prgROM: Uint8Array, chrROM: Uint8Array, prgRAMSize: number) {
         this.header = header
@@ -121,66 +125,18 @@ export class Cartridge {
         this.prgROM = prgROM
         this.chrROM = chrROM
         this.prgRAM = new Uint8Array(prgRAMSize)
-    }
 
-    readCPU(pc: uint16): uint8 {
-        if (pc < 0x4020) {
-            throw new Error(`Outside cartridge space ${pc.toString(16)}`)
-        }
-        if (pc < 0x6000) {
-            return 0
-        } else if (pc < 0x8000) {
-            if (this.prgRAM.length) {
-                return this.prgRAM[(pc - 0x6000) % this.prgRAM.length]
-            }
-            return 0
-        } else {
-            return this.prgROM[(pc - 0x8000) % this.prgROM.length]
-        }
-    }
-
-    writeCPU(pc: uint16, x: uint8): void {
-        if (pc < 0x4020) {
-            throw new Error(`Outside cartridge space ${pc.toString(16)}`)
-        }
-        if (pc < 0x6000) {
-            return
-        } else if (pc < 0x8000) {
-            // Family Basic only: PRG RAM, mirrored as necessary to fill entire
-            // 8 KiB window, write protectable with an external switch
-            if (this.prgRAM.length) {
-                this.prgRAM[(pc - 0x8000) % this.prgRAM.length] = x
-            }
-            return
-        } else {
-            // ROM Space
-            return
-        }
-    }
-
-    // Pattern table $0000 - $1FFF
-    // https://wiki.nesdev.com/w/index.php?title=PPU_memory_map
-    readPPU(pc: uint16): uint8 {
-        if (pc < 0 || pc >= 0x2000) {
-            throw new Error(`Cartridge.readPPU(${pc})`)
-        }
-        return this.chrROM[pc & 0x1FFF]
-    }
-    writePPU(pc: uint16, x: uint8): void {
-        if (this.header.chrROMSize > 0) {
-            return
-        }
-        this.chrROM[pc & 0x1FFF] = x
+        this.mapper = new Mapper0(this)
     }
 
     // parses INES data.
     //
     // Example:
     //     const data = fs.readFileSync("testdata/nestest.nes")
-    //     const cartridge = Cartridge.parseINES(data)
+    //     const mapper = Cartridge.parseINES(data)
     //
     // Reference: https://wiki.nesdev.com/w/index.php?title=INES
-    static parseINES(data: Uint8Array): Cartridge {
+    static parseINES(data: Uint8Array): Mapper {
         const sc = new Scanner(data)
         const header = parseHeader(sc)
 
@@ -199,7 +155,8 @@ export class Cartridge {
 
         sc.assertEOF()
 
-        return new Cartridge(header, trainer, prgROM, chrROM, header.prgRAMSize)
+        const cartridge = new Cartridge(header, trainer, prgROM, chrROM, header.prgRAMSize)
+        return new Mapper0(cartridge)
     }
 
     // render pattern table 0 (4K) using predefined colors.
@@ -212,8 +169,8 @@ export class Cartridge {
             for (let y = 0; y < 16; y++) { // tile row
                 for (let x = 0; x < 16; x++) { // tile column
                     for (let r = 0; r < 8; r++) { // fine Y offset, the row number within a tile
-                        const lowerBits = this.readPPU(h << 12 | y << 8 | x << 4 | r)
-                        const upperBits = this.readPPU(h << 12 | y << 8 | x << 4 | 8 | r)
+                        const lowerBits = this.mapper.readPPU(h << 12 | y << 8 | x << 4 | r)
+                        const upperBits = this.mapper.readPPU(h << 12 | y << 8 | x << 4 | 8 | r)
                         for (let c = 0; c < 8; c++) {
                             const colorIndex = (((upperBits >> 7 - c) & 1) << 1) | ((lowerBits >> 7 - c) & 1)
                             const gray = (3 - colorIndex) * 80

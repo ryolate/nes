@@ -1,8 +1,9 @@
-import { Cartridge } from '../cartridge'
+import { Cartridge } from '../mappers/cartridge'
 import { assertInRange, assertUint8, uint16, uint8, uint8Reverse } from '../num'
 import { NMI } from '../nmi'
 import * as Color from './color'
 import { Logger } from '../logger'
+import { Mapper } from '../mappers/mapper'
 
 /*
 Reference:
@@ -191,8 +192,8 @@ export class PPU {
 
     logger?: Logger
 
-    constructor(cartridge: Cartridge, nmi: NMI) {
-        this.bus = new PPUBus(cartridge)
+    constructor(mapper: Mapper, nmi: NMI) {
+        this.bus = new PPUBus(mapper)
         this.nmi = nmi
 
         for (let i = 0; i < this.buffers.length; i++) {
@@ -573,8 +574,8 @@ export class PPU {
         if (h < 0 || h > 1 || i < 0 || i >= 256 || x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
             throw new Error("BUG: patternValue")
         }
-        const upper = this.bus.cartridge.readPPU(h << 12 | i << 4 | 8 | (y & 7))
-        const lower = this.bus.cartridge.readPPU(h << 12 | i << 4 | 0 | (y & 7))
+        const upper = this.bus.mapper.readPPU(h << 12 | i << 4 | 8 | (y & 7))
+        const lower = this.bus.mapper.readPPU(h << 12 | i << 4 | 0 | (y & 7))
         return (((upper >> (7 - (x & 7))) & 1) << 1) | ((lower >> (7 - (x & 7))) & 1)
     }
 
@@ -739,7 +740,7 @@ export type Palette = [uint8, uint8, uint8]
 const newPalette = (): Palette => { return [0, 0, 0] }
 
 class PPUBus {
-    cartridge: Cartridge
+    mapper: Mapper
     // nametable $2000 - $3EFF
     nametable = [new Uint8Array(0x400), new Uint8Array(0x400), new Uint8Array(0x400), new Uint8Array(0x400)]
 
@@ -759,8 +760,8 @@ class PPUBus {
     // information occupies 4 bytes.
     oam: Array<uint8> = new Array(256)
 
-    constructor(cartridge: Cartridge) {
-        this.cartridge = cartridge
+    constructor(mapper: Mapper) {
+        this.mapper = mapper
         this.oam.fill(0)
     }
     // Read PPU memory map.
@@ -768,7 +769,7 @@ class PPUBus {
         assertInRange(pc, 0, 0x3FFF)
         if (pc < 0x2000) {
             // Pattern table
-            return this.cartridge.readPPU(pc)
+            return this.mapper.readPPU(pc)
         } else if (pc < 0x3F00) {
             // Nametable (VRAM)
             return this.nametable[pc / 0x400 & 3][pc & 0x3FF]
@@ -800,7 +801,7 @@ class PPUBus {
         assertInRange(pc, 0, 0x3FFF)
         assertUint8(x)
         if (pc < 0x2000) { // Pattern tables $0000 - $1FFF
-            this.cartridge.writePPU(pc, x)
+            this.mapper.writePPU(pc, x)
             return
         } else if (pc < 0x3F00) { // Name tables $2000 - $2FFF. Mirrors $3000-$3EFF
             this.nametable[pc / 0x400 & 3][pc & 0x3FF] = x

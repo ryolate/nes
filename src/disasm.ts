@@ -1,12 +1,13 @@
 import { NES } from "./nes"
-import { Cartridge } from "./cartridge"
+import { Cartridge } from "./mappers/cartridge"
 import { operation2str } from "./cpu"
+import { Mapper } from "./mappers/mapper"
 
-export const disasm = (cartridge: Cartridge): Array<[number, string]> => {
-	const nes = new NES(cartridge)
+export const disasm = (mapper: Mapper): Array<[number, string]> => {
+	const nes = new NES(mapper)
 
 	const start = 0x8000
-	const end = start + cartridge.prgROM.length
+	const end = start + mapper.cartridge.prgROM.length
 
 	const res: Array<[number, string]> = []
 	nes.cpu.setPC(0x8000)

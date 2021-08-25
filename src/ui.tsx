@@ -230,7 +230,7 @@ const DebugGame = (props: { nes: NES.NES }) => {
 	const [error, setError] = useState<Error | null>(null)
 	const [debugInfo, setDebugInfo] = useState<NES.DebugInfo | null>(null)
 
-	const disaList = useMemo(() => disasm.disasm(props.nes.cartridge), [props.nes.cartridge])
+	const disaList = useMemo(() => disasm.disasm(props.nes.mapper), [props.nes.mapper])
 	const pc2Idx = (() => {
 		const res = new Map<number, number>()
 		disaList.forEach(([pc], i) => {
@@ -280,7 +280,7 @@ const DebugGame = (props: { nes: NES.NES }) => {
 	}, [addDebugInfo, props.nes])
 
 	useEffect(() => {
-		props.nes.cartridge.renderCharacters(charsCanvasRef.current!)
+		props.nes.mapper.cartridge.renderCharacters(charsCanvasRef.current!)
 		Color.render(colorsCanvasRef.current!)
 		nesRender()
 	}, [nesRender, props.nes])

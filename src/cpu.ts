@@ -1,11 +1,12 @@
 import * as Opcode from './opcode'
 import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, assertUint8, assertUint16 } from './num'
-import { Cartridge } from './cartridge'
+import { Cartridge } from './mappers/cartridge'
 import { PPU } from './ppu/ppu'
 import { NMI } from './nmi'
 import { Controller } from './controller'
 import { APU } from './apu'
 import { Logger } from './logger'
+import { Mapper } from './mappers/mapper'
 
 /*
 
@@ -138,14 +139,14 @@ export class CPU {
 
     private stallCount = 6 // number of cycles consumed ahead of time
 
-    constructor(cartridge: Cartridge, ppu: PPU, nmi: NMI, controller: Controller, apu: APU) {
+    constructor(mapper: Mapper, ppu: PPU, nmi: NMI, controller: Controller, apu: APU) {
         this.nmi = nmi
         // https://wiki.nesdev.com/w/index.php/CPU_power_up_state
         this.S = 0xFD
         this.I = 1
 
         this.CPURAM = new Uint8Array(0x800)
-        this.cartridge = cartridge
+        this.mapper = mapper
         this.ppu = ppu
         this.controller = controller
         this.apu = apu
@@ -753,7 +754,7 @@ export class CPU {
 
     ////////////////////////////// BUS //////////////////////////////
     private CPURAM: Uint8Array // 2KB internal RAM
-    private cartridge: Cartridge // Cartridge space
+    private mapper: Mapper // Cartridge space
     private ppu: PPU
 
     private controller: Controller
@@ -776,7 +777,7 @@ export class CPU {
         } else if (pc < 0x4020) {
             // CPU Test Mode
         } else {
-            return this.cartridge.readCPU(pc)
+            return this.mapper.readCPU(pc)
         }
         throw new Error(`Unsupported CPU.read 0x${pc.toString(16)}`)
     }
@@ -818,7 +819,7 @@ export class CPU {
             // CPU Test Mode
             throw new Error(`Unsupported write(0x${pc.toString(16)}, ${x}) to CPU Test Mode`)
         } else {
-            this.cartridge.writeCPU(pc, x)
+            this.mapper.writeCPU(pc, x)
         }
     }
 

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { Cartridge } from "./cartridge";
+import { Cartridge } from "./mappers/cartridge";
 import { PPU } from "./ppu/ppu";
 import { CPU, CPUHaltError, CPUStatus } from "./cpu";
 import { APU } from "./apu";
@@ -8,6 +8,7 @@ import { Controller, ControllerId } from "./controller";
 import { uint8 } from "./num";
 import { Logger } from "./logger";
 import { AudioEvent, AudioEventDeque } from "./audio_util";
+import { Mapper } from "./mappers/mapper";
 
 // NTSC CPU clock frequency = 1.789773 MHz
 const CPUHz = 1.789773 * 1000 * 1000
@@ -16,7 +17,7 @@ const CPUMillisPerCycle = 1000 / CPUHz
 const AUDIOSampleRate = 44100 // 44.1K Hz
 
 export class NES {
-	cartridge: Cartridge
+	mapper: Mapper
 	private controller: Controller
 
 	private apu: APU
@@ -27,15 +28,15 @@ export class NES {
 	private nextAudioSampleCount = 0.0
 	private audioSampleBuffer = new AudioEventDeque()
 
-	constructor(cartridge: Cartridge) {
-		this.cartridge = cartridge
+	constructor(mapper: Mapper) {
+		this.mapper = mapper
 		this.controller = new Controller()
 
 		const nmi = new NMI()
 
 		this.apu = new APU()
-		this.ppu = new PPU(this.cartridge, nmi)
-		this.cpu = new CPU(this.cartridge, this.ppu, nmi, this.controller, this.apu)
+		this.ppu = new PPU(this.mapper, nmi)
+		this.cpu = new CPU(this.mapper, this.ppu, nmi, this.controller, this.apu)
 	}
 
 	static fromCartridgeData(cartridgeData: Uint8Array): NES {
@@ -137,8 +138,8 @@ export class NES {
 	}
 	resetAll(): void {
 		const nmi = new NMI()
-		this.ppu = new PPU(this.cartridge, nmi)
-		this.cpu = new CPU(this.cartridge, this.ppu, nmi, this.controller, new APU())
+		this.ppu = new PPU(this.mapper, nmi)
+		this.cpu = new CPU(this.mapper, this.ppu, nmi, this.controller, new APU())
 
 		this.setLogger(this.logger)
 		console.clear()
