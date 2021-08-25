@@ -64,15 +64,6 @@ class Pulse {
 		this.sequencer.tick()
 	}
 
-	tickHalfFrame() {
-		this.sweep.tickHalfFrame()
-		this.lengthCounter.tickHalfFrame()
-	}
-
-	tickQuarterFrame() {
-		this.envelope.tickQuarterFrame()
-	}
-
 	output(): number {
 		if (this.sequencer.output() === 0 ||
 			this.sweep.muted() ||
@@ -113,21 +104,70 @@ class Triangle {
 			this.sequencer.tick()
 		}
 	}
-	tickHalfFrame(): void {
-		this.lengthCounter.tickHalfFrame()
-	}
-	tickQuarterFrame(): void {
-		this.linearCounter.tickQuarterFrame()
-	}
 	output(): number {
 		return this.sequencer.output()
 	}
 }
 
 class Noise {
-	r1 = 0
-	r2 = 0
-	r3 = 0
+	mode = 0
+	timerPeriod = 0
+
+	private static timerPeriodTable = [
+		4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
+	]
+
+	setR1(x: number): void {
+		this.envelope.loop = this.lengthCounter.halt = x >> 6 & 1
+		this.envelope.constantVolume = x >> 5 & 1
+		this.envelope.volume = x & 15
+	}
+	setR2(x: number): void {
+		this.mode = x >> 7
+		this.timerPeriod = Noise.timerPeriodTable[x & 15]
+	}
+	setR3(x: number): void {
+		this.lengthCounter.setLoad(x >> 3)
+		this.envelope.restart()
+	}
+
+	envelope = new Envelope()
+	lengthCounter = new LengthCounter()
+
+	private timer = 0
+	// On power-up, the shift register is loaded with the value 1.
+	private shiftRegister = 1
+	tickAPU(): void {
+		if (this.timer === 0) {
+			this.timer = this.timerPeriod
+			this.timerClock()
+		} else {
+			this.timer--
+		}
+	}
+	private timerClock() {
+		// When the timer clocks the shift register, the following actions occur
+		// in order:
+		// 1. Feedback is calculated as the exclusive - OR of bit 0 and one
+		//    other bit: bit 6 if Mode flag is set, otherwise bit 1.
+		// 2. The shift register is shifted right by one bit.
+		// 3. Bit 14, the leftmost bit, is set to the feedback calculated
+		//    earlier.
+		const feedback = (this.shiftRegister & 1) ^
+			(this.shiftRegister >> (this.mode ? 6 : 1) & 1)
+		this.shiftRegister >>= 1
+		this.shiftRegister |= feedback << 14
+	}
+
+	output(): number {
+		// The mixer receives the current envelope volume except when
+		// * Bit 0 of the shift register is set, or
+		// * The length counter is zero
+		if ((this.shiftRegister & 1) || !this.lengthCounter.output()) {
+			return 0
+		}
+		return this.envelope.output()
+	}
 }
 
 class DMC {
@@ -538,26 +578,32 @@ export class APU {
 	private tickAPU() {
 		this.pulse1.tickAPU()
 		this.pulse2.tickAPU()
-		// TODO: noise
+		this.noise.tickAPU()
 	}
-	// Tick half frame
+	// Length counters & sweep units
 	private tickHalfFrame() {
-		this.pulse1.tickHalfFrame()
-		this.pulse2.tickHalfFrame()
-		this.triangle.tickHalfFrame()
+		this.pulse1.lengthCounter.tickHalfFrame()
+		this.pulse2.lengthCounter.tickHalfFrame()
+		this.triangle.lengthCounter.tickHalfFrame()
+		this.noise.lengthCounter.tickHalfFrame()
+
+		this.pulse1.sweep.tickHalfFrame()
+		this.pulse2.sweep.tickHalfFrame()
 	}
-	// Tick quarter frame
+	// Envelops & triangle's linear counter
 	private tickQuarterFrame() {
-		this.pulse1.tickQuarterFrame()
-		this.pulse2.tickQuarterFrame()
-		this.triangle.tickQuarterFrame()
+		this.pulse1.envelope.tickQuarterFrame()
+		this.pulse2.envelope.tickQuarterFrame()
+		this.noise.envelope.tickQuarterFrame()
+
+		this.triangle.linearCounter.tickQuarterFrame()
 	}
 
 	read(pc: uint16): uint8 {
 		this.logger?.log(`APU.read $${pc.toString(16)}`)
 		switch (pc) {
 			case 0x4015: {
-				// TODO: DMC interrupt, DMC active, Noise
+				// TODO: DMC interrupt, DMC active
 				//
 				// IF-D NT21
 				// DMC interrupt (I), frame interrupt (F), DMC active (D),
@@ -566,10 +612,11 @@ export class APU {
 				// N/T/2/1 will read as 1 if the corresponding length counter is
 				// greater than 0. For the triangle channel, the status of the
 				// linear counter is irrelevant.
-				const t = this.triangle.lengthCounter.output() ? 1 : 0
 				const p1 = this.pulse1.lengthCounter.output() ? 1 : 0
 				const p2 = this.pulse2.lengthCounter.output() ? 1 : 0
-				return this.frameInteruptFlag << 6 | t << 2 | p2 << 1 | p1
+				const t = this.triangle.lengthCounter.output() ? 1 : 0
+				const n = this.noise.lengthCounter.output() ? 1 : 0
+				return this.frameInteruptFlag << 6 | n << 3 | t << 2 | p2 << 1 | p1
 			}
 		}
 		// They are write-only except $4015.
@@ -617,16 +664,16 @@ export class APU {
 				this.triangle.setR3(x)
 				return
 			case 0x0C:
-				this.noise.r1 = x
+				this.noise.setR1(x)
 				return
 			case 0x0D:
 				// $400D is unused
 				return
 			case 0x0E:
-				this.noise.r2 = x
+				this.noise.setR2(x)
 				return
 			case 0x0F:
-				this.noise.r3 = x
+				this.noise.setR3(x)
 				return
 			case 0x10:
 				this.dmc.r1 = x
@@ -646,7 +693,8 @@ export class APU {
 				this.pulse1.lengthCounter.setEnabled(x >> 0 & 1)
 				this.pulse2.lengthCounter.setEnabled(x >> 1 & 1)
 				this.triangle.lengthCounter.setEnabled(x >> 2 & 1)
-				// TODO: noise, DMC
+				this.noise.lengthCounter.setEnabled(x >> 3 & 1)
+				// TODO: DMC
 				return
 			case 0x16:
 				throw new Error(`BUG: $4016 should be handled by Controller`)
@@ -682,8 +730,8 @@ export class APU {
 		const pulseOut = 95.88 / (8128 / (pulse1 + pulse2) + 100)
 
 		const triangle = this.triangle.output()
-		// TODO: noise, dmc
-		const noise = 0
+		// TODO: dmc
+		const noise = this.noise.output()
 		const dmc = 0
 
 		assertInRange(triangle, 0, 15)
