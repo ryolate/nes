@@ -603,6 +603,10 @@ export class APU {
 		this.logger?.log(`APU.read $${pc.toString(16)}`)
 		switch (pc) {
 			case 0x4015: {
+				// Reading this register clears the frame interrupt flag (but
+				// not the DMC interrupt flag).
+				this.frameInteruptFlag = 0
+
 				// TODO: DMC interrupt, DMC active
 				//
 				// IF-D NT21
