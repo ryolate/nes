@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { uint8, hasBit } from '../num'
+import { uint8, hasBit, assertInRange } from '../num'
 
 /*
 Reference:
@@ -112,15 +112,34 @@ export class Cartridge {
     readonly header: Header
     readonly trainer: Uint8Array
     readonly prgROM: Uint8Array
-    readonly chrROM: Uint8Array
     readonly prgRAM: Uint8Array
+    private readonly chrROM: Uint8Array
+    private readonly chrRAM: Uint8Array
 
-    constructor(header: Header, trainer: Uint8Array, prgROM: Uint8Array, chrROM: Uint8Array, prgRAMSize: number) {
+    constructor(header: Header, trainer: Uint8Array, prgROM: Uint8Array, chrROM: Uint8Array, chrRAM: Uint8Array, prgRAMSize: number) {
         this.header = header
         this.trainer = trainer
         this.prgROM = prgROM
-        this.chrROM = chrROM
         this.prgRAM = new Uint8Array(prgRAMSize)
+        this.chrROM = chrROM
+        this.chrRAM = chrRAM
+    }
+
+    readCHR(pc: number): uint8 {
+        if (this.chrROM.length) {
+            return this.chrROM[pc]
+        } else {
+            assertInRange(pc, 0, this.chrRAM.length)
+            return this.chrRAM[pc]
+        }
+    }
+
+    writeCHR(pc: number, x: uint8): void {
+        if (this.header.chrROMSize) {
+            return
+        }
+        assertInRange(pc, 0, this.chrRAM.length)
+        this.chrRAM[pc] = x
     }
 
     // parses INES data.
@@ -131,6 +150,7 @@ export class Cartridge {
         const trainer = sc.readArray(header.hasTrainer ? 512 : 0)
         const prgROM = sc.readArray(header.prgROMSize)
         const chrROM = sc.readArray(header.chrROMSize)
+        const chrRAM = header.chrROMSize ? new Uint8Array(0) : new Uint8Array(8 * 1024)
 
         if (header.playChoice10) {
             throw new Error('PlayChoice is not supported')
@@ -138,6 +158,6 @@ export class Cartridge {
 
         sc.assertEOF()
 
-        return new Cartridge(header, trainer, prgROM, chrROM, header.prgRAMSize)
+        return new Cartridge(header, trainer, prgROM, chrROM, chrRAM, header.prgRAMSize)
     }
 }

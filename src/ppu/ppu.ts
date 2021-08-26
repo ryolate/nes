@@ -149,6 +149,7 @@ export class PPU {
     }
     private incrementInternalV() {
         this.internalV += this.ctrlIncrementMode ? 32 : 1
+        assertInRange(this.internalV, 0, 0x7FFF)
     }
 
     // PPU internal registers

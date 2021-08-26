@@ -1,6 +1,6 @@
 import { uint16, uint8 } from "../num";
 import { Cartridge } from "./cartridge";
-import { Mapper } from "./mapper";
+import { Mapper, MapperState } from "./mapper";
 
 // https://wiki.nesdev.com/w/index.php/MMC1
 export class Mapper1 implements Mapper {
@@ -104,7 +104,7 @@ export class Mapper1 implements Mapper {
 		} else if (pc <= 0x7FFF) {
 			// $6000-$7FFF: 8 KB PRG RAM bank, (optional)
 			if (this.cartridge.prgRAM.length) {
-				this.cartridge.prgRAM[(pc - 0x8000) % this.cartridge.prgRAM.length] = x
+				this.cartridge.prgRAM[(pc - 0x6000) % this.cartridge.prgRAM.length] = x
 			}
 			return
 		} else {
@@ -128,9 +128,20 @@ export class Mapper1 implements Mapper {
 
 	// Pattern table $0000 - $1FFF
 	readPPU(pc: uint16): uint8 {
-		return this.cartridge.chrROM[this.chrROMIndex(pc)]
+		return this.cartridge.readCHR(this.chrROMIndex(pc))
 	}
 	writePPU(pc: uint16, x: uint8): void {
-		this.cartridge.chrROM[this.chrROMIndex(pc)] = x
+		this.cartridge.writeCHR(this.chrROMIndex(pc), x)
+	}
+	state(): MapperState {
+		return [
+			["mirroring", "" + this.mirroring],
+			["prgROMBankMode", "" + this.prgROMBankMode],
+			["chrROMBankMode", "" + this.chrROMBankMode],
+			["chrBank0", "" + this.chrBank0],
+			["chrBank1", "" + this.chrBank1],
+			["prgBank", "" + this.prgBank],
+			["prgRAMChipEnable", "" + this.prgRAMChipEnable],
+		]
 	}
 }

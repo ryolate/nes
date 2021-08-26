@@ -3,6 +3,9 @@ import { Cartridge } from "./cartridge";
 import { Mapper0 } from "./mapper0";
 import { Mapper1 } from "./mapper1";
 
+// [name, value]
+export type MapperState = Array<[string, string]>
+
 export interface Mapper {
 	readCPU(pc: uint16): uint8
 	writeCPU(pc: uint16, x: uint8): void
@@ -10,6 +13,7 @@ export interface Mapper {
 	writePPU(pc: uint16, x: uint8): void
 	////////////////////////////// Debug //////////////////////////////
 	cartridge: Cartridge
+	state(): MapperState
 }
 
 // parses INES data.

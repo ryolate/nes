@@ -4,6 +4,15 @@ import * as Color from '../ppu/color'
 import * as PPU from '../ppu/ppu'
 import { ConsoleLogSink, Logger } from '../logger'
 import { CPU } from '../cpu'
+import { Cartridge } from '../mappers/cartridge'
+import { Mapper } from '../mappers/mapper'
+
+const withHeader = (title: string, e: JSX.Element) => {
+	return <div>
+		<label><strong>{title}</strong></label>
+		{e}
+	</div>
+}
 
 const PaletteColor = (props: { color: Color.RGB }) => {
 	const sz = 10
@@ -210,30 +219,27 @@ const CPUInfo = (props: { cpu: CPU }) => {
 			</tbody></table>
 		</div>
 
-	return <div>
-		<div>
-			<table>
-				<tbody>
-					{
-						[
-							["PC", "0x" + cpu.getPC().toString(16).toUpperCase()],
-							["A", "0x" + cpu.A.toString(16).toUpperCase()],
-							["X", "0x" + cpu.X.toString(16).toUpperCase()],
-							["Y", "0x" + cpu.Y.toString(16).toUpperCase()],
-							["P", "0b" + cpu.getP().toString(2)],
-							["S", "0x" + cpu.S.toString(16).toUpperCase()],
-						].map(([s, x], i) => {
-							const id = "" + i
-							return <TableRow key={id} row={[s as string, x]} />
-						})
-					}
-					<TableRow key="cyc" row={["CYC", "" + cpu.cycle]}></TableRow>
-					<TableRow key="instr" row={["INSTR", "" + cpu.instructionCount]}></TableRow>
-				</tbody>
-			</table>
-		</div>
+	return withHeader("CPU", <div>
+		<table style={{ marginBottom: "2px" }}>
+			<tbody>
+				{
+					[
+						["PC", "0x" + cpu.getPC().toString(16).toUpperCase()],
+						["A", "0x" + cpu.A.toString(16).toUpperCase()],
+						["X", "0x" + cpu.X.toString(16).toUpperCase()],
+						["Y", "0x" + cpu.Y.toString(16).toUpperCase()],
+						["P", "0b" + cpu.getP().toString(2)],
+						["S", "0x" + cpu.S.toString(16).toUpperCase()],
+						["CYC", "" + cpu.cycle],
+						["INSTR", "" + cpu.instructionCount],
+					].map(([name, value], i) => {
+						return <TableRow key={i} row={[name, value]} />
+					})
+				}
+			</tbody>
+		</table>
 		{disaTable}
-	</div>
+	</div>)
 }
 
 const UserInteraction = (props: { nes: NES.NES, onChange: () => void }) => {
@@ -348,6 +354,29 @@ const UserInteraction = (props: { nes: NES.NES, onChange: () => void }) => {
 	</div>
 }
 
+const MapperInfo = (props: { mapper: Mapper }) => {
+	return withHeader("Mapper", <table><tbody>
+		{
+			props.mapper.state().map(([name, value], i) => {
+				return <TableRow key={i} row={[name, value]} />
+			})
+		}
+	</tbody></table>)
+}
+
+const CartridgeInfo = (props: { cartridge: Cartridge }) => {
+	return <table><tbody>
+		{
+			[
+				["Mapper", props.cartridge.header.mapper.toString(10)],
+				["chrROMSize", "0x" + props.cartridge.header.chrROMSize.toString(16)],
+			].map(([name, value], i) => {
+				return <TableRow key={i} row={[name, value]} />
+			})
+		}
+	</tbody></table>
+}
+
 export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 	// dummy state to tell when to update the view.
 	const [, setUpdateCounter] = useState(0)
@@ -362,9 +391,8 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 	return <div style={{ display: "flex" }}>
 		<UserInteraction nes={props.nes} onChange={() => setUpdateCounter((x) => x + 1)} />
 		<div>
-			<table><tbody>
-				<TableRow row={["Mapper", props.nes.mapper.cartridge.header.mapper.toString(10)]} />
-			</tbody></table>
+			<CartridgeInfo cartridge={props.nes.mapper.cartridge} />
+			<MapperInfo mapper={props.nes.mapper} />
 			<CPUInfo cpu={props.nes.cpu} />
 		</div>
 		<PPUInfo ppu={props.nes.ppu} />

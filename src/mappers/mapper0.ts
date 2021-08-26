@@ -1,6 +1,6 @@
 import { uint16, uint8 } from "../num";
 import { Cartridge } from "./cartridge";
-import { Mapper } from "./mapper";
+import { Mapper, MapperState } from "./mapper";
 
 // https://wiki.nesdev.com/w/index.php?title=NROM
 export class Mapper0 implements Mapper {
@@ -49,12 +49,12 @@ export class Mapper0 implements Mapper {
 		if (pc < 0 || pc >= 0x2000) {
 			throw new Error(`Cartridge.readPPU(${pc})`)
 		}
-		return this.cartridge.chrROM[pc & 0x1FFF]
+		return this.cartridge.readCHR(pc)
 	}
 	writePPU(pc: uint16, x: uint8): void {
-		if (this.cartridge.header.chrROMSize > 0) {
-			return
-		}
-		this.cartridge.chrROM[pc & 0x1FFF] = x
+		this.cartridge.writeCHR(pc, x)
+	}
+	state(): MapperState {
+		return []
 	}
 }
