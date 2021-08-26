@@ -4,7 +4,8 @@ import { Mapper, MapperState } from "./mapper";
 
 // https://wiki.nesdev.com/w/index.php?title=NROM
 export class Mapper0 implements Mapper {
-	cartridge: Cartridge
+	readonly cartridge: Cartridge
+	readonly vram = new Uint8Array(0x800) // 2KB nametable
 	constructor(cartridge: Cartridge) {
 		this.cartridge = cartridge
 	}
@@ -45,14 +46,20 @@ export class Mapper0 implements Mapper {
 	}
 	// Pattern table $0000 - $1FFF
 	// https://wiki.nesdev.com/w/index.php?title=PPU_memory_map
-	readPPU(pc: uint16): uint8 {
+	readCHR(pc: uint16): uint8 {
 		if (pc < 0 || pc >= 0x2000) {
 			throw new Error(`Cartridge.readPPU(${pc})`)
 		}
 		return this.cartridge.readCHR(pc)
 	}
-	writePPU(pc: uint16, x: uint8): void {
+	writeCHR(pc: uint16, x: uint8): void {
 		this.cartridge.writeCHR(pc, x)
+	}
+	readNametable(pc: number): number {
+		return this.vram[(pc - 0x2000) & 0xFFF]
+	}
+	writeNametable(pc: number, x: number): void {
+		this.vram[(pc - 0x2000) & 0xFFF] = x
 	}
 	state(): MapperState {
 		return []

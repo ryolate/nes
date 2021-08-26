@@ -9,10 +9,13 @@ export type MapperState = Array<[string, string]>
 export interface Mapper {
 	readCPU(pc: uint16): uint8
 	writeCPU(pc: uint16, x: uint8): void
-	readPPU(pc: uint16): uint8
-	writePPU(pc: uint16, x: uint8): void
+	readCHR(pc: uint16): uint8
+	writeCHR(pc: uint16, x: uint8): void
+	readNametable(pc: uint16): uint8
+	writeNametable(pc: uint16, x: uint8): void
 	////////////////////////////// Debug //////////////////////////////
 	cartridge: Cartridge
+	vram: Uint8Array
 	state(): MapperState
 }
 

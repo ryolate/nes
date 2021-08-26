@@ -580,8 +580,8 @@ export class PPU {
         if (h < 0 || h > 1 || i < 0 || i >= 256 || x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
             throw new Error("BUG: patternValue")
         }
-        const upper = this.bus.mapper.readPPU(h << 12 | i << 4 | 8 | (y & 7))
-        const lower = this.bus.mapper.readPPU(h << 12 | i << 4 | 0 | (y & 7))
+        const upper = this.bus.mapper.readCHR(h << 12 | i << 4 | 8 | (y & 7))
+        const lower = this.bus.mapper.readCHR(h << 12 | i << 4 | 0 | (y & 7))
         return (((upper >> (7 - (x & 7))) & 1) << 1) | ((lower >> (7 - (x & 7))) & 1)
     }
 
@@ -712,7 +712,8 @@ export class PPU {
             for (let y = 0; y < HEIGHT; y++) {
                 for (let x = 0; x < WIDTH; x++) {
                     const i = (x >> 3) | ((y >> 3) << 5)
-                    const pt = this.bus.nametable[h][i]
+                    // const pt = this.bus.mapper.readNametable(h << 10 | i)
+                    const pt = this.bus.mapper.vram[(h << 10 | i) & (this.bus.mapper.vram.length - 1)]
                     const pi = this.patternValue(this.ctrlBackgroundTileSelect, pt, x, y)
                     assertInRange(pi, 0, 3)
 
@@ -721,7 +722,8 @@ export class PPU {
                         colorIndex = this.bus.universalBackgroundColor
                     } else {
                         const j = (y >> 5) << 3 | (x >> 5)
-                        const b = this.bus.nametable[h][0x3C0 + j]
+                        // const b = this.bus.mapper.readNametable(h << 10 | (0x3C0 + j))
+                        const b = this.bus.mapper.vram[h << 10 | (0x3C0 + j)] & (this.bus.mapper.vram.length - 1)
                         const x2 = (x >> 4 & 1) << 1, y2 = (y >> 4 & 1) << 1
                         const at = b >> (y2 << 1 | x2) & 3
 
@@ -756,8 +758,8 @@ export class PPU {
             for (let y = 0; y < 16; y++) { // tile row
                 for (let x = 0; x < 16; x++) { // tile column
                     for (let r = 0; r < 8; r++) { // fine Y offset, the row number within a tile
-                        const lowerBits = this.bus.mapper.readPPU(h << 12 | y << 8 | x << 4 | r)
-                        const upperBits = this.bus.mapper.readPPU(h << 12 | y << 8 | x << 4 | 8 | r)
+                        const lowerBits = this.bus.mapper.readCHR(h << 12 | y << 8 | x << 4 | r)
+                        const upperBits = this.bus.mapper.readCHR(h << 12 | y << 8 | x << 4 | 8 | r)
                         for (let c = 0; c < 8; c++) {
                             const colorIndex = (((upperBits >> 7 - c) & 1) << 1) | ((lowerBits >> 7 - c) & 1)
                             const gray = (3 - colorIndex) * 80
@@ -789,8 +791,6 @@ const newPalette = (): Palette => { return [0, 0, 0] }
 
 class PPUBus {
     mapper: Mapper
-    // nametable $2000 - $3EFF
-    nametable = [new Uint8Array(0x400), new Uint8Array(0x400), new Uint8Array(0x400), new Uint8Array(0x400)]
 
     // PPU palettes
     universalBackgroundColor = 0
@@ -815,13 +815,15 @@ class PPUBus {
     // Read PPU memory map.
     read(pc: uint16): uint8 {
         assertInRange(pc, 0, 0x3FFF)
-        if (pc < 0x2000) {
+        if (pc <= 0x1FFF) {
             // Pattern table
-            return this.mapper.readPPU(pc)
+            return this.mapper.readCHR(pc)
         } else if (pc < 0x3F00) {
-            // Nametable (VRAM)
-            return this.nametable[pc / 0x400 & 3][pc & 0x3FF]
-            // TODO: implement mirroring. https://wiki.nesdev.com/w/index.php?title=PPU_nametables
+            let i = pc
+            if (i >= 0x3000) {
+                i -= 0x1000
+            }
+            return this.mapper.readNametable(i)
         } else {
             let k = pc & 0x1F
             // Palette RAM
@@ -848,12 +850,15 @@ class PPUBus {
     write(pc: uint16, x: uint8) {
         assertInRange(pc, 0, 0x3FFF)
         assertUint8(x)
-        if (pc < 0x2000) { // Pattern tables $0000 - $1FFF
-            this.mapper.writePPU(pc, x)
+        if (pc <= 0x1FFF) { // Pattern tables $0000 - $1FFF
+            this.mapper.writeCHR(pc, x)
             return
-        } else if (pc < 0x3F00) { // Name tables $2000 - $2FFF. Mirrors $3000-$3EFF
-            this.nametable[pc / 0x400 & 3][pc & 0x3FF] = x
-            // FIXME: implement mirroring.
+        } else if (pc <= 0x3EFF) { // Name tables $2000 - $2FFF. Mirrors $3000-$3EFF
+            let i = pc
+            if (i >= 0x3000) {
+                i -= 0x1000
+            }
+            this.mapper.writeNametable(i, x)
             return
         } else { // Palette RAM $3F00-$3F1F. Mirrors $3F20-$3FFF
             let k = pc & 0x1F

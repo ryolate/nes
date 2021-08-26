@@ -1,10 +1,11 @@
-import { uint16, uint8 } from "../num";
+import { assertInRange, uint16, uint8 } from "../num";
 import { Cartridge } from "./cartridge";
 import { Mapper, MapperState } from "./mapper";
 
 // https://wiki.nesdev.com/w/index.php/MMC1
 export class Mapper1 implements Mapper {
 	readonly cartridge: Cartridge
+	readonly vram = new Uint8Array(0x800) // 2KB nametable
 	constructor(cartridge: Cartridge) {
 		this.cartridge = cartridge
 		this.resetShiftRegister()
@@ -127,12 +128,35 @@ export class Mapper1 implements Mapper {
 	}
 
 	// Pattern table $0000 - $1FFF
-	readPPU(pc: uint16): uint8 {
+	// Name table $2000 - $2FFF
+	readCHR(pc: uint16): uint8 {
 		return this.cartridge.readCHR(this.chrROMIndex(pc))
 	}
-	writePPU(pc: uint16, x: uint8): void {
+	writeCHR(pc: uint16, x: uint8): void {
 		this.cartridge.writeCHR(this.chrROMIndex(pc), x)
 	}
+	private nametableIndex(pc: number): number {
+		switch (this.mirroring) {
+			case 0:
+				return pc & 0x3FF
+			case 1:
+				return 0x400 + (pc & 0x3FF)
+			case 2:
+				return pc & 0x7FF
+			case 3:
+				return (pc >> 1 & 0x400) | pc & 0x3FF
+		}
+		throw new Error(`BUG: mirroring=${this.mirroring}`)
+	}
+	readNametable(pc: number): number {
+		assertInRange(this.nametableIndex(pc), 0, 0x800)
+		return this.vram[this.nametableIndex(pc)]
+	}
+	writeNametable(pc: number, x: number): void {
+		assertInRange(this.nametableIndex(pc), 0, 0x800)
+		this.vram[this.nametableIndex(pc)] = x
+	}
+
 	state(): MapperState {
 		return [
 			["mirroring", "" + this.mirroring],
