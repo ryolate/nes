@@ -94,19 +94,18 @@ function inc16(x: uint16): uint16 {
 export class CPU {
     private _A: uint8 = 0
 
-    private set A(x: uint8) {
-        assertUint8(x)
+    set A(x: uint8) {
         this._A = x
     }
-    private get A(): uint8 {
+    get A(): uint8 {
         return this._A
     }
 
-    private X: uint8 = 0
-    private Y: uint8 = 0
-    private S: uint8
+    X: uint8 = 0
+    Y: uint8 = 0
+    S: uint8
     private _PC: uint16 = 0
-    private cycle = 0
+    cycle = 0
     debugMode = false
 
     private set PC(x: uint16) {
@@ -247,7 +246,7 @@ export class CPU {
         this.Z = (p >> 1) & 1
         this.C = (p >> 0) & 1
     }
-    private getP(): uint8 {
+    getP(): uint8 {
         return this.N << 7 | this.V << 6 | 1 << 5 | 0 << 4 | this.D << 3 | this.I << 2 | this.Z << 1 | this.C
     }
 
@@ -823,7 +822,7 @@ export class CPU {
     }
 
     ////////////////////////////// Debug //////////////////////////////
-    private instructionCount = 0
+    instructionCount = 0
     setPC(pc: uint16): void {
         this.PC = pc
     }

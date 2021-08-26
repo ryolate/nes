@@ -159,12 +159,6 @@ export class NES {
 			this.cpu.removeDebugCallback(id)
 		}
 	}
-	debugInfo(): DebugInfo {
-		return {
-			cpuStatus: this.cpu.cpuStatus(),
-			nes: this,
-		}
-	}
 	private logger?: Logger
 	setLogger(logger?: Logger): void {
 		this.logger = logger
@@ -196,9 +190,4 @@ export class NES {
 			}
 		}
 	}
-}
-
-export interface DebugInfo {
-	cpuStatus: CPUStatus
-	nes: NES
 }

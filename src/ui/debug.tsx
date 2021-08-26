@@ -4,6 +4,7 @@ import * as Color from '../ppu/color'
 import * as PPU from '../ppu/ppu'
 import { ConsoleLogSink, Logger } from '../logger'
 import * as disasm from '../disasm'
+import { CPU } from '../cpu'
 
 
 const PaletteColor = (props: { color: Color.RGB }) => {
@@ -109,7 +110,8 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		ppu.renderNametable(canvas)
 	})
 
-	const registers = [
+	const states = [
+		["frame", ppu.frameCount],
 		// internal registers
 		["scanline", ppu.scanline],
 		["scanlineCycle", ppu.scanlineCycle],
@@ -148,32 +150,30 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		return <Register key={i}
 			name={name} value={value} radix={radix} />
 	})
-	const registerTable = <table><tbody>
-		{registers}
+	const stateTable = <table><tbody>
+		{states}
 	</tbody></table>
 
 	return <div>
+		<div style={{ display: "flex" }}>
+			<span>
+				{stateTable}
+			</span>
+			<span>
+				<SpriteInfo oam={ppu.bus.oam} />
+			</span>
+		</div>
 		<PPUPalettes universal={ppu.bus.universalBackgroundColor}
 			bg={ppu.bus.backgroundPalettes}
 			sprite={ppu.bus.spritePalettes} />
 		<div style={{ marginTop: "1px" }}>
 			<canvas ref={canvasRef}></canvas>
 		</div>
-		<div style={{ display: "flex" }}>
-			<span>
-				{registerTable}
-			</span>
-			<span>
-				<SpriteInfo oam={ppu.bus.oam} />
-			</span>
-		</div>
 	</div>
 }
 
-const DebugInfo = (props: { info: NES.DebugInfo }) => {
-	const nes = props.info.nes
-
-	const cpu = props.info.cpuStatus
+const CPUInfo = (props: { cpu: CPU }) => {
+	const cpu = props.cpu
 
 	return <div>
 		<div>
@@ -181,20 +181,19 @@ const DebugInfo = (props: { info: NES.DebugInfo }) => {
 				<tbody>
 					{
 						[
-							["PC", cpu.registers.pc],
-							["A", cpu.registers.a],
-							["X", cpu.registers.x],
-							["Y", cpu.registers.y],
-							["P", cpu.registers.p],
-							["S", cpu.registers.s],
+							["PC", cpu.getPC()],
+							["A", cpu.A],
+							["X", cpu.X],
+							["Y", cpu.Y],
+							["P", cpu.getP()],
+							["S", cpu.S],
 						].map(([s, x], i) => {
 							const id = "" + i
 							return <TableRow key={id} row={[s as string, x.toString(16).toUpperCase()]} />
 						})
 					}
-					<TableRow key="cyc" row={["CYC", "" + cpu.cyc]}></TableRow>
-					<TableRow key="instr" row={["INSTR", "" + cpu.instr]}></TableRow>
-					<TableRow key="frame" row={["FRAME", "" + nes.ppu.frameCount]}></TableRow>
+					<TableRow key="cyc" row={["CYC", "" + cpu.cycle]}></TableRow>
+					<TableRow key="instr" row={["INSTR", "" + cpu.instructionCount]}></TableRow>
 				</tbody>
 			</table>
 		</div>
@@ -318,7 +317,8 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 	const colorsCanvasRef = useRef<HTMLCanvasElement>(null)
 	const disaTableRef = useRef<HTMLDivElement>(null)
 
-	const [debugInfo, setDebugInfo] = useState<NES.DebugInfo | null>(null)
+	// dummy state to tell when to update the view.
+	const [updateCounter, setUpdateCounter] = useState(0)
 
 	const disaList = useMemo(() => disasm.disasm(props.nes.mapper), [props.nes.mapper])
 	const pc2Idx = (() => {
@@ -337,7 +337,7 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 					pc2Idx.set(pc, i)
 					return <tr key={i} style={{
 						height: "26px",
-						backgroundColor: pc === debugInfo?.cpuStatus.registers.pc
+						backgroundColor: pc === props.nes.cpu.getPC()
 							? "lightyellow" : undefined
 					}}>
 						<td>{pc.toString(16).toUpperCase()}</td>
@@ -348,21 +348,13 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 		</div >
 
 	useEffect(() => {
-		const pc = debugInfo?.cpuStatus.registers.pc
+		const pc = props.nes.cpu.getPC()
 		const i = pc && pc2Idx.get(pc)
 		if (i && disaTableRef.current) {
 			const y = 26 * i - 150
 			disaTableRef.current.scrollTo({ top: y, behavior: 'smooth' })
 		}
-	}, [debugInfo, pc2Idx, props.nes])
-
-	const updateDebugInfo = useCallback(() => {
-		const info = props.nes.debugInfo()
-		if (debugInfo && debugInfo.cpuStatus.cyc === info.cpuStatus.cyc) {
-			return
-		}
-		setDebugInfo(info)
-	}, [debugInfo, props.nes])
+	}, [pc2Idx, props.nes, updateCounter])
 
 	useEffect(() => {
 		const cvs = charsCanvasRef.current
@@ -371,18 +363,17 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 		}
 		props.nes.renderCharacters(cvs)
 		Color.render(cvs)
-	}, [props.nes])
+	}, [props.nes, updateCounter])
 
 	useEffect(() => {
 		props.nes.setLogger(new Logger(new ConsoleLogSink(), "NES"))
-		updateDebugInfo()
 		return () => {
 			props.nes.setLogger(undefined)
 		}
-	}, [props.nes, updateDebugInfo])
+	}, [props.nes])
 
 	const leftSide = <div>
-		{debugInfo ? <DebugInfo info={debugInfo}></DebugInfo> : null}
+		<CPUInfo cpu={props.nes.cpu}></CPUInfo>
 		<div>
 			<PPUInfo ppu={props.nes.ppu} />
 		</div>
@@ -396,7 +387,7 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 	const rightSide = <>{disaTable}</>
 
 	return <div style={{ display: "flex" }}>
-		<UserInteraction nes={props.nes} onChange={updateDebugInfo} />
+		<UserInteraction nes={props.nes} onChange={() => setUpdateCounter((x) => x + 1)} />
 		<span>
 			{leftSide}
 		</span>

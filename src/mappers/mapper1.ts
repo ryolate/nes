@@ -16,8 +16,7 @@ export class Mapper1 implements Mapper {
 		this.shiftRegister = 0b10000
 	}
 	private loadRegister(pc: uint16, x: uint8) {
-		console.log(`loadRegister ${pc.toString(16)} ${x}`)
-		if (x >> 7 & 1) {
+		if (x >> 7) {
 			this.resetShiftRegister()
 			return
 		}
