@@ -3,9 +3,7 @@ import * as NES from '../nes'
 import * as Color from '../ppu/color'
 import * as PPU from '../ppu/ppu'
 import { ConsoleLogSink, Logger } from '../logger'
-import * as disasm from '../disasm'
 import { CPU } from '../cpu'
-
 
 const PaletteColor = (props: { color: Color.RGB }) => {
 	const sz = 10
@@ -195,6 +193,24 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 
 const CPUInfo = (props: { cpu: CPU }) => {
 	const cpu = props.cpu
+	const pc = cpu.getPC()
+
+	const disaList = useMemo(() => cpu.disasm(10), [props.cpu, pc])
+
+	const disaTable =
+		<div style={{ width: "200px" }}>
+			<table><tbody>
+				{disaList.map(([pc, s], i) => {
+					return <tr key={i} style={{
+						backgroundColor: pc === cpu.getPC()
+							? "lightyellow" : undefined
+					}}>
+						<td>{pc.toString(16).toUpperCase()}</td>
+						<td>{s}</td>
+					</tr>
+				})}
+			</tbody></table>
+		</div>
 
 	return <div>
 		<div>
@@ -218,6 +234,7 @@ const CPUInfo = (props: { cpu: CPU }) => {
 				</tbody>
 			</table>
 		</div>
+		{disaTable}
 	</div>
 }
 
@@ -334,46 +351,8 @@ const UserInteraction = (props: { nes: NES.NES, onChange: () => void }) => {
 }
 
 export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
-	const disaTableRef = useRef<HTMLDivElement>(null)
-
 	// dummy state to tell when to update the view.
 	const [updateCounter, setUpdateCounter] = useState(0)
-
-	const disaList = useMemo(() => disasm.disasm(props.nes.mapper), [props.nes.mapper])
-	const pc2Idx = (() => {
-		const res = new Map<number, number>()
-		disaList.forEach(([pc], i) => {
-			res.set(pc, i)
-		})
-		return res
-	})()
-	const disaTable =
-		<div ref={disaTableRef} style={{
-			overflow: "scroll", height: "1000px", width: "300px"
-		}}>
-			<table><tbody>
-				{disaList.map(([pc, s], i) => {
-					pc2Idx.set(pc, i)
-					return <tr key={i} style={{
-						height: "26px",
-						backgroundColor: pc === props.nes.cpu.getPC()
-							? "lightyellow" : undefined
-					}}>
-						<td>{pc.toString(16).toUpperCase()}</td>
-						<td>{s}</td>
-					</tr>
-				})}
-			</tbody></table >
-		</div >
-
-	useEffect(() => {
-		const pc = props.nes.cpu.getPC()
-		const i = pc && pc2Idx.get(pc)
-		if (i && disaTableRef.current) {
-			const y = 26 * i - 150
-			disaTableRef.current.scrollTo({ top: y, behavior: 'smooth' })
-		}
-	}, [pc2Idx, props.nes, updateCounter])
 
 	useEffect(() => {
 		props.nes.setLogger(new Logger(new ConsoleLogSink(), "NES"))
@@ -386,9 +365,6 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 		<UserInteraction nes={props.nes} onChange={() => setUpdateCounter((x) => x + 1)} />
 		<CPUInfo cpu={props.nes.cpu} />
 		<PPUInfo ppu={props.nes.ppu} />
-		<span>
-			{disaTable}
-		</span>
 	</div>
 }
 

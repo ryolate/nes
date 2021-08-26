@@ -42,7 +42,7 @@ export function operation2str(op: Operation): string {
         }
     })()
 
-    const addr = `$${op.arg.toString(16).padStart(n, "0")}`
+    const addr = `$${op.arg.toString(16).toUpperCase().padStart(n, "0")}`
 
     return op.opcode + " " + ((): string => {
         switch (op.mode) {
@@ -69,7 +69,7 @@ export function operation2str(op: Operation): string {
             case "ind":
                 return `(${addr})`
             case "rel":
-                return `${addr} (PC-relative)`
+                return `${addr} (relative)`
         }
     })()
 }
@@ -860,6 +860,49 @@ export class CPU {
             cyc: this.cycle,
             instr: this.instructionCount,
         }
+    }
+
+    // Gets instruction without side effect.
+    // Returns next pc too.
+    getInstruction(pc: uint16): [Operation, number] {
+        const op = Opcode.opcodes[this.read(pc++)]
+        const x = (() => {
+            switch (op.mode) {
+                case "": // imp
+                    return 0
+                case "imm":
+                case "zp":
+                case "zpx":
+                case "zpy":
+                case "izx":
+                case "izy":
+                case "rel":
+                    return this.read(pc++)
+                case "abs":
+                case "abx":
+                case "aby":
+                case "ind":
+                    const res = this.read16(pc)
+                    pc += 2
+                    return res
+            }
+        })()
+        return [{
+            ...op,
+            arg: x,
+        }, pc]
+    }
+
+    // disasm next n instructions without side effect.
+    disasm(n: number): Array<[number, string]> {
+        let pc = this.getPC()
+        const res = new Array<[number, string]>()
+        for (let i = 0; i < n && pc < 0xFFFC; i++) {
+            const [op, nextPC] = this.getInstruction(pc)
+            res.push([pc, operation2str(op)])
+            pc = nextPC
+        }
+        return res
     }
 }
 
