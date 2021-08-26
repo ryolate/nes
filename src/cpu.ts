@@ -128,7 +128,9 @@ export class CPU {
     private N: uint8 = 0 // negative
     private V: uint8 = 0 // overflow
     private D: uint8 = 0 // decimal
-    private I: uint8 // interrupt
+    // I: Interrupt Disable
+    // When set, all interrupts except the NMI are inhibited.
+    private I: uint8
     private Z: uint8 = 0 // zero
     private C: uint8 = 0 // carry
 

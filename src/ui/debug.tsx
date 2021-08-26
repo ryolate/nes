@@ -218,15 +218,15 @@ const CPUInfo = (props: { cpu: CPU }) => {
 				<tbody>
 					{
 						[
-							["PC", cpu.getPC()],
-							["A", cpu.A],
-							["X", cpu.X],
-							["Y", cpu.Y],
-							["P", cpu.getP()],
-							["S", cpu.S],
+							["PC", "0x" + cpu.getPC().toString(16).toUpperCase()],
+							["A", "0x" + cpu.A.toString(16).toUpperCase()],
+							["X", "0x" + cpu.X.toString(16).toUpperCase()],
+							["Y", "0x" + cpu.Y.toString(16).toUpperCase()],
+							["P", "0b" + cpu.getP().toString(2)],
+							["S", "0x" + cpu.S.toString(16).toUpperCase()],
 						].map(([s, x], i) => {
 							const id = "" + i
-							return <TableRow key={id} row={[s as string, x.toString(16).toUpperCase()]} />
+							return <TableRow key={id} row={[s as string, x]} />
 						})
 					}
 					<TableRow key="cyc" row={["CYC", "" + cpu.cycle]}></TableRow>
