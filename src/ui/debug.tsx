@@ -100,6 +100,9 @@ const TableRow = (props: { row: Array<string> }) => {
 }
 const PPUInfo = (props: { ppu: PPU.PPU }) => {
 	const canvasRef = useRef<HTMLCanvasElement>(null)
+	const charsCanvasRef = useRef<HTMLCanvasElement>(null)
+	const colorsCanvasRef = useRef<HTMLCanvasElement>(null)
+
 	const ppu = props.ppu
 
 	useEffect(() => {
@@ -108,7 +111,23 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		}
 		const canvas = canvasRef.current
 		ppu.renderNametable(canvas)
-	})
+	}, [props.ppu])
+
+	useEffect(() => {
+		const cvs = charsCanvasRef.current
+		if (!cvs) {
+			return
+		}
+		props.ppu.renderCharacters(cvs)
+	}, [props.ppu])
+
+	useEffect(() => {
+		const cvs = colorsCanvasRef.current
+		if (!cvs) {
+			return
+		}
+		Color.render(cvs)
+	}, [props.ppu])
 
 	const states = [
 		["frame", ppu.frameCount],
@@ -169,6 +188,8 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		<div style={{ marginTop: "1px" }}>
 			<canvas ref={canvasRef}></canvas>
 		</div>
+		<canvas ref={charsCanvasRef} />
+		<canvas ref={colorsCanvasRef} />
 	</div>
 }
 
@@ -313,8 +334,6 @@ const UserInteraction = (props: { nes: NES.NES, onChange: () => void }) => {
 }
 
 export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
-	const charsCanvasRef = useRef<HTMLCanvasElement>(null)
-	const colorsCanvasRef = useRef<HTMLCanvasElement>(null)
 	const disaTableRef = useRef<HTMLDivElement>(null)
 
 	// dummy state to tell when to update the view.
@@ -357,42 +376,18 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 	}, [pc2Idx, props.nes, updateCounter])
 
 	useEffect(() => {
-		const cvs = charsCanvasRef.current
-		if (!cvs) {
-			return
-		}
-		props.nes.renderCharacters(cvs)
-		Color.render(cvs)
-	}, [props.nes, updateCounter])
-
-	useEffect(() => {
 		props.nes.setLogger(new Logger(new ConsoleLogSink(), "NES"))
 		return () => {
 			props.nes.setLogger(undefined)
 		}
 	}, [props.nes])
 
-	const leftSide = <div>
-		<CPUInfo cpu={props.nes.cpu}></CPUInfo>
-		<div>
-			<PPUInfo ppu={props.nes.ppu} />
-		</div>
-		<div>
-			<canvas ref={charsCanvasRef}></canvas>
-		</div>
-		<div>
-			<canvas ref={colorsCanvasRef}></canvas>
-		</div>
-	</div>
-	const rightSide = <>{disaTable}</>
-
 	return <div style={{ display: "flex" }}>
 		<UserInteraction nes={props.nes} onChange={() => setUpdateCounter((x) => x + 1)} />
+		<CPUInfo cpu={props.nes.cpu} />
+		<PPUInfo ppu={props.nes.ppu} />
 		<span>
-			{leftSide}
-		</span>
-		<span>
-			{rightSide}
+			{disaTable}
 		</span>
 	</div>
 }
