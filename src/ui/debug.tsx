@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
+import React, { useRef, useEffect, useState, useCallback } from 'react'
 import * as NES from '../nes'
 import * as Color from '../ppu/color'
 import * as PPU from '../ppu/ppu'
@@ -109,7 +109,7 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		}
 		const canvas = canvasRef.current
 		ppu.renderNametable(canvas)
-	}, [props.ppu])
+	}, [ppu])
 
 	useEffect(() => {
 		const cvs = charsCanvasRef.current
@@ -193,9 +193,7 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 
 const CPUInfo = (props: { cpu: CPU }) => {
 	const cpu = props.cpu
-	const pc = cpu.getPC()
-
-	const disaList = useMemo(() => cpu.disasm(10), [props.cpu, pc])
+	const disaList = cpu.disasm(10)
 
 	const disaTable =
 		<div style={{ width: "200px" }}>
@@ -352,7 +350,7 @@ const UserInteraction = (props: { nes: NES.NES, onChange: () => void }) => {
 
 export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 	// dummy state to tell when to update the view.
-	const [updateCounter, setUpdateCounter] = useState(0)
+	const [, setUpdateCounter] = useState(0)
 
 	useEffect(() => {
 		props.nes.setLogger(new Logger(new ConsoleLogSink(), "NES"))
@@ -363,7 +361,12 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 
 	return <div style={{ display: "flex" }}>
 		<UserInteraction nes={props.nes} onChange={() => setUpdateCounter((x) => x + 1)} />
-		<CPUInfo cpu={props.nes.cpu} />
+		<div>
+			<table><tbody>
+				<TableRow row={["Mapper", props.nes.mapper.cartridge.header.mapper.toString(10)]} />
+			</tbody></table>
+			<CPUInfo cpu={props.nes.cpu} />
+		</div>
 		<PPUInfo ppu={props.nes.ppu} />
 	</div>
 }

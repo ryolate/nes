@@ -52,6 +52,10 @@ export class PPU {
         if (this.vblank && (this.ctrlNMIEnable > oldCtrlNMIEnable)) {
             this.nmi.set()
         }
+
+        if (this.ctrlNMIEnable !== oldCtrlNMIEnable) {
+            this.logger?.log(`ctroNMIEnable <- ${this.ctrlNMIEnable}`)
+        }
     }
 
     // PPUMASK $2001 > write
@@ -63,6 +67,8 @@ export class PPU {
     grayscale = 0 // Greyscale (0: normal color, 1: produce a greyscale display)
 
     private setMask(x: uint8) {
+        assertUint8(x)
+
         this.colorEmphasis = x >> 5
         this.spriteEnable = x >> 4 & 1
         this.backgroundEnable = x >> 3 & 1
@@ -75,9 +81,9 @@ export class PPU {
     }
 
     // PPUSTATUS $2002 < read
-    vblank = 0 // Vertical blank has started (0: not in vblank; 1: in vblank).
+    vblank = 1 // Vertical blank has started (0: not in vblank; 1: in vblank).
     spriteZeroHit = 0 // Sprite 0 Hit.
-    spriteOverflow = 0 // Sprite overflow.
+    spriteOverflow = 1 // Sprite overflow.
     private readStatus(): number {
         const res = this.vblank << 7 | this.spriteZeroHit << 6 | this.spriteOverflow << 5
         // Reading the status register will clear bit 7
@@ -611,6 +617,9 @@ export class PPU {
         if (pc < 0x2000 || pc > 0x3FFF) {
             throw new Error(`Out of range PPC.writeCPU(${pc}, ${x})`)
         }
+        if (this.logger) {
+            this.logger.log(`${PPU.registerNames.get(pc)} <- 0x${x.toString(16)}`)
+        }
         switch (pc & 7) {
             case 0: // $2000 write
                 this.setCtrl(x)
@@ -738,7 +747,10 @@ export class PPU {
         const pixelSize = 2
         canvas.setAttribute('width', `${2 * 16 * 8 * pixelSize}`)
         canvas.setAttribute('height', `${16 * 8 * pixelSize}`)
-        const ctx = canvas.getContext('2d')!
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+            return
+        }
         for (let h = 0; h < 2; h++) { // (0: "left"; 1: "right")
             for (let y = 0; y < 16; y++) { // tile row
                 for (let x = 0; x < 16; x++) { // tile column
@@ -756,6 +768,18 @@ export class PPU {
             }
         }
     }
+
+    static registerNames = new Map([
+        [0x2000, "PPUCTRL"],
+        [0x2001, "PPUMASK"],
+        [0x2002, "PPUSTATUS"],
+        [0x2003, "OAMADDR"],
+        [0x2004, "OAMDATA"],
+        [0x2005, "PPUSCROLL"],
+        [0x2006, "PPUADDR"],
+        [0x2007, "PPUDATA"],
+        [0x4014, "OAMDMA"],
+    ])
 }
 
 export type Palette = [uint8, uint8, uint8]

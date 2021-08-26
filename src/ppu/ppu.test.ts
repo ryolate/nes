@@ -12,6 +12,9 @@ test.each([
 	['src/asset/nestest.nes', 6],
 	['testdata/secret/DONKEY_KONG.NES', 10],
 	['testdata/secret/SUPER_MARIO_BROS.NES', 60],
+	// ['testdata/secret/nes-test-roms/cpu_interrupts_v2/cpu_interrupts.nes', 60],
+	// ['testdata/secret/nes-test-roms/blargg_ppu_tests_2005.09.15b/palette_ram.nes', 60],
+	// ['testdata/secret/nes-test-roms/apu_test/apu_test.nes', 60],
 ])("Compare", async (filepath, frameCount) => {
 	const data = fs.readFileSync(filepath)
 	const nes = NES.fromCartridgeData(data)

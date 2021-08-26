@@ -741,7 +741,6 @@ export class CPU {
 
         this.instructionCount++
 
-        this.logger?.setPrefix(`${this.PC.toString(16).toUpperCase()} ${this.instructionCount}`)
         this.debugCallbacks.forEach(x => {
             x[0](this.cpuStatus())
         });
@@ -883,10 +882,11 @@ export class CPU {
                 case "abs":
                 case "abx":
                 case "aby":
-                case "ind":
+                case "ind": {
                     const res = this.read16(pc)
                     pc += 2
                     return res
+                }
             }
         })()
         return [{
