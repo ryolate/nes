@@ -18,7 +18,10 @@ export class Mapper1 implements Mapper {
 	}
 	private loadRegister(pc: uint16, x: uint8) {
 		if (x >> 7) {
+			// Reset shift register and write Control with (Control OR $0C),
+			// locking PRG ROM at $C000 - $FFFF to the last bank.
 			this.resetShiftRegister()
+			this.setControl(this.getControl() | 0xC)
 			return
 		}
 		const copy = this.shiftRegister & 1
@@ -42,6 +45,9 @@ export class Mapper1 implements Mapper {
 		this.mirroring = x & 3
 		this.prgROMBankMode = x >> 2 & 3
 		this.chrROMBankMode = x >> 4 & 1
+	}
+	private getControl(): number {
+		return this.chrROMBankMode << 4 | this.prgROMBankMode << 2 | this.mirroring
 	}
 	// 0: one-screen, lower bank
 	// 1: one-screen, upper bank

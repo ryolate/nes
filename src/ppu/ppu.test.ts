@@ -12,7 +12,8 @@ test.each([
 	['src/asset/nestest.nes', 6],
 	['testdata/secret/DONKEY_KONG.NES', 10],
 	['testdata/secret/SUPER_MARIO_BROS.NES', 60],
-	['testdata/secret/nes-test-roms/apu_mixer/square.nes', 10], // initial screen
+	['testdata/secret/starter.latest.nes', 30], // mapper 1
+	['testdata/secret/nes-test-roms/apu_mixer/square.nes', 10], // vertical mirroring
 ])("Compare", async (filepath, frameCount) => {
 	const data = fs.readFileSync(filepath)
 	const nes = NES.fromCartridgeData(data)

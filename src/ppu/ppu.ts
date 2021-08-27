@@ -708,8 +708,6 @@ export class PPU {
         const cursorX = (this.nametableSelect() & 1) * WIDTH + this.coarseX() * 8 + this.fineX()
         const cursorY = (this.nametableSelect() >> 1) * HEIGHT + this.coarseY() * 8 + this.fineY()
 
-        this.logger?.log(`cursorX = ${cursorX}, cursorY = ${cursorY}`)
-
         for (let h = 0; h < 4; h++) {
             for (let y = 0; y < HEIGHT; y++) {
                 for (let x = 0; x < WIDTH; x++) {
