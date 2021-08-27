@@ -83,9 +83,6 @@ const RealGame = (props: { nes: NES.NES }) => {
 		// TODO: use AudioWorklet
 		const ctx = new AudioContext()
 		const sampleRate = ctx.sampleRate
-		if (sampleRate != 44100) {
-			throw new Error(`sampleRate = ${sampleRate} want 44100`)
-		}
 		const bufferSize = 1024 * 4 // TODO: 1024
 		const scriptNode: ScriptProcessorNode = ctx.createScriptProcessor(bufferSize, 0, 1)
 		scriptNode.onaudioprocess = (e: AudioProcessingEvent) => {

@@ -13,22 +13,22 @@ import { Mapper, MapperFactory } from "./mappers/mapper";
 const CPUHz = 1.789773 * 1000 * 1000
 const CPUMillisPerCycle = 1000 / CPUHz
 
-const AUDIOSampleRate = 44100 // 44.1K Hz
-
 export class NES {
-	mapper: Mapper
-	private controller: Controller
+	readonly mapper: Mapper
+	private readonly controller: Controller
 
-	private apu: APU
+	private readonly apu: APU
 	ppu: PPU
 	cpu: CPU
 
 	private cycleCount = 0
 	private nextAudioSampleCount = 0.0
-	private audioSampleBuffer = new AudioEventDeque()
+	private readonly audioSampleBuffer = new AudioEventDeque()
+	private readonly audioSampleRate
 
 	constructor(mapper: Mapper) {
 		this.mapper = mapper
+		this.audioSampleRate = typeof AudioContext === 'undefined' ? 44100 : new AudioContext().sampleRate
 		this.controller = new Controller()
 
 		const nmi = new NMI()
@@ -70,7 +70,7 @@ export class NES {
 
 		this.cycleCount++
 		if (this.nextAudioSampleCount < this.cycleCount) {
-			this.nextAudioSampleCount += CPUHz / AUDIOSampleRate
+			this.nextAudioSampleCount += CPUHz / this.audioSampleRate
 			this.audioSampleBuffer.pushBack({
 				value: this.apu.output(),
 				cycle: this.cycleCount,
