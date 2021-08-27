@@ -23,7 +23,7 @@ const sameColor = (i: number, j: number): boolean => {
 	return Color.sameColor(Color.get(i), Color.get(j))
 }
 
-export const assertSameImageBuffers = async (ours: Uint8ClampedArray, theirs: Uint8ClampedArray): Promise<void> => {
+export const assertSameImageBuffers = async (ours: Uint8ClampedArray, theirs: Uint8ClampedArray, filepath?: string): Promise<void> => {
 	const ourIndices = []
 	for (let y = 0; y < height; y++) {
 		const a = []
@@ -55,7 +55,7 @@ export const assertSameImageBuffers = async (ours: Uint8ClampedArray, theirs: Ui
 				failCount++
 			}
 		}
-		if (failCount >= 2000) {
+		if (failCount >= 10) {
 			console.log(`too much mismatch >= ${failCount}`)
 			break
 		}
@@ -87,7 +87,8 @@ export const assertSameImageBuffers = async (ours: Uint8ClampedArray, theirs: Ui
 	stream.pipe(out)
 	await new Promise((resolve) => {
 		out.on('finish', () => {
-			console.log(`diff.png created under ${__dirname}`)
+			const name = filepath ? filepath : 'test'
+			console.log(`${name} failed; diff.png created under ${__dirname}`)
 			resolve(0)
 		})
 	})

@@ -14,6 +14,7 @@ test.each([
 	['testdata/secret/SUPER_MARIO_BROS.NES', 60],
 	// ['testdata/secret/nes-test-roms/branch_timing_tests/1.Branch_Basics.nes', 14], // pass
 
+	// ['testdata/secret/nes-test-roms/apu_mixer/square.nes', 10],
 	// ['testdata/secret/nes-test-roms/cpu_interrupts_v2/cpu_interrupts.nes', 60],
 	// ['testdata/secret/nes-test-roms/blargg_ppu_tests_2005.09.15b/palette_ram.nes', 60],
 	// ['testdata/secret/nes-test-roms/apu_test/apu_test.nes', 60],
@@ -29,7 +30,7 @@ test.each([
 	const got = nes.buffer()
 	const want = wantFrame(filepath, frameCount)
 
-	await assertSameImageBuffers(got, want)
+	await assertSameImageBuffers(got, want, filepath)
 })
 
 test('thwaite.nes', async () => {

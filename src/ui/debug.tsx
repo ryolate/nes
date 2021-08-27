@@ -118,15 +118,15 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		}
 		const canvas = canvasRef.current
 		ppu.renderNametable(canvas)
-	}, [ppu])
+	})
 
 	useEffect(() => {
 		const cvs = charsCanvasRef.current
 		if (!cvs) {
 			return
 		}
-		props.ppu.renderCharacters(cvs)
-	}, [props.ppu])
+		ppu.renderCharacters(cvs)
+	})
 
 	useEffect(() => {
 		const cvs = colorsCanvasRef.current
@@ -134,7 +134,7 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 			return
 		}
 		Color.render(cvs)
-	}, [props.ppu])
+	}, [])
 
 	const states = [
 		["frame", ppu.frameCount],
@@ -146,7 +146,6 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		["nametableSelect [$2000@0-1]", ppu.nametableSelect()],
 		["fineX", ppu.fineX()],
 		["fineY", ppu.fineY()],
-		["internalW", ppu.internalW],
 		// $2000
 		["ctrlNMIEnable [$2000@7]", ppu.ctrlNMIEnable],
 		// ["ctrlPPUMaster", ppu.ctrlPPUMaster],
@@ -370,6 +369,7 @@ const CartridgeInfo = (props: { cartridge: Cartridge }) => {
 			[
 				["Mapper", props.cartridge.header.mapper.toString(10)],
 				["chrROMSize", "0x" + props.cartridge.header.chrROMSize.toString(16)],
+				["mirroring", "" + props.cartridge.header.mirroring],
 			].map(([name, value], i) => {
 				return <TableRow key={i} row={[name, value]} />
 			})
