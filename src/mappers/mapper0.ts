@@ -55,11 +55,19 @@ export class Mapper0 implements Mapper {
 	writeCHR(pc: uint16, x: uint8): void {
 		this.cartridge.writeCHR(pc, x)
 	}
+
+	private nametableIndex(pc: number): number {
+		if (this.cartridge.header.mirroring) {
+			return (pc >> 1 & 0x800) | (pc & 0x7FF)
+		} else {
+			return pc & 0xFFF
+		}
+	}
 	readNametable(pc: number): number {
-		return this.vram[(pc - 0x2000) & 0xFFF]
+		return this.vram[this.nametableIndex(pc)]
 	}
 	writeNametable(pc: number, x: number): void {
-		this.vram[(pc - 0x2000) & 0xFFF] = x
+		this.vram[this.nametableIndex(pc)] = x
 	}
 	state(): MapperState {
 		return []

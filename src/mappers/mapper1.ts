@@ -1,4 +1,4 @@
-import { assertInRange, uint16, uint8 } from "../num";
+import { assertInRange, assertUint8, uint16, uint8 } from "../num";
 import { Cartridge } from "./cartridge";
 import { Mapper, MapperState } from "./mapper";
 
@@ -126,13 +126,13 @@ export class Mapper1 implements Mapper {
 			return this.chrBank1 * 0x1000 + (pc - 0x1000)
 		}
 	}
-
 	// Pattern table $0000 - $1FFF
-	// Name table $2000 - $2FFF
 	readCHR(pc: uint16): uint8 {
+		assertInRange(pc, 0, 0x1FFF)
 		return this.cartridge.readCHR(this.chrROMIndex(pc))
 	}
 	writeCHR(pc: uint16, x: uint8): void {
+		assertInRange(pc, 0, 0x1FFF)
 		this.cartridge.writeCHR(this.chrROMIndex(pc), x)
 	}
 	private nametableIndex(pc: number): number {
@@ -149,10 +149,13 @@ export class Mapper1 implements Mapper {
 		throw new Error(`BUG: mirroring=${this.mirroring}`)
 	}
 	readNametable(pc: number): number {
+		assertInRange(pc, 0x2000, 0x2FFF)
 		assertInRange(this.nametableIndex(pc), 0, 0x800)
 		return this.vram[this.nametableIndex(pc)]
 	}
 	writeNametable(pc: number, x: number): void {
+		assertInRange(pc, 0x2000, 0x2FFF)
+		assertUint8(x)
 		assertInRange(this.nametableIndex(pc), 0, 0x800)
 		this.vram[this.nametableIndex(pc)] = x
 	}
