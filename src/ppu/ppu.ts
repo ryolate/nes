@@ -81,9 +81,9 @@ export class PPU {
     }
 
     // PPUSTATUS $2002 < read
-    vblank = 1 // Vertical blank has started (0: not in vblank; 1: in vblank).
+    vblank = 0 // Vertical blank has started (0: not in vblank; 1: in vblank).
     spriteZeroHit = 0 // Sprite 0 Hit.
-    spriteOverflow = 1 // Sprite overflow.
+    spriteOverflow = 0 // Sprite overflow.
     private readStatus(): number {
         const res = this.vblank << 7 | this.spriteZeroHit << 6 | this.spriteOverflow << 5
         // Reading the status register will clear bit 7
@@ -169,7 +169,7 @@ export class PPU {
     // This fine X value does not change during rendering.
     private internalX = 0
     // First or second write toggle (1 bit)
-    internalW = 0
+    private internalW = 0
     // 2 16-bit shift registers - These contain the pattern table data for two
     // tiles. Every 8 cycles, the data for the next tile is loaded into the
     // upper 8 bits of this shift register. Meanwhile, the pixel to render is
@@ -301,12 +301,12 @@ export class PPU {
 
         const fineY = this.internalV >> 12
         // Name table address.
-        const tileAddress = 0x2000 | (this.internalV & 0x0FFF)
-        const tileIndex = this.bus.read(tileAddress)
+        const tileAddress = 0x2000 | (this.internalV & 0xFFF)
+        const tileIndex = this.bus.mapper.readNametable(tileAddress)
 
-        const patternByte0 = this.bus.read(this.ctrlBackgroundTileSelect << 12 |
+        const patternByte0 = this.bus.mapper.readCHR(this.ctrlBackgroundTileSelect << 12 |
             tileIndex << 4 | 0 | fineY)
-        const patternByte1 = this.bus.read(this.ctrlBackgroundTileSelect << 12 |
+        const patternByte1 = this.bus.mapper.readCHR(this.ctrlBackgroundTileSelect << 12 |
             tileIndex << 4 | 8 | fineY)
 
         // NN 1111 YYY XXX
@@ -316,7 +316,9 @@ export class PPU {
         // ++--------------- nametable select
         const attributeAddress = 0x23C0 | (this.internalV & 0x0C00) |
             ((this.internalV >> 4) & 0b111000) | ((this.internalV >> 2) & 0b111)
-        const attrByte = this.bus.read(attributeAddress)
+        const attrByte = this.bus.mapper.readNametable(attributeAddress)
+
+        this.logger?.log(`p0: ${patternByte0}, p1: ${patternByte1}, attrByte: ${attrByte}`)
 
         // --- -- ---Y- ---X- -> YX0
         const at = attrByte >> ((this.internalV >> 4) & 4 | this.internalV & 2) & 3
@@ -327,9 +329,6 @@ export class PPU {
         this.paletteAttributesNextLatch = at
     }
     private reloadShifters() {
-        // assertInRange(this.patternTableData0, 0, 255)
-        // assertInRange(this.patternTableData1, 0, 255)
-
         this.patternTableData0 |= this.patternByte0Latch << 8
         this.patternTableData1 |= this.patternByte1Latch << 8
         this.paletteAttributesNext = this.paletteAttributesNextLatch
