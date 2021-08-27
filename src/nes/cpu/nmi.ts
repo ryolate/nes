@@ -1,5 +1,5 @@
 export class NMI {
-	x = false
+	private x = false
 	set(): void {
 		this.x = true
 	}

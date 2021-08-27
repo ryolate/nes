@@ -3,7 +3,7 @@ import * as NES from '../nes/nes'
 import * as Color from '../nes/ppu/color'
 import * as PPU from '../nes/ppu/ppu'
 import { ConsoleLogSink, Logger } from '../nes/logger'
-import { CPU } from '../nes/cpu'
+import { CPU } from '../nes/cpu/cpu'
 import { Cartridge } from '../mappers/cartridge'
 import { Mapper } from '../mappers/mapper'
 

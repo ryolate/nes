@@ -2,7 +2,7 @@
 import { CPUStatus, CPUHaltError } from './cpu'
 import { Instruction } from './opcode'
 import * as fs from 'fs'
-import { NES } from './nes'
+import { NES } from '../nes'
 
 const data = fs.readFileSync("testdata/nestest.nes")
 

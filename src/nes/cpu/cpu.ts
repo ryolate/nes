@@ -1,11 +1,11 @@
 import * as Opcode from './opcode'
-import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, assertUint8, assertUint16 } from './num'
-import { PPU } from './ppu/ppu'
+import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, assertUint8, assertUint16 } from '../num'
+import { PPU } from '../ppu/ppu'
 import { NMI } from './nmi'
-import { Controller } from './controller'
-import { APU } from './apu'
-import { Logger } from './logger'
-import { Mapper } from '../mappers/mapper'
+import { Controller } from '../controller'
+import { APU } from '../apu'
+import { Logger } from '../logger'
+import { Mapper } from '../../mappers/mapper'
 
 /*
 

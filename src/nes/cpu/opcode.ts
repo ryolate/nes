@@ -1,4 +1,4 @@
-import { uint8 } from './num'
+import { uint8 } from '../num'
 
 export type Mode = "imm" | "zp" | "zpx" | "zpy" | "izx" | "izy" | "abs" | "abx" | "aby" | "ind" | "rel" | ""
 
