@@ -1,3 +1,5 @@
+
+
 /**
  * @jest-environment jsdom
  */
@@ -8,8 +10,8 @@ import { JSNES } from '../../testing/jsnes'
 import * as controller from '../controller'
 
 test.each([
-	['src/asset/hello.nes', 5],
-	['src/asset/nestest.nes', 6],
+	['testdata/secret/hello.nes', 5],
+	['testdata/nestest.nes', 6],
 	['testdata/secret/DONKEY_KONG.NES', 10],
 	['testdata/secret/SUPER_MARIO_BROS.NES', 60],
 	['testdata/secret/starter.latest.nes', 30], // mapper 1
