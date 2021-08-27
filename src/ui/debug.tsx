@@ -4,8 +4,8 @@ import * as Color from '../nes/ppu/color'
 import * as PPU from '../nes/ppu/ppu'
 import { ConsoleLogSink, Logger } from '../nes/logger'
 import { CPU } from '../nes/cpu/cpu'
-import { Cartridge } from '../mappers/cartridge'
-import { Mapper } from '../mappers/mapper'
+import { Cartridge } from '../nes/mappers/cartridge'
+import { Mapper } from '../nes/mappers/mapper'
 
 const withHeader = (title: string, e: JSX.Element) => {
 	return <div>

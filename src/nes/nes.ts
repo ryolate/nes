@@ -7,7 +7,7 @@ import { Controller, ControllerId } from "./controller";
 import { uint8 } from "./num";
 import { Logger } from "./logger";
 import { AudioEvent, AudioEventDeque } from "./audio_util";
-import { Mapper, MapperFactory } from "../mappers/mapper";
+import { Mapper, MapperFactory } from "./mappers/mapper";
 
 // NTSC CPU clock frequency = 1.789773 MHz
 const CPUHz = 1.789773 * 1000 * 1000

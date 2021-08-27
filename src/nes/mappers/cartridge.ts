@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { uint8, hasBit, assertInRange, assertUint8 } from '../nes/num'
+import { uint8, hasBit, assertInRange, assertUint8 } from '../num'
 
 /*
 Reference:

@@ -1,4 +1,4 @@
-import { assertInRange, assertUint8, uint16, uint8 } from "../nes/num";
+import { assertInRange, assertUint8, uint16, uint8 } from "../num";
 import { Cartridge } from "./cartridge";
 import { Mapper, MapperState } from "./mapper";
 
