@@ -58,9 +58,11 @@ export class Mapper0 implements Mapper {
 
 	private nametableIndex(pc: number): number {
 		if (this.cartridge.header.mirroring) {
-			return (pc >> 1 & 0x800) | (pc & 0x7FF)
+			// vertical
+			return pc & 0x7FF
 		} else {
-			return pc & 0xFFF
+			// horizontal
+			return (pc >> 1 & 0x400) | (pc & 0x3FF)
 		}
 	}
 	readNametable(pc: number): number {

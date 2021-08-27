@@ -262,15 +262,15 @@ export class PPU {
         } else {
             this.internalV &= ~0x7000                    // fine Y = 0
             let y = (this.internalV & 0x03E0) >> 5       // let y = coarse Y
-            if (y == 29) {
+            if (y === 29) {
                 y = 0                          // coarse Y = 0
                 this.internalV ^= 0x0800       // switch vertical nametable
-            } else if (y == 31) {
+            } else if (y === 31) {
                 y = 0                          // coarse Y = 0, nametable not switched
             } else {
                 y += 1                         // increment coarse Y
-                this.internalV = (this.internalV & ~0x03E0) | (y << 5)     // put coarse Y back into v
             }
+            this.internalV = (this.internalV & ~0x03E0) | (y << 5)     // put coarse Y back into v
         }
     }
 
@@ -317,8 +317,6 @@ export class PPU {
         const attributeAddress = 0x23C0 | (this.internalV & 0x0C00) |
             ((this.internalV >> 4) & 0b111000) | ((this.internalV >> 2) & 0b111)
         const attrByte = this.bus.mapper.readNametable(attributeAddress)
-
-        this.logger?.log(`p0: ${patternByte0}, p1: ${patternByte1}, attrByte: ${attrByte}`)
 
         // --- -- ---Y- ---X- -> YX0
         const at = attrByte >> ((this.internalV >> 4) & 4 | this.internalV & 2) & 3
@@ -617,9 +615,9 @@ export class PPU {
         if (pc < 0x2000 || pc > 0x3FFF) {
             throw new Error(`Out of range PPC.writeCPU(${pc}, ${x})`)
         }
-        if (this.logger) {
-            this.logger.log(`${PPU.registerNames.get(pc)} <- 0x${x.toString(16)}`)
-        }
+        // if (this.logger) {
+        //     this.logger.log(`${PPU.registerNames.get(pc)} <- 0x${x.toString(16)}`)
+        // }
         switch (pc & 7) {
             case 0: // $2000 write
                 this.setCtrl(x)
@@ -707,6 +705,11 @@ export class PPU {
             return
         }
 
+        const cursorX = (this.nametableSelect() & 1) * WIDTH + this.coarseX() * 8 + this.fineX()
+        const cursorY = (this.nametableSelect() >> 1) * HEIGHT + this.coarseY() * 8 + this.fineY()
+
+        this.logger?.log(`cursorX = ${cursorX}, cursorY = ${cursorY}`)
+
         for (let h = 0; h < 4; h++) {
             for (let y = 0; y < HEIGHT; y++) {
                 for (let x = 0; x < WIDTH; x++) {
@@ -730,12 +733,18 @@ export class PPU {
                         colorIndex = ci
                     }
 
-                    const c = Color.get(colorIndex)
+                    let color = Color.get(colorIndex)
 
                     const x2 = x + (h & 1) * WIDTH
                     const y2 = y + (h >> 1) * HEIGHT
+
+                    const dist = Math.abs(x2 - cursorX) + Math.abs(y2 - cursorY)
+                    if (dist <= 1) {
+                        color = [255, 0, 0] // red
+                    }
+
                     for (let k = 0; k < 4; k++) {
-                        this.renderNametableBuffer[(y2 * 2 * WIDTH + x2) * 4 + k] = k === 3 ? 255 : c[k]
+                        this.renderNametableBuffer[(y2 * 2 * WIDTH + x2) * 4 + k] = k === 3 ? 255 : color[k]
                     }
                 }
             }
