@@ -2,7 +2,7 @@ import { assertInRange, assertUint8, uint16, uint8, uint8Reverse } from '../num'
 import { NMI } from '../nmi'
 import * as Color from './color'
 import { Logger } from '../logger'
-import { Mapper } from '../mappers/mapper'
+import { Mapper } from '../../mappers/mapper'
 
 /*
 Reference:

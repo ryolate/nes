@@ -1,4 +1,4 @@
-import { uint16, uint8 } from "../num";
+import { uint16, uint8 } from "../nes/num";
 import { Cartridge } from "./cartridge";
 import { Mapper, MapperState } from "./mapper";
 

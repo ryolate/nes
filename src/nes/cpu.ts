@@ -5,7 +5,7 @@ import { NMI } from './nmi'
 import { Controller } from './controller'
 import { APU } from './apu'
 import { Logger } from './logger'
-import { Mapper } from './mappers/mapper'
+import { Mapper } from '../mappers/mapper'
 
 /*
 

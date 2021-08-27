@@ -1,6 +1,6 @@
 // Module to provide golden data for testing using jsnes.
 
-import * as Color from '../ppu/color'
+import * as Color from '../nes/ppu/color'
 import * as jsnes from './jsnes'
 import * as canvas from 'canvas'
 import * as fs from 'fs'

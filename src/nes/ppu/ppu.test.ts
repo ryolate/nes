@@ -3,8 +3,8 @@
  */
 import * as fs from 'fs'
 import { NES } from '../nes'
-import { assertSameImageBuffers, wantFrame } from '../testing/golden'
-import { JSNES } from '../testing/jsnes'
+import { assertSameImageBuffers, wantFrame } from '../../testing/golden'
+import { JSNES } from '../../testing/jsnes'
 import * as controller from '../controller'
 
 test.each([

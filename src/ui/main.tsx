@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import React, { useRef, useEffect, useState } from 'react'
-import * as NES from '../nes'
+import * as NES from '../nes/nes'
 import { DebugGame, ErrorBanner } from './debug'
 
 const RealGame = (props: { nes: NES.NES }) => {
