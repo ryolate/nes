@@ -291,7 +291,6 @@ const UserInteraction = (props: { nes: NES.NES, onChange: () => void }) => {
 		props.onChange()
 	}
 
-
 	useEffect(() => {
 		props.nes.setControllerState(1, buttons)
 	}, [buttons, props.nes])
