@@ -2,7 +2,31 @@
 
 Run CI.
 
-Run `npx ts-node gs.ts` in ci/ .
+## Usage
+
+Run tests and upload resulting images:
+
+* `npx ts-node ./src/testing/ci/golden_gen.ts --upload`
+
+Run tests and store resulting images to local temporary directory:
+
+* `npx ts-node ./src/testing/ci/golden_gen.ts`
+
+Each entry in `target.txt` specifies a nes file to run. By default they run for
+60 frames, but optional second element can override it.
+Lines starting with `#` are comments. 
+
+```
+# Run cpu test for 15 frames
+testdata/nes-test-roms/branch_timing_tests/1.Branch_Basics.nes 15
+```
+
+Images are stored in the path `<dir>/<basename>@<frame>.png`. In the case
+above, it's stored as `branch_timing_tests/1.Branch_Basics.nes@15.png`.
+
+For GS upload, files are stored under the directory `<timestamp>-<hash>`,
+where `<timestamp>` is the unix timestamp and `<hash>` is the Git commit hash.
+GS upload fails when the directory is not clean.
 
 ## Developer note
 

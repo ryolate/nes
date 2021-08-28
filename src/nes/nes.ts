@@ -38,6 +38,10 @@ export class NES {
 		this.cpu = new CPU(this.mapper, this.ppu, nmi, this.controller, this.apu)
 	}
 
+
+	// Example:
+	//     const data = fs.readFileSync("testdata/nestest.nes")
+	//     const nes = NES.fromCartridgeData(data)
 	static fromCartridgeData(cartridgeData: Uint8Array): NES {
 		return new NES(MapperFactory.parseINES(cartridgeData))
 	}
