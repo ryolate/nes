@@ -10,12 +10,12 @@ import { JSNES } from '../../testing/jsnes'
 import * as controller from '../controller'
 
 test.each([
-	['testdata/secret/hello.nes', 5],
 	['testdata/nestest.nes', 6],
 	['testdata/secret/DONKEY_KONG.NES', 10],
-	['testdata/secret/SUPER_MARIO_BROS.NES', 60],
+	['testdata/secret/hello.nes', 5],
 	['testdata/secret/starter.latest.nes', 30], // mapper 1
-	['testdata/secret/nes-test-roms/apu_mixer/square.nes', 10], // vertical mirroring
+	['testdata/secret/SUPER_MARIO_BROS.NES', 60],
+	['testdata/nes-test-roms/apu_mixer/square.nes', 10], // vertical mirroring
 ])("Compare", async (filepath, frameCount) => {
 	const data = fs.readFileSync(filepath)
 	const nes = NES.fromCartridgeData(data)

@@ -14,7 +14,8 @@ Run `npx ts-node gs.ts` in ci/ .
 
 Secret key was set up as follows.
 
-Create a Google cloud bucket named `ci-tsnes-324212` from the [browser UI](https://console.cloud.google.com/storage/browser?project=tsnes-324212&prefix=).
+Create a Google cloud bucket named `ci-tsnes-324212` from the
+[browser UI](https://console.cloud.google.com/storage/browser?project=tsnes-324212&prefix=).
 
 * Location type = Region
 * Region        = asia-east1
