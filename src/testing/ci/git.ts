@@ -8,7 +8,11 @@ export async function headHash(): Promise<string> {
 
 async function dirtyFilesInner(): Promise<Array<string>> {
 	const res = await util.promisify(child_process.exec)('git status -s')
-	return res.stdout.trim().split("\n").map((line) => line.trim().split(/ +/)[1])
+	const out = res.stdout.trim()
+	if (out.length === 0) {
+		return []
+	}
+	return out.split("\n").map((line) => line.trim().split(/ +/)[1])
 }
 
 export async function dirtyFiles(except: Array<RegExp>): Promise<Array<string>> {
