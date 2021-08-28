@@ -5,10 +5,7 @@ import {
     NavLink, Route, Switch
 } from 'react-router-dom'
 import * as NESUI from './ui/main'
-
-const CIApp = () => {
-    return <div>Hello CI!</div>
-}
+import * as CI from './testing/ci'
 
 function App() {
     return (
@@ -22,7 +19,7 @@ function App() {
             </nav>
             <div>
                 <Switch>
-                    <Route path="/ci"><CIApp /></Route>
+                    <Route path="/ci"><CI.App /></Route>
                     <Route path="/"><NESUI.App /></Route>
                 </Switch>
             </div>
