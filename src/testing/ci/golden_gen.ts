@@ -77,8 +77,10 @@ async function writeImages(tmpdir: string) {
 async function main() {
 	const dirty = await git.dirtyFiles([
 		/^.*\.md$/,
+		new RegExp('^src/testing/ci/golden_gen.ts$'),
 	])
 	if (dirty.length > 0) {
+		console.log()
 		throw new Error(`working directory not clean; stash or commit ${dirty}`)
 	}
 
