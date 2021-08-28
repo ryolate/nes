@@ -90,7 +90,9 @@ async function main() {
 
 	await writeImages(tmpdir)
 
-	fs.symlinkSync(tmpdir, path.join(basedir, "latest"))
+	const latest = path.join(basedir, "latest")
+	fs.unlinkSync(latest)
+	fs.symlinkSync(tmpdir, latest)
 }
 
 main().catch(console.error)
