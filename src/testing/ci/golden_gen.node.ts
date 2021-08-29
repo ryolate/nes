@@ -9,7 +9,7 @@ import commander from 'commander'
 
 import * as git from './git.node'
 import * as NES from '../../nes/nes'
-import * as fire from './test_firebase.node'
+import * as fire from './firebase_upload.node'
 
 const targets = fs.readFileSync(__dirname + '/target.txt', 'utf8').split("\n").filter((line: string) => {
 	if (line.length === 0 || line[0] === '#') {

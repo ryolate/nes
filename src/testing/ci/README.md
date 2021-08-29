@@ -32,9 +32,7 @@ GS upload fails when the workspace is not clean.
 
 ### Credentials
 
-https://support.google.com/firebase/answer/7015592
-
-Get config object for web app
+Storage configuration:
 
 * asia-east2
 * gs://tsnes-324212.appspot.com
