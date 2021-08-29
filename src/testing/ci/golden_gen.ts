@@ -108,22 +108,30 @@ async function main() {
 		}
 	}
 
+	const timestamp = await git.headCommiterDateTimestamp()
 	const hash = await git.headHash()
-	const basedir = "/tmp/nes"
-	const tmpdir = path.join(basedir, hash) + (dirty.length > 0 ? '-dirty' : '')
+	const localRoot = "/tmp/nes"
+	const remoteBaseDir = timestamp + "-" + hash + (dirty.length > 0 ? '-dirty' : '')
+	const localBaseDir = path.join(localRoot, remoteBaseDir)
 
-	const filesToUpload = await writeImages(tmpdir, opts.overwrite)
+	console.log(`writing images in ${localBaseDir}`)
+	const filesToUpload = await writeImages(localBaseDir, opts.overwrite)
 
-	const latest = path.join(basedir, "latest")
+	const latest = path.join(localRoot, "latest")
 	fs.unlinkSync(latest)
-	fs.symlinkSync(tmpdir, latest)
+	fs.symlinkSync(localBaseDir, latest)
 
 	if (opts.upload) {
 		const cl = new gs.Client()
+
 		for (const localPath of filesToUpload) {
-			const remotePath = localPath.substring(basedir.length + 1)
+			const remotePath = path.relative(localRoot, localPath)
 			console.log(`Uploading to ${gs.urlFor(remotePath)}`)
 			await cl.uploadFile(localPath, remotePath)
+		}
+		if (filesToUpload.length > 0) {
+			// empty file to get timestamp.
+			await cl.uploadFile('/dev/null', path.join(remoteBaseDir, "UPLOAD"))
 		}
 	}
 }

@@ -5,7 +5,7 @@ import {
     NavLink, Route, Switch
 } from 'react-router-dom'
 import * as NESUI from './ui/main'
-import * as CI from './testing/ci'
+import * as CI from './testing/ci/ui'
 
 function App() {
     return (

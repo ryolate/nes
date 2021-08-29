@@ -47,3 +47,7 @@ Create a Google cloud bucket named `ci-tsnes-324212` from the
 
 Create [service account](https://cloud.google.com/storage/docs/reference/libraries?hl=ja#setting_up_authentication), name it "ci-uploader", and allow it to create storage objects.
 Create a key for the account, download json file under ci/, and rename it `ci-uploader_secret_key.json` .
+
+### GS files
+
+* $bucket/${commit_time_stamp}-${hash}/...  -- test results

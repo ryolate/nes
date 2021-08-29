@@ -16,6 +16,9 @@ const storage = new gs.Storage({
 });
 
 export class Client {
+	bucket(): gs.Bucket {
+		return storage.bucket(bucketID)
+	}
 	async uploadFile(localPath: string, remotePath: string): Promise<gs.UploadResponse> {
 		return storage.bucket(bucketID).upload(localPath, {
 			destination: remotePath,
@@ -24,9 +27,27 @@ export class Client {
 			throw e
 		})
 	}
+	async getRecent() {
+		const b = this.bucket()
+		const [, , prefixes]: [unknown, unknown, Array<string>]
+			= await b.getFiles({
+				autoPaginate: false,
+				delimiter: '/',
+			})
+		const [files, ,] = await b.getFiles({
+			autoPaginate: false,
+			prefix: prefixes[0],
+		})
+		console.log(files[0].metadata.updated)
+		// const x = res[0]
+		// console.log(x[0].metadata)
+	}
+
 }
 
 const urlPrefix = "https://storage.cloud.google.com/" + bucketID
 export function urlFor(remotePath: string): string {
 	return urlPrefix + "/" + encodeURI(remotePath)
 }
+
+// new Client().getRecent()

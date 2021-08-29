@@ -23,3 +23,8 @@ export async function dirtyFiles(except: Array<RegExp>): Promise<Array<string>> 
 export async function isClean(except: Array<RegExp>): Promise<boolean> {
 	return (await dirtyFiles(except)).length === 0
 }
+
+export async function headCommiterDateTimestamp(): Promise<string> {
+	const res = await util.promisify(child_process.exec)('git show -s --format=%ct HEAD')
+	return res.stdout.trim()
+}
