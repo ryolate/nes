@@ -53,14 +53,14 @@ function localFilePath(tmpdir: string, testROM: string, frame: number): string {
 }
 
 // write images without overwriting existing files.
-async function writeImages(tmpdir: string) {
-	parseLine(targets[0])
-
+// Retuns updated file paths.
+// If overwrite is true, files are overwritten even if they exist.
+async function writeImages(tmpdir: string, overwrite?: boolean): Promise<Array<string>> {
+	const res: Array<string> = []
 	await Promise.all(targets.map(async line => {
 		const [testROM, frame] = parseLine(line)
 		const filepath = localFilePath(tmpdir, testROM, frame)
-		if (fs.existsSync(filepath)) {
-			console.log(`${filepath} already exists; skip`)
+		if (!overwrite && fs.existsSync(filepath)) {
 			return
 		}
 		const data = fs.readFileSync(testROM)
@@ -73,42 +73,38 @@ async function writeImages(tmpdir: string) {
 			throw err
 		}
 		fs.mkdirSync(path.dirname(filepath), { recursive: true })
+		res.push(filepath)
 		await writeBufferAsImage(nes.buffer(), filepath)
 	}))
-}
-
-async function* walk(dir: string): AsyncGenerator<string> {
-	for await (const d of await fs.promises.opendir(dir)) {
-		const entry = path.join(dir, d.name);
-		if (d.isDirectory()) yield* walk(entry);
-		else if (d.isFile()) yield entry;
-	}
+	return res
 }
 
 async function main() {
 	const program = new commander.Command()
 	program
 		.option('--upload', 'upload the results to GS')
+		.option('--overwrite', 'overwrite existing local files')
 		.option('--ignore-dirty', 'ignore dirty (uncommitted) files')
 	program.parse(process.argv)
 
-	const opts: {
-		"ignoreDirty": boolean,
-		"upload": boolean,
-	} = program.opts() as {
+	const opts = program.opts() as {
 		ignoreDirty: boolean,
+		overwrite: boolean,
 		upload: boolean
 	}
 
 	const dirty = await git.dirtyFiles([
 		/^.*\.md$/,
+		/^.*\.tsx$/,
+		/^.*\.json$/,
 		new RegExp('^src/testing/ci/golden_gen.ts$'),
 	])
-	if (dirty.length > 0) {
-		const msg = `working directory not clean; stash or commit ${dirty}`
-		console.error(msg)
-		if (!opts.ignoreDirty) {
-			throw new Error(msg)
+	const isDirty = dirty.length > 0
+	if (isDirty) {
+		if (opts.ignoreDirty) {
+			console.log(`working directory not clean; continue`)
+		} else {
+			throw new Error(`working directory not clean; stash or commit ${dirty}`)
 		}
 	}
 
@@ -116,7 +112,7 @@ async function main() {
 	const basedir = "/tmp/nes"
 	const tmpdir = path.join(basedir, hash) + (dirty.length > 0 ? '-dirty' : '')
 
-	await writeImages(tmpdir)
+	const filesToUpload = await writeImages(tmpdir, opts.overwrite)
 
 	const latest = path.join(basedir, "latest")
 	fs.unlinkSync(latest)
@@ -124,9 +120,10 @@ async function main() {
 
 	if (opts.upload) {
 		const cl = new gs.Client()
-		for await (const localPath of walk(tmpdir)) {
+		for (const localPath of filesToUpload) {
 			const remotePath = localPath.substring(basedir.length + 1)
-			cl.uploadFile(localPath, remotePath)
+			console.log(`Uploading to ${gs.urlFor(remotePath)}`)
+			await cl.uploadFile(localPath, remotePath)
 		}
 	}
 }
