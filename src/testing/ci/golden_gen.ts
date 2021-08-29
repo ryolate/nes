@@ -129,10 +129,6 @@ async function main() {
 			console.log(`Uploading to ${gs.urlFor(remotePath)}`)
 			await cl.uploadFile(localPath, remotePath)
 		}
-		if (filesToUpload.length > 0) {
-			// empty file to get timestamp.
-			await cl.uploadFile('/dev/null', path.join(remoteBaseDir, "UPLOAD"))
-		}
 	}
 }
 
