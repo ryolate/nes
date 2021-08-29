@@ -6,15 +6,15 @@ Run CI.
 
 Run tests and upload resulting images:
 
-* `npx ts-node ./src/testing/ci/golden_gen.ts --upload`
+* `npx ts-node ./src/testing/ci/golden_gen.node.ts --upload`
 
-Run tests and store resulting images to local temporary directory:
+Run tests and store resulting images to local tmp directory:
 
 * `npx ts-node ./src/testing/ci/golden_gen.ts`
 
 Each entry in `target.txt` specifies a nes file to run. By default they run for
 60 frames, but optional second element can override it.
-Lines starting with `#` are comments. 
+Lines starting with `#` are ignored.
 
 ```
 # Run cpu test for 15 frames
@@ -26,28 +26,27 @@ above, it's stored as `branch_timing_tests/1.Branch_Basics.nes@15.png`.
 
 For GS upload, files are stored under the directory `<timestamp>-<hash>`,
 where `<timestamp>` is the unix timestamp and `<hash>` is the Git commit hash.
-GS upload fails when the directory is not clean.
+GS upload fails when the workspace is not clean.
 
 ## Developer note
 
-### Client
-
-- Node JS API: https://googleapis.dev/nodejs/storage/latest/
-
 ### Credentials
 
-Secret key was set up as follows.
+https://support.google.com/firebase/answer/7015592
 
-Create a Google cloud bucket named `ci-tsnes-324212` from the
-[browser UI](https://console.cloud.google.com/storage/browser?project=tsnes-324212&prefix=).
+Get config object for web app
 
-* Location type = Region
-* Region        = asia-east1
-* Storage class = Standard
+* asia-east2
+* gs://tsnes-324212.appspot.com
+* allow all users to read
+* allow authenticated users to write
 
-Create [service account](https://cloud.google.com/storage/docs/reference/libraries?hl=ja#setting_up_authentication), name it "ci-uploader", and allow it to create storage objects.
-Create a key for the account, download json file under ci/, and rename it `ci-uploader_secret_key.json` .
+Go to Firebase console
+https://console.firebase.google.com/project/tsnes-324212/overview ,
+and create admin credential here
+https://console.firebase.google.com/project/tsnes-324212/settings/serviceaccounts/adminsdk?hl=ja .
+Download private key and put it as `firebase_admin_key.json` .
 
-### GS files
+### Storage files
 
 * $bucket/${commit_time_stamp}-${hash}/...  -- test results

@@ -2,14 +2,14 @@
 // Creates images running nes against each rom in target.txt.
 // They are uploaded to GS or stored locally.
 import * as canvas from 'canvas'
-import * as fs from 'fs'
-import * as path from 'path'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 
-import * as git from './git'
-import * as gs from './gs'
+import commander from 'commander'
+
+import * as git from './git.node'
 import * as NES from '../../nes/nes'
-
-import * as commander from 'commander'
+import * as fire from './test_firebase.node'
 
 const targets = fs.readFileSync(__dirname + '/target.txt', 'utf8').split("\n").filter((line: string) => {
 	if (line.length === 0 || line[0] === '#') {
@@ -63,7 +63,7 @@ async function writeImages(tmpdir: string, overwrite?: boolean): Promise<Array<s
 		if (!overwrite && fs.existsSync(filepath)) {
 			return
 		}
-		const data = fs.readFileSync(testROM)
+		const data = fs.readFileSync(path.join(__dirname, "../../..", testROM))
 		let nes: NES.NES
 		try {
 			nes = NES.NES.fromCartridgeData(data)
@@ -122,11 +122,9 @@ async function main() {
 	fs.symlinkSync(localBaseDir, latest)
 
 	if (opts.upload) {
-		const cl = new gs.Client()
-
+		const cl = new fire.Client()
 		for (const localPath of filesToUpload) {
 			const remotePath = path.relative(localRoot, localPath)
-			console.log(`Uploading to ${gs.urlFor(remotePath)}`)
 			await cl.uploadFile(localPath, remotePath)
 		}
 	}
