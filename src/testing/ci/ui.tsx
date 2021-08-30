@@ -38,8 +38,10 @@ export const View = (props: { items: Array<StorageItem> }): JSX.Element => {
 		<th></th>
 		{versions.map(version => {
 			const { timestamp, hash } = parseVersion(version)
-			return <th key={hash}>
-				{hash}
+			return <th key={hash} >
+				<div style={{ width: 128, overflowWrap: "break-word" }}>
+					{hash}
+				</div>
 			</th>
 		})
 		}
@@ -47,7 +49,7 @@ export const View = (props: { items: Array<StorageItem> }): JSX.Element => {
 
 	const rows = testROMs.map(testROM => {
 		return <tr key={testROM}>
-			<td><div style={{ width: "256", textOverflow: "ellipsis" }}>{testROM}</div></td>
+			<td><div style={{ width: 128, overflowWrap: "break-word" }}>{testROM}</div></td>
 			{
 				versions.map((version) => {
 					const url = urls.get(testROM)?.get(version)
@@ -59,7 +61,7 @@ export const View = (props: { items: Array<StorageItem> }): JSX.Element => {
 					</td>
 				})
 			}
-		</tr>
+		</tr >
 	})
 
 	return <table>
@@ -84,9 +86,6 @@ export const App = (): JSX.Element => {
 	const [loading, setLoading] = useState(false)
 	const [allItems, setAllItems] = useState<Array<StorageItem>>()
 	useEffect(() => {
-		if (reloadCount === 0) {
-			return
-		}
 		firebase_util.initOnce()
 		setLoading(true)
 		const f = async () => {
@@ -114,19 +113,12 @@ export const App = (): JSX.Element => {
 			setLoading(false)
 
 			console.log(`${performance.now()}: done`)
-
-			const sum = new Map<string, DOMHighResTimeStamp>()
-			for (const entry of performance.getEntries()) {
-				const cur = sum.get(entry.name)
-				sum.set(entry.name, (cur ? cur : 0) + entry.duration)
-			}
-			console.log(sum)
 		}
 		f().catch(console.error)
 	}, [reloadCount])
 
 	return <div>
-		< button disabled={loading} onClick={() => setReloadCount(x => x + 1)}>{loading ? "Loading..." : reloadCount ? "Reload" : "Load data"}</button >
+		< button disabled={loading} onClick={() => setReloadCount(x => x + 1)}>{loading ? "Loading..." : "Reload"}</button >
 		{allItems ? <View items={allItems} /> : null}
 	</div>
 }
