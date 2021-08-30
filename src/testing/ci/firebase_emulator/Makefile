@@ -8,6 +8,7 @@ init:
 run:
 	docker run \
 	-p 4000:4000 \
+	-p 9099:9099 \
 	-p 9199:9199 \
 	-v $$HOME/.config:/root/.config \
-	firebase emulators:start
+	firebase emulators:start --project tsnes-324212 --import=./data --export-on-exit

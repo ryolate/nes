@@ -14,5 +14,7 @@ COPY storage.rules storage.rules
 EXPOSE 4000
 # Storage
 EXPOSE 9199
+# Auth
+EXPOSE 9099
 
 ENTRYPOINT ["firebase"]

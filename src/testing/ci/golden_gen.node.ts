@@ -9,7 +9,7 @@ import commander from 'commander'
 
 import * as git from './git.node'
 import * as NES from '../../nes/nes'
-import * as fire from './firebase_upload.node'
+import * as fire from './upload.node'
 
 const targets = fs.readFileSync(__dirname + '/target.txt', 'utf8').split("\n").filter((line: string) => {
 	if (line.length === 0 || line[0] === '#') {
@@ -85,12 +85,14 @@ async function main() {
 		.option('--upload', 'upload the results to GS')
 		.option('--overwrite', 'overwrite existing local files')
 		.option('--ignore-dirty', 'ignore dirty (uncommitted) files')
+		.option('--development', 'upload files to devserver')
 	program.parse(process.argv)
 
 	const opts = program.opts() as {
 		ignoreDirty: boolean,
 		overwrite: boolean,
 		upload: boolean
+		development: boolean,
 	}
 
 	const dirty = await git.dirtyFiles([
@@ -122,12 +124,14 @@ async function main() {
 	fs.symlinkSync(localBaseDir, latest)
 
 	if (opts.upload) {
-		const cl = new fire.Client()
-		for (const localPath of filesToUpload) {
+		const cl = opts.development ? new fire.DevClient() : new fire.Client()
+		await Promise.all(filesToUpload.map(localPath => {
 			const remotePath = path.relative(localRoot, localPath)
-			await cl.uploadFile(localPath, remotePath)
-		}
+			return cl.uploadFile(localPath, remotePath)
+		}))
 	}
+	console.log(`all done!`)
+	process.exit(0)
 }
 
 main().catch(console.error)

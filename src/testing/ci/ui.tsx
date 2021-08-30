@@ -3,6 +3,7 @@ import firebase from 'firebase/app'
 import 'firebase/storage'
 
 import * as firebase_util from './firebase_util'
+import { ErrorBanner } from '../../ui/debug'
 
 function parseVersion(version: string): {
 	timestamp: Date,
@@ -85,13 +86,15 @@ export const App = (): JSX.Element => {
 	const [reloadCount, setReloadCount] = useState(0)
 	const [loading, setLoading] = useState(false)
 	const [allItems, setAllItems] = useState<Array<StorageItem>>()
+	const [error, setError] = useState<Error | null>(null)
 	useEffect(() => {
-		firebase_util.initOnce()
+		const local = location.hostname === "localhost"
+		firebase_util.init(local)
 		setLoading(true)
 		const f = async () => {
-			performance.mark("list")
+			console.log(`${performance.now()}: listing`)
 			const sub = await firebase.storage().ref().list()
-			performance.measure("list")
+
 			// choose 10 Most recently created subdirs
 			const subdirs = sub.prefixes.slice().sort((a, b) => {
 				return a.name < b.name ? -1 : a.name > b.name ? 1 : 0
@@ -114,11 +117,15 @@ export const App = (): JSX.Element => {
 
 			console.log(`${performance.now()}: done`)
 		}
-		f().catch(console.error)
+		f().catch((e) => {
+			setError(e)
+			setLoading(false)
+		})
 	}, [reloadCount])
 
 	return <div>
 		< button disabled={loading} onClick={() => setReloadCount(x => x + 1)}>{loading ? "Loading..." : "Reload"}</button >
 		{allItems ? <View items={allItems} /> : null}
+		<ErrorBanner error={error} />
 	</div>
 }
