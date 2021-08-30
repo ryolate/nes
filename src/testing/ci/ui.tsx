@@ -11,7 +11,7 @@ function parseVersion(version: string): {
 } {
 	const [timestampStr, ...hash] = version.split("-")
 	return {
-		timestamp: new Date(parseInt(timestampStr)),
+		timestamp: new Date(parseInt(timestampStr) * 1000),
 		hash: hash.join("-"),
 	}
 }
@@ -32,14 +32,14 @@ export const View = (props: { items: Array<StorageItem> }): JSX.Element => {
 		versionSet.add(version)
 	}
 
-	const versions = new Array<string>(...versionSet).sort()
+	const versions = new Array<string>(...versionSet).sort().reverse()
 	const testROMs = new Array<string>(...urls.keys()).sort()
 
 	const header = <tr>
 		<th></th>
 		{versions.map(version => {
 			const { timestamp, hash } = parseVersion(version)
-			return <th key={hash} >
+			return <th key={hash} title={timestamp.toString()}>
 				<div style={{ width: 128, overflowWrap: "break-word" }}>
 					{hash}
 				</div>
@@ -88,8 +88,8 @@ export const App = (): JSX.Element => {
 	const [allItems, setAllItems] = useState<Array<StorageItem>>()
 	const [error, setError] = useState<Error | null>(null)
 	useEffect(() => {
-		const local = location.hostname === "localhost"
-		firebase_util.init(local)
+		// const local = location.hostname === "localhost"
+		firebase_util.init(false)
 		setLoading(true)
 		const f = async () => {
 			console.log(`${performance.now()}: listing`)
