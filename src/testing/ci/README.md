@@ -30,6 +30,20 @@ GS upload fails when the workspace is not clean.
 
 ## Developer note
 
+### Local development
+
+Use firebase emulator suite.
+https://firebase.google.com/docs/emulator-suite/connect_and_prototype
+
+Run emulator on Docker
+
+```
+cd firebase_emulator
+make build
+make init # only once
+make run
+```
+
 ### Credentials
 
 Storage configuration:
