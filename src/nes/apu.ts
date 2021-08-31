@@ -118,8 +118,8 @@ class Noise {
 	]
 
 	setR1(x: number): void {
-		this.envelope.loop = this.lengthCounter.halt = x >> 6 & 1
-		this.envelope.constantVolume = x >> 5 & 1
+		this.envelope.loop = this.lengthCounter.halt = x >> 5 & 1
+		this.envelope.constantVolume = x >> 4 & 1
 		this.envelope.volume = x & 15
 	}
 	setR2(x: number): void {
