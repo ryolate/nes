@@ -47,6 +47,9 @@ Github action is set up to run test results and upload them on push.
 Set `FIREBASE_CONFIG` in Actions secrets page. The content is the same as
 `firebase_admin_key.json` .
 
+For local testing of Github actions, run
+`act -P ubuntu-latest=catthehacker/ubuntu:act-latest`.
+
 ### Emulator
 
 Use firebase emulator suite.

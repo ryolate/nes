@@ -161,4 +161,7 @@ async function main() {
 	console.log(`all done!`)
 }
 
-main().catch(console.error)
+main().catch((e) => {
+	console.error(e)
+	throw e
+})
