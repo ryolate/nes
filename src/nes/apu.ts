@@ -171,10 +171,53 @@ class Noise {
 }
 
 class DMC {
-	r1 = 0
-	r2 = 0
-	r3 = 0
-	r4 = 0
+	setR1(x: uint8): void {// $4010
+		this.irqEnabled = x >> 7 & 1
+		this.loop = x >> 6 & 1
+		this.rateIndex = x & 15
+	}
+	setR2(x: uint8): void {// $4011
+		this.outputLevel = x & 0x7F
+	}
+	setR3(x: uint8): void {// $4012
+		this.sapmleAddress = 0xC000 + x * 64
+	}
+	setR4(x: uint8): void {// $4013
+		this.sapmleLength = x * 16 + 1
+	}
+	// IRQ enabled flag. If clear, the interrupt flag is cleared.
+	irqEnabled = 0
+	// Loop flag
+	loop = 0
+	// Rate index
+	rateIndex = 0
+	// The rate determines for how many CPU cycles happen between changes in the
+	// output level during automatic delta-encoded sample playback.
+	static rateTable = [428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54]
+
+	outputLevel = 0
+	sapmleAddress = 0
+	sapmleLength = 0
+	// 8-bit sample buffer
+	buffer = 0
+
+	// When the sample buffer is emptied, the memory reader fills the sample
+	// buffer with the next byte from the currently playing sample. It has an
+	// address counter and a bytes remaining counter.
+	readerAddress = 0
+	readerCounter = 0
+	emptyBuffer(): void {
+		this.buffer = this.readMemory()
+	}
+	readMemory(): uint8 {
+		// FIXME. Read memory.
+		return 0
+	}
+
+	output(): number {
+		return this.outputLevel
+	}
+
 }
 
 // Outputs a clock periodically
