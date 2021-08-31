@@ -490,12 +490,16 @@ export class APU {
 	interruptInhibit = 0 // bit 6 of $4017
 	fiveStepSequence = 0 // bit 7 of $4017
 
-	frameInteruptFlag = 0 // TODO: CPU should read it.
+	frameInterruptFlag = 0 // TODO: CPU should read it.
 
 	oddCPUCycle = false // if true APU is ticked
 	frameCounter = 0
 
 	timerResetIn = 0
+
+	irq(): boolean {
+		return this.frameInterruptFlag === 1
+	}
 
 	// Call it at the same rate as the CPU clock cycle.
 	tick(): void {
@@ -526,7 +530,7 @@ export class APU {
 		// elapsed in total, and each step of the sequence will occur once that
 		// total has reached the indicated amount. Once the last
 		// step has executed, the count resets to 0 on the next APU cycle.
-		if (this.fiveStepSequence) {
+		if (this.fiveStepSequence === 0) {
 			// Mode 0: 4-Step Sequence
 			switch (this.frameCounter) {
 				case 3728.5:
@@ -584,7 +588,7 @@ export class APU {
 		if (this.interruptInhibit) {
 			return
 		}
-		this.frameInteruptFlag = 1
+		this.frameInterruptFlag = 1
 	}
 	private resetFrameCounter() {
 		this.frameCounter = 0
@@ -617,9 +621,10 @@ export class APU {
 	read(pc: uint16): uint8 {
 		switch (pc) {
 			case 0x4015: {
+				const f = this.frameInterruptFlag
 				// Reading this register clears the frame interrupt flag (but
 				// not the DMC interrupt flag).
-				this.frameInteruptFlag = 0
+				this.frameInterruptFlag = 0
 
 				// TODO: DMC interrupt, DMC active
 				//
@@ -634,7 +639,7 @@ export class APU {
 				const p2 = this.pulse2.lengthCounter.output() ? 1 : 0
 				const t = this.triangle.lengthCounter.output() ? 1 : 0
 				const n = this.noise.lengthCounter.output() ? 1 : 0
-				return this.frameInteruptFlag << 6 | n << 3 | t << 2 | p2 << 1 | p1
+				return f << 6 | n << 3 | t << 2 | p2 << 1 | p1
 			}
 		}
 		// They are write-only except $4015.
@@ -720,6 +725,11 @@ export class APU {
 				// Set mode and interrupt (write)
 				this.fiveStepSequence = x >> 7 & 1
 				this.interruptInhibit = x >> 6 & 1
+				// If set, the frame interrupt flag is cleared, otherwise it is
+				// unaffected.
+				if (this.interruptInhibit) {
+					this.frameInterruptFlag = 0
+				}
 
 				// Side effects
 				// After 3 or 4 CPU clock cycles*, the timer is reset.

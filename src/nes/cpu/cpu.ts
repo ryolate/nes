@@ -130,7 +130,7 @@ export class CPU {
     private D: uint8 = 0 // decimal
     // I: Interrupt Disable
     // When set, all interrupts except the NMI are inhibited.
-    private I: uint8
+    private I: number
     private Z: uint8 = 0 // zero
     private C: uint8 = 0 // carry
 
@@ -178,6 +178,8 @@ export class CPU {
         let op: Opcode.Opcode
         if (this.nmi.handle()) {
             op = Opcode.nmi
+        } else if (!this.I && this.apu.irq()) {
+            op = Opcode.irq
         } else {
             op = Opcode.opcodes[this.fetch()]
         }
