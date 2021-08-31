@@ -4,7 +4,6 @@ import 'firebase/storage'
 import 'firebase/firestore'
 
 import * as firebase_util from './firebase_util'
-import { ErrorBanner } from '../../ui/debug'
 
 firebase_util.initOnce(false)
 
@@ -99,7 +98,12 @@ const ResultsView = (props: { results: ResultsSchema, answers: AnswersSchema, on
 
 	const rows = testROMs.map(testROM => {
 		return <tr key={testROM}>
-			<td><div style={{ width: 192, overflowWrap: "break-word" }}>{testROM.split(":").map((x, i) => <p key={i}>{x}</p>)}</div></td>
+			<td><div style={{ width: 192, overflowWrap: "break-word" }}>{(() => {
+				const [dir, rom] = testROM.split(":")
+				return <><p><a href={"https://github.com/christopherpow/nes-test-roms/tree/master/" + dir}>{dir}</a></p>
+					<p>{rom}</p>
+				</>
+			})()}</div></td>
 			{
 				versions.map((version) => {
 					const result = urls.get(testROM)?.get(version)
