@@ -40,6 +40,11 @@ See https://console.firebase.google.com/project/tsnes-324212/firestore/data
 
 See https://console.firebase.google.com/project/tsnes-324212/storage/tsnes-324212.appspot.com/files
 
+### Github actions
+
+Github action to upload test results runs on push.
+
+
 ### Emulator
 
 Use firebase emulator suite.
