@@ -85,8 +85,6 @@ function writeImages(targets: Array<string>, tmpdir: string, overwrite?: boolean
 			let nes: NES.NES
 			try {
 				nes = NES.NES.fromCartridgeData(data)
-
-				console.log(`Running ${line}`)
 				nes.frame(frame)
 			} catch (err) {
 				console.error(`${testROM}: NES failure: ${err}`)
@@ -156,12 +154,14 @@ interface Message {
 
 async function workerFunc(opts: Option) {
 	process.on("message", ({ localBaseDir }: Message) => {
+		const targets = allTargets().filter((_, i) => i % NUM_WORKER === cluster.worker!.id - 1)
 
-		const targets = allTargets().filter((_, i) => i % NUM_WORKER === cluster.worker!.id)
-
-		processTargets(opts, localBaseDir, targets)
-		process.send!(cluster.worker!.id)
-		cluster.worker?.disconnect()
+		processTargets(opts, localBaseDir, targets).catch((e) => {
+			console.error(`Error on worker ${cluster.worker!.id}: ${e}`)
+		}).then(() => {
+			process.send!(cluster.worker!.id)
+			cluster.worker?.disconnect()
+		})
 	})
 }
 

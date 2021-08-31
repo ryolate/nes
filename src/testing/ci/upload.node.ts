@@ -16,7 +16,6 @@ export class Client {
 	// Upload the file to firebase storage using bucket API
 	// https://googleapis.dev/nodejs/storage/latest/Bucket.html
 	async uploadFile(localPath: string, remotePath: string): Promise<string> {
-		console.log(`uploading to ${remotePath}...`)
 		const [file,] = await admin.storage().bucket().upload(localPath, {
 			destination: remotePath,
 		}).catch(e => {
@@ -43,13 +42,6 @@ export class Client {
 					imageSHA1: imageSHA1,
 				}
 			}, { merge: true })
-
-		// const db = admin.firestore()
-		// const ref = db.collection("results").doc(version)
-		// This call hangs. https://github.com/FirebaseExtended/flutterfire/issues/4513
-		// const result = await ref.set({ [testROM]: persistentURL }, { merge: true })
-
-		console.log(`uploaded ${version}/${testROM} -> ${persistentURL}`)
 	}
 
 	close(): void {
