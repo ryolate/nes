@@ -14,6 +14,7 @@
     "eslint-plugin-react-hooks": "^4.2.0",
     "firebase-admin": "^9.11.1",
     "firebase-tools": "^9.16.6",
+    "idb": "^6.1.2",
     "jest": "^27.0.1",
     "jsnes": "^1.1.0",
     "style-loader": "^2.0.0",

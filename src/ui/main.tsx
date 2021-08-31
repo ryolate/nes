@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import React, { useRef, useEffect, useState } from 'react'
 import * as NES from '../nes/nes'
+import { DB } from './db'
 import { DebugGame, ErrorBanner } from './debug'
 
 const RealGame = (props: { nes: NES.NES }) => {
@@ -112,76 +113,82 @@ const RealGame = (props: { nes: NES.NES }) => {
 }
 
 interface FileEntry {
-	dummy: string // empty
 	name: string
 	file: File
 }
 
+// 0-th element is the currently selected file.
+type History = Array<FileEntry>
+
 const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
-	const [fileName, setFileName] = useState<string>("No file")
-	const [filePath, setFilePath] = useState<string | null>(null)
-	const [db, setDB] = useState<IDBDatabase | null>(null)
+	const { onChange } = props
 
-	const onChange = props.onChange
-	useEffect(() => {
-		if (filePath === null) {
-			return
-		}
-		let cancelled = false
-		fetch(filePath).then((response) => {
-			return response.blob()
-		}).then((blob) => {
-			const e = {
-				dummy: "",
-				name: fileName,
-				file: blob,
-			}
-			db?.transaction("file", "readwrite").objectStore("file").put(e)
-			return blob.arrayBuffer()
-		}).then((data) => {
-			if (!cancelled) {
-				onChange(new Uint8Array(data))
-			}
-		})
-		return () => { cancelled = true }
-	}, [filePath, fileName, db, onChange])
+	const [history, setHistory] = useState<History>([])
 
+	// Initialize history
 	useEffect(() => {
-		const fileDB = indexedDB.open('fileDB', 2)
-		fileDB.onupgradeneeded = e => {
-			const db = (e.target as IDBRequest).result as IDBDatabase
-			db.onerror = (e) => {
-				console.error(e)
+		async function f() {
+			const db = await DB.open<History>("history")
+			const hist = await db.get()
+			if (hist === undefined) {
+				return
 			}
-			db.createObjectStore('file', { keyPath: 'dummy' });
+			setHistory(hist)
 		}
-		fileDB.onsuccess = ((e) => {
-			const db = (e.target as IDBRequest).result as IDBDatabase
-			db.transaction("file").objectStore("file").get("").onsuccess = (e) => {
-				const f = (e.target as IDBRequest<FileEntry>).result
-				setFileName(f.name)
-				setFilePath(URL.createObjectURL(f.file))
-			}
-			setDB(db)
+		f().catch(e => {
+			console.error(e)
+			throw e
 		})
 	}, [])
 
-	return <div>
-		<label>{fileName}</label>
-		<div style={{ height: 50, borderStyle: "inset" }}
-			onDrop={e => {
-				e.preventDefault()
-				const file = e.dataTransfer.files[0]
-				setFileName(file.name)
-				setFilePath(URL.createObjectURL(file))
-			}}
-			onDragOver={e => {
-				e.preventDefault()
-			}}
-		>
-			D&D NES file here
-		</div>
+	// On history change
+	useEffect(() => {
+		async function f() {
+			if (history.length > 0) {
+				onChange(new Uint8Array(await history[0].file.arrayBuffer()))
+			}
+		}
+		f().catch(e => {
+			console.error(e)
+			throw e
+		})
+	}, [history, onChange])
 
+	async function insertFileToHistory(name: string, file: File) {
+		const hist = [{ name: name, file: file }].concat(history)
+		setHistory(hist)
+		const db = await DB.open<History>("history")
+		await db.set(hist)
+	}
+
+	const chooser = <div style={{ height: 50, borderStyle: "inset" }}
+		onDrop={e => {
+			e.preventDefault()
+			const file = e.dataTransfer.files[0]
+			insertFileToHistory(file.name, file)
+		}}
+		onDragOver={e => {
+			e.preventDefault()
+		}}
+	>
+		D&D NES file here
+	</div>
+
+	const selector = <select value={0} onChange={(event) => {
+		const i = parseInt(event.target.value)
+		const hist = history.slice()
+		const head = hist.splice(i, 1)
+		setHistory(head.concat(hist))
+	}}>
+		{
+			history.map((entry, i) =>
+				<option value={i} key={i}>{entry.name}</option>)
+		}
+	</select >
+
+	return <div>
+		{selector}
+		{chooser}
 	</div >
 }
 
