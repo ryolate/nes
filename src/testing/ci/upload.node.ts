@@ -1,38 +1,57 @@
 import * as admin from "firebase-admin";
-import { devInit } from './firebase_util';
+import "@google-cloud/firestore";
+import { devInit, initOnce } from './firebase_util';
 import { adminInitOnce } from "./firebase_admin_util.node";
 import * as fs from 'node:fs'
 
-export class Client {
-	private readonly bucket
+import "firebase/app"
+import "firebase/firestore"
 
+export class Client {
 	constructor() {
 		adminInitOnce()
-		this.bucket = admin.storage().bucket()
+		initOnce(false)
 	}
 
 	// Upload the file to firebase storage using bucket API
 	// https://googleapis.dev/nodejs/storage/latest/Bucket.html
-	async uploadFile(localPath: string, remotePath: string): Promise<void> {
+	async uploadFile(localPath: string, remotePath: string): Promise<string> {
 		console.log(`uploading to ${remotePath}...`)
-		const [file,] = await this.bucket.upload(localPath, {
+		const [file,] = await admin.storage().bucket().upload(localPath, {
 			destination: remotePath,
 		}).catch(e => {
 			console.error(`uploadFile(${localPath}, ${remotePath}) failed: ${e}`)
 			throw e
 		})
-		const now = new Date()
-		const signedURL = await file.getSignedUrl({
-			action: "read",
-			expires: now.setDate(now.getDate() + 1),
-		})
-		console.log(`success! ${signedURL}`)
-		return
+
+		await file.makePublic()
+		if (!file.isPublic()) {
+			throw new Error(`file ${file} is not public`)
+		}
+		return file.publicUrl()
+	}
+
+	async updateFirestore(version: string, testROM: string, persistentURL: string, imageSHA1: string): Promise<void> {
+		await firebase.firestore().collection("imageHash").doc(version)
+			.set({
+				[testROM]: {
+					url: persistentURL,
+					imageSHA1: imageSHA1,
+				}
+			}, { merge: true })
+
+		// const db = admin.firestore()
+		// const ref = db.collection("results").doc(version)
+		// This call hangs. https://github.com/FirebaseExtended/flutterfire/issues/4513
+		// const result = await ref.set({ [testROM]: persistentURL }, { merge: true })
+
+		console.log(`uploaded ${version}/${testROM} -> ${persistentURL}`)
 	}
 }
 
 import firebase from 'firebase/app'
 import 'firebase/storage'
+import { firestore } from "firebase-admin";
 export class DevClient {
 	constructor() {
 		devInit()

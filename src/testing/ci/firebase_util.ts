@@ -6,7 +6,7 @@ const commonFirebaseConfig = {
 }
 
 let calledDevParam: boolean | undefined = undefined
-export function init(dev: boolean): void {
+export function initOnce(dev: boolean): void {
 	if (calledDevParam !== undefined) {
 		if (calledDevParam != dev) {
 			throw new Error(`unexpected dev = ${dev}`)

@@ -1,9 +1,95 @@
 import React, { useEffect, useState } from 'react'
 import firebase from 'firebase/app'
 import 'firebase/storage'
+import 'firebase/firestore'
 
 import * as firebase_util from './firebase_util'
 import { ErrorBanner } from '../../ui/debug'
+
+firebase_util.initOnce(false)
+
+// ${timestamp}-${hash} -> $testRom -> $URL
+interface ResultsSchema {
+	[version: string]: {
+		[testROM: string]: string // URL
+	}
+}
+
+const View2 = (props: { results: ResultsSchema }) => {
+	const urls = new Map<string, Map<string, string>>() // rom -> version -> url
+
+	for (const [version, entries] of Object.entries(props.results)) {
+		for (const [testROM, url] of Object.entries(entries)) {
+			if (!urls.has(testROM)) {
+				urls.set(testROM, new Map())
+			}
+			urls.get(testROM)?.set(version, url)
+		}
+	}
+
+	const versions = Object.keys(props.results).sort().reverse()
+	const testROMs = new Array<string>(...urls.keys()).sort()
+
+	const header = <tr>
+		<th></th>
+		{versions.map(version => {
+			const { timestamp, hash } = parseVersion(version)
+			return <th key={hash} title={timestamp.toString()}>
+				<div style={{ width: 128, overflowWrap: "break-word" }}>
+					{hash}
+				</div>
+			</th>
+		})
+		}
+	</tr>
+
+	const rows = testROMs.map(testROM => {
+		return <tr key={testROM}>
+			<td><div style={{ width: 128, overflowWrap: "break-word" }}>{testROM}</div></td>
+			{
+				versions.map((version) => {
+					const url = urls.get(testROM)?.get(version)
+					if (!url) {
+						return <td></td>
+					}
+					return <td key={version}>
+						<img width="128" height="120" src={url}></img>
+					</td>
+				})
+			}
+		</tr >
+	})
+
+	return <table>
+		<thead>{header}</thead>
+		<tbody>{rows}</tbody>
+	</table>
+}
+
+const Test = (): JSX.Element => {
+	const [results, setResults] = useState<ResultsSchema>({})
+	useEffect(() => {
+		async function f() {
+			const documentLimit = 2
+			const query = firebase.firestore().collection('results')
+				.orderBy(firebase.firestore.FieldPath.documentId())
+				.limit(documentLimit)
+			const res = await query.get()
+
+			const results = {} as ResultsSchema
+			res.forEach(x => {
+				results[x.id] = x.data()
+			})
+			setResults(results)
+		}
+		f().catch(console.error)
+	}, [])
+
+
+	return <div>
+		<View2 results={results} />
+	</div>
+}
 
 function parseVersion(version: string): {
 	timestamp: Date,
@@ -16,7 +102,7 @@ function parseVersion(version: string): {
 	}
 }
 
-export const View = (props: { items: Array<StorageItem> }): JSX.Element => {
+const View = (props: { items: Array<StorageItem> }): JSX.Element => {
 	const urls = new Map<string, Map<string, string>>() // rom -> version -> url
 	const versionSet = new Set<string>()
 
@@ -88,8 +174,6 @@ export const App = (): JSX.Element => {
 	const [allItems, setAllItems] = useState<Array<StorageItem>>()
 	const [error, setError] = useState<Error | null>(null)
 	useEffect(() => {
-		// const local = location.hostname === "localhost"
-		firebase_util.init(false)
 		setLoading(true)
 		const f = async () => {
 			console.log(`${performance.now()}: listing`)
@@ -124,6 +208,7 @@ export const App = (): JSX.Element => {
 	}, [reloadCount])
 
 	return <div>
+		<Test />
 		< button disabled={loading} onClick={() => setReloadCount(x => x + 1)}>{loading ? "Loading..." : "Reload"}</button >
 		{allItems ? <View items={allItems} /> : null}
 		<ErrorBanner error={error} />

@@ -30,7 +30,11 @@ GS upload fails when the workspace is not clean.
 
 ## Developer note
 
-### Local development
+### Database schema
+
+
+
+### Emulator
 
 Use firebase emulator suite.
 https://firebase.google.com/docs/emulator-suite/connect_and_prototype
@@ -56,7 +60,7 @@ Storage configuration:
 Go to Firebase console
 https://console.firebase.google.com/project/tsnes-324212/overview ,
 and create admin credential here
-https://console.firebase.google.com/project/tsnes-324212/settings/serviceaccounts/adminsdk?hl=ja .
+https://console.firebase.google.com/project/tsnes-324212/settings/serviceaccounts/adminsdk .
 Download private key and put it as `firebase_admin_key.json` .
 
 ### Storage files

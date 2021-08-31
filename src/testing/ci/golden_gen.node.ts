@@ -52,29 +52,48 @@ function localFilePath(tmpdir: string, testROM: string, frame: number): string {
 		path.basename(testROM) + `@${frame}.png`)
 }
 
+interface ImageData {
+	sha1: string
+	filepath: string
+}
+
+import * as crypto from "crypto"
+
+function sha1sum(data: Buffer): string {
+	return crypto.createHash("sha1").update(data).digest('hex')
+}
+
 // write images without overwriting existing files.
 // Retuns updated file paths.
 // If overwrite is true, files are overwritten even if they exist.
-async function writeImages(tmpdir: string, overwrite?: boolean): Promise<Array<string>> {
-	const res: Array<string> = []
-	await Promise.all(targets.map(async line => {
-		const [testROM, frame] = parseLine(line)
-		const filepath = localFilePath(tmpdir, testROM, frame)
-		if (!overwrite && fs.existsSync(filepath)) {
-			return
+async function writeImages(tmpdir: string, overwrite?: boolean): Promise<Array<ImageData>> {
+	const res: Array<ImageData> = []
+	await Promise.all(targets.map(line => {
+		async function f() {
+			const [testROM, frame] = parseLine(line)
+			const filepath = localFilePath(tmpdir, testROM, frame)
+			if (!overwrite && fs.existsSync(filepath)) {
+				return
+			}
+			const data = fs.readFileSync(path.join(__dirname, "../../..", testROM))
+			let nes: NES.NES
+			try {
+				nes = NES.NES.fromCartridgeData(data)
+				nes.frame(frame)
+			} catch (err) {
+				console.error(`${testROM}: NES failure: ${err}`)
+				throw err
+			}
+			fs.mkdirSync(path.dirname(filepath), { recursive: true })
+			await writeBufferAsImage(nes.buffer(), filepath)
+
+			const imageSHA1 = sha1sum(fs.readFileSync(filepath))
+			res.push({
+				filepath: filepath,
+				sha1: imageSHA1
+			})
 		}
-		const data = fs.readFileSync(path.join(__dirname, "../../..", testROM))
-		let nes: NES.NES
-		try {
-			nes = NES.NES.fromCartridgeData(data)
-			nes.frame(frame)
-		} catch (err) {
-			console.error(`${testROM}: NES failure: ${err}`)
-			throw err
-		}
-		fs.mkdirSync(path.dirname(filepath), { recursive: true })
-		res.push(filepath)
-		await writeBufferAsImage(nes.buffer(), filepath)
+		return f()
 	}))
 	return res
 }
@@ -124,13 +143,22 @@ async function main() {
 	fs.symlinkSync(localBaseDir, latest)
 
 	if (opts.upload) {
-		const cl = opts.development ? new fire.DevClient() : new fire.Client()
-		await Promise.all(filesToUpload.map(localPath => {
+		if (opts.development) {
+			throw new Error(`--development is not supported`)
+		}
+		const cl = new fire.Client()
+		await Promise.all(filesToUpload.map(({ sha1: imageSHA1, filepath: localPath }) => {
 			const remotePath = path.relative(localRoot, localPath)
-			return cl.uploadFile(localPath, remotePath)
+			async function f() {
+				const url = await cl.uploadFile(localPath, remotePath)
+				const [version, ...testConfig] = remotePath.replace(".png", "").split("/")
+				await cl.updateFirestore(version, testConfig.join(":"), url, imageSHA1)
+			}
+			return f()
 		}))
 	}
 	console.log(`all done!`)
+	// TODO: graceful shutdown.
 	process.exit(0)
 }
 
