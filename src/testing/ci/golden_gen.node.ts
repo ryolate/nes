@@ -66,9 +66,8 @@ function sha1sum(data: Buffer): string {
 // write images without overwriting existing files.
 // Retuns updated file paths.
 // If overwrite is true, files are overwritten even if they exist.
-async function writeImages(tmpdir: string, overwrite?: boolean): Promise<Array<ImageData>> {
-	const res: Array<ImageData> = []
-	await Promise.all(targets.map(line => {
+function writeImages(tmpdir: string, overwrite?: boolean): Array<Promise<ImageData | undefined>> {
+	return targets.map(line => {
 		async function f() {
 			const [testROM, frame] = parseLine(line)
 			const filepath = localFilePath(tmpdir, testROM, frame)
@@ -79,6 +78,8 @@ async function writeImages(tmpdir: string, overwrite?: boolean): Promise<Array<I
 			let nes: NES.NES
 			try {
 				nes = NES.NES.fromCartridgeData(data)
+
+				console.log(`Running ${line}`)
 				nes.frame(frame)
 			} catch (err) {
 				console.error(`${testROM}: NES failure: ${err}`)
@@ -88,14 +89,13 @@ async function writeImages(tmpdir: string, overwrite?: boolean): Promise<Array<I
 			await writeBufferAsImage(nes.buffer(), filepath)
 
 			const imageSHA1 = sha1sum(fs.readFileSync(filepath))
-			res.push({
+			return {
 				filepath: filepath,
 				sha1: imageSHA1
-			})
+			}
 		}
 		return f()
-	}))
-	return res
+	})
 }
 
 async function main() {
@@ -135,8 +135,30 @@ async function main() {
 	const remoteBaseDir = timestamp + "-" + hash + (dirty.length > 0 ? '-dirty' : '')
 	const localBaseDir = path.join(localRoot, remoteBaseDir)
 
-	console.log(`writing images in ${localBaseDir}`)
-	const filesToUpload = await writeImages(localBaseDir, opts.overwrite)
+	const filesToUpload = writeImages(localBaseDir, opts.overwrite)
+
+	if (opts.development) {
+		throw new Error(`--development is not supported`)
+	}
+	const cl = new fire.Client()
+	await Promise.all(filesToUpload.map(fileToUploadPromise => {
+		async function f() {
+			const fileToUpload = await fileToUploadPromise
+			if (!fileToUpload) {
+				return
+			}
+			const { sha1: imageSHA1, filepath: localPath } = fileToUpload
+			const remotePath = path.relative(localRoot, localPath)
+			const url = await cl.uploadFile(localPath, remotePath)
+			const [version, ...testConfig] = remotePath.replace(".png", "").split("/")
+
+			if (opts.upload) {
+				await cl.updateFirestore(version, testConfig.join(":"), url, imageSHA1)
+			}
+		}
+		return f()
+	}))
+	cl.close()
 
 	const latest = path.join(localRoot, "latest")
 	if (fs.existsSync(latest)) {
@@ -144,22 +166,6 @@ async function main() {
 	}
 	fs.symlinkSync(localBaseDir, latest)
 
-	if (opts.upload) {
-		if (opts.development) {
-			throw new Error(`--development is not supported`)
-		}
-		const cl = new fire.Client()
-		await Promise.all(filesToUpload.map(({ sha1: imageSHA1, filepath: localPath }) => {
-			const remotePath = path.relative(localRoot, localPath)
-			async function f() {
-				const url = await cl.uploadFile(localPath, remotePath)
-				const [version, ...testConfig] = remotePath.replace(".png", "").split("/")
-				await cl.updateFirestore(version, testConfig.join(":"), url, imageSHA1)
-			}
-			return f()
-		}))
-		cl.close()
-	}
 	console.log(`all done!`)
 }
 

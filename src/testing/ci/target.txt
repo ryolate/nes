@@ -18,3 +18,12 @@ testdata/nes-test-roms/blargg_ppu_tests_2005.09.15b/vram_access.nes
 
 testdata/nes-test-roms/blargg_nes_cpu_test5/cpu.nes 1020
 testdata/nes-test-roms/blargg_nes_cpu_test5/official.nes 700
+
+testdata/nes-test-roms/apu_test/rom_singles/1-len_ctr.nes
+testdata/nes-test-roms/apu_test/rom_singles/2-len_table.nes
+testdata/nes-test-roms/apu_test/rom_singles/3-irq_flag.nes
+testdata/nes-test-roms/apu_test/rom_singles/4-jitter.nes
+testdata/nes-test-roms/apu_test/rom_singles/5-len_timing.nes 120
+testdata/nes-test-roms/apu_test/rom_singles/6-irq_flag_timing.nes
+testdata/nes-test-roms/apu_test/rom_singles/7-dmc_basics.nes
+testdata/nes-test-roms/apu_test/rom_singles/8-dmc_rates.nes
