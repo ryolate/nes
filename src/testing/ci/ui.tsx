@@ -21,10 +21,10 @@ function Image(props: { src: string, status: "correct" | "wrong" | "unknown", on
 
 	const [selected, setSelected] = useState(false)
 
-	const img = < img width={selected ? 512 : 128} src={src} onClick={() => {
+	const img = < img width={selected ? 256 : 128} src={src} onClick={() => {
 		setSelected(!selected)
 	}} style={{
-		padding: "2px",
+		padding: "4px",
 		backgroundColor: status === "correct" ? "lightgreen" : status === "wrong" ? "red" : undefined,
 	}} />
 
@@ -135,7 +135,7 @@ const Results = (): JSX.Element => {
 
 	useEffect(() => {
 		async function f() {
-			const documentLimit = 5
+			const documentLimit = 20
 			const res = await firebase.firestore().collection('results')
 				.orderBy("id", 'desc')
 				.limit(documentLimit)
