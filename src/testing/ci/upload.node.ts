@@ -32,7 +32,7 @@ export class Client {
 	}
 
 	async updateFirestore(version: string, testROM: string, persistentURL: string, imageSHA1: string): Promise<void> {
-		await firebase.firestore().collection("imageHash").doc(version)
+		await firebase.firestore().collection("results").doc(version)
 			.set({
 				[testROM]: {
 					url: persistentURL,
