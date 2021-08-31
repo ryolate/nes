@@ -156,10 +156,9 @@ async function main() {
 			}
 			return f()
 		}))
+		cl.close()
 	}
 	console.log(`all done!`)
-	// TODO: graceful shutdown.
-	process.exit(0)
 }
 
 main().catch(console.error)

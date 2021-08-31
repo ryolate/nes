@@ -51,6 +51,10 @@ export class Client {
 
 		console.log(`uploaded ${version}/${testROM} -> ${persistentURL}`)
 	}
+
+	close(): void {
+		firebase.app().delete()
+	}
 }
 
 import firebase from 'firebase/app'
