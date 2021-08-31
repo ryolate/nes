@@ -8,6 +8,49 @@ import { ErrorBanner } from '../../ui/debug'
 
 firebase_util.initOnce(false)
 
+const Dropdown = (props: { items: Array<string>, onClick: (item: string) => void }) => {
+	return <ul>
+		{props.items.map(item => {
+			return <li key={item} onClick={() => props.onClick(item)}>{item}</li>
+		})}
+	</ul>
+}
+
+function Image(props: { src: string, status: "correct" | "wrong" | "unknown", onMarkAsCorrect: (correct: boolean) => void }) {
+	const { src, status, onMarkAsCorrect } = props
+
+	const [selected, setSelected] = useState(false)
+
+	const img = < img width="128" src={src} onClick={() => {
+		if (selected) {
+			return
+		}
+		setSelected(true)
+	}} style={{
+		padding: "2px",
+		backgroundColor: status === "correct" ? "lightgreen" : status === "wrong" ? "red" : undefined,
+	}} />
+
+	const mark = "mark as " + (status === "correct" ? "unknown" : "correct")
+
+	const selection = <Dropdown items={["open", mark]} onClick={item => {
+		switch (item) {
+			case "open":
+				open(src)
+				break
+			case mark:
+				onMarkAsCorrect(status !== "correct")
+				break
+		}
+		setSelected(false)
+	}} />
+
+	return <div>
+		{img}
+		{selected ? selection : null}
+	</div>
+}
+
 // ${timestamp}-${hash} -> $testRom -> $URL
 interface ResultsSchema {
 	[version: string]: {
@@ -18,8 +61,12 @@ interface ResultsSchema {
 	}
 }
 
-const ResultsView = (props: { results: ResultsSchema }) => {
-	const urls = new Map<string, Map<string, string>>() // rom -> version -> url
+interface AnswersSchema {
+	[testROM: string]: string // sha1
+}
+
+const ResultsView = (props: { results: ResultsSchema, answers: AnswersSchema, onMarkAs: (testROM: string, sha1: string, correct: boolean) => void }) => {
+	const urls = new Map<string, Map<string, { url: string, sha1: string }>>() // rom -> version -> result
 
 	for (const [version, entries] of Object.entries(props.results)) {
 		for (const [testROM, entry] of Object.entries(entries)) {
@@ -29,7 +76,11 @@ const ResultsView = (props: { results: ResultsSchema }) => {
 			if (!urls.has(testROM)) {
 				urls.set(testROM, new Map())
 			}
-			urls.get(testROM)?.set(version, entry.url)
+
+			urls.get(testROM)?.set(version, {
+				url: entry.url,
+				sha1: entry.imageSHA1,
+			})
 		}
 	}
 
@@ -54,14 +105,21 @@ const ResultsView = (props: { results: ResultsSchema }) => {
 			<td><div style={{ width: 128, overflowWrap: "break-word" }}>{testROM}</div></td>
 			{
 				versions.map((version) => {
-					const url = urls.get(testROM)?.get(version)
-					if (!url) {
+					const result = urls.get(testROM)?.get(version)
+					if (!result || !result.sha1 || !result.url) {
 						return <td></td>
 					}
+
+					const correctSHA1 = props.answers[testROM]
+
+					const status = correctSHA1 ?
+						(correctSHA1 === result.sha1 ? "correct" : "wrong") :
+						"unknown"
+
 					return <td key={version}>
-						<a href={url} target="_blank" rel="noreferrer">
-							<img width="128" height="120" src={url}></img>
-						</a>
+						<Image src={result.url} status={status} onMarkAsCorrect={(correct: boolean) => {
+							props.onMarkAs(testROM, result.sha1, correct)
+						}} />
 					</td>
 				})
 			}
@@ -76,6 +134,8 @@ const ResultsView = (props: { results: ResultsSchema }) => {
 
 const Results = (): JSX.Element => {
 	const [results, setResults] = useState<ResultsSchema>({})
+	const [answers, setAnswers] = useState<AnswersSchema>({})
+
 	useEffect(() => {
 		async function f() {
 			const documentLimit = 5
@@ -89,12 +149,51 @@ const Results = (): JSX.Element => {
 				results[x.id] = x.data()
 			})
 			setResults(results)
+
+			const storedAnswers = (await firebase.firestore().collection("answers").doc("sha1").get()).data()
+
+			if (storedAnswers) {
+				const answers = {} as AnswersSchema
+				for (const [testROM, sha1] of Object.entries(storedAnswers)) {
+					answers[testROM] = sha1
+				}
+				setAnswers(cur => Object.assign(answers, cur))
+			}
 		}
 		f().catch(console.error)
 	}, [])
 
 	return <div>
-		<ResultsView results={results} />
+		<ResultsView results={results} answers={answers} onMarkAs={(testROM: string, sha1: string, correct: boolean) => {
+			async function f() {
+				console.log(`onMarkAs(${testROM}, ${correct})`)
+				if (correct) {
+					await firebase.firestore().collection("answers").doc("sha1").set({
+						[testROM]: sha1,
+					}, { merge: true })
+					setAnswers(cur => {
+						const ans = Object.assign({}, cur)
+						ans[testROM] = sha1
+						return ans
+					})
+					return
+				}
+
+				// We must use FieldPath for paths containig dots.
+				// https://stackoverflow.com/questions/49643235/firestore-how-to-update-a-field-that-contains-period-in-its-key-from-andro
+				await firebase.firestore().collection("answers").doc("sha1").update(
+					new firebase.firestore.FieldPath(testROM), firebase.firestore.FieldValue.delete()
+				)
+				console.log(`onMarkAs(${testROM}, ${correct})`)
+
+				setAnswers(cur => {
+					const ans = Object.assign({}, cur)
+					delete ans[testROM]
+					return ans
+				})
+			}
+			f().catch(console.error)
+		}} />
 	</div>
 }
 
