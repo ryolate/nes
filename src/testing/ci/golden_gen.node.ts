@@ -1,9 +1,12 @@
 // Image generator
 // Creates images running nes against each rom in target.txt.
 // They are uploaded to GS or stored locally.
-import * as canvas from 'canvas'
-import * as fs from 'node:fs'
-import * as path from 'node:path'
+import canvas from 'canvas'
+import cluster from 'node:cluster'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import process from 'node:process'
 
 import commander from 'commander'
 
@@ -11,12 +14,16 @@ import * as git from './git.node'
 import * as NES from '../../nes/nes'
 import * as fire from './upload.node'
 
-const targets = fs.readFileSync(__dirname + '/target.txt', 'utf8').split("\n").filter((line: string) => {
-	if (line.length === 0 || line[0] === '#') {
-		return false
-	}
-	return true
-})
+const NUM_WORKER = os.cpus().length
+
+function allTargets(): Array<string> {
+	return fs.readFileSync(__dirname + '/target.txt', 'utf8').split("\n").filter((line: string) => {
+		if (line.length === 0 || line[0] === '#') {
+			return false
+		}
+		return true
+	})
+}
 
 async function writeBufferAsImage(buffer: Uint8ClampedArray, filepath: string) {
 	const width = 256, height = 240
@@ -66,7 +73,7 @@ function sha1sum(data: Buffer): string {
 // write images without overwriting existing files.
 // Retuns updated file paths.
 // If overwrite is true, files are overwritten even if they exist.
-function writeImages(tmpdir: string, overwrite?: boolean): Array<Promise<ImageData | undefined>> {
+function writeImages(targets: Array<string>, tmpdir: string, overwrite?: boolean): Array<Promise<ImageData | undefined>> {
 	return targets.map(line => {
 		async function f() {
 			const [testROM, frame] = parseLine(line)
@@ -98,43 +105,26 @@ function writeImages(tmpdir: string, overwrite?: boolean): Array<Promise<ImageDa
 	})
 }
 
-async function main() {
-	const program = new commander.Command()
-	program
-		.option('--upload', 'upload the results to GS')
-		.option('--overwrite', 'overwrite existing local files')
-		.option('--ignore-dirty', 'ignore dirty (uncommitted) files')
-		.option('--development', 'upload files to devserver')
-	program.parse(process.argv)
+interface Option {
+	ignoreDirty: boolean,
+	overwrite: boolean,
+	upload: boolean
+	development: boolean,
+}
 
-	const opts = program.opts() as {
-		ignoreDirty: boolean,
-		overwrite: boolean,
-		upload: boolean
-		development: boolean,
-	}
-
+async function isDirty(): Promise<boolean> {
 	const dirty = await git.dirtyFiles([
 		/^.*\.md$/,
 		/^.*\.tsx$/,
 		/^.*\.json$/,
 	])
-	const isDirty = dirty.length > 0
-	if (isDirty) {
-		if (opts.ignoreDirty) {
-			console.log(`working directory not clean; continue`)
-		} else {
-			throw new Error(`working directory not clean; stash or commit ${dirty}`)
-		}
-	}
+	return dirty.length > 0
+}
 
-	const timestamp = await git.headCommiterDateTimestamp()
-	const hash = await git.headHash()
-	const localRoot = "/tmp/nes"
-	const remoteBaseDir = timestamp + "-" + hash + (dirty.length > 0 ? '-dirty' : '')
-	const localBaseDir = path.join(localRoot, remoteBaseDir)
+const LOCAL_ROOT = "/tmp/nes"
 
-	const filesToUpload = writeImages(localBaseDir, opts.overwrite)
+async function processTargets(opts: Option, localBaseDir: string, targets: Array<string>) {
+	const filesToUpload = writeImages(targets, localBaseDir, opts.overwrite)
 
 	if (opts.development) {
 		throw new Error(`--development is not supported`)
@@ -147,7 +137,7 @@ async function main() {
 				return
 			}
 			const { sha1: imageSHA1, filepath: localPath } = fileToUpload
-			const remotePath = path.relative(localRoot, localPath)
+			const remotePath = path.relative(LOCAL_ROOT, localPath)
 			const url = await cl.uploadFile(localPath, remotePath)
 			const [version, ...testConfig] = remotePath.replace(".png", "").split("/")
 
@@ -158,14 +148,81 @@ async function main() {
 		return f()
 	}))
 	cl.close()
+}
 
-	const latest = path.join(localRoot, "latest")
+interface Message {
+	localBaseDir: string
+}
+
+async function workerFunc(opts: Option) {
+	process.on("message", ({ localBaseDir }: Message) => {
+
+		const targets = allTargets().filter((_, i) => i % NUM_WORKER === cluster.worker!.id)
+
+		processTargets(opts, localBaseDir, targets)
+		process.send!(cluster.worker!.id)
+		cluster.worker?.disconnect()
+	})
+}
+
+async function primaryFun(opts: Option) {
+	if (await isDirty()) {
+		if (opts.ignoreDirty) {
+			console.log(`working directory not clean; continue`)
+		} else {
+			throw new Error(`working directory not clean; stash or commit`)
+		}
+	}
+	const timestamp = await git.headCommiterDateTimestamp()
+	const hash = await git.headHash()
+	const remoteBaseDir = timestamp + "-" + hash + (await isDirty() ? '-dirty' : '')
+	const localBaseDir = path.join(LOCAL_ROOT, remoteBaseDir)
+
+	// process
+	for (let i = 0; i < NUM_WORKER; i++) {
+		let worker = cluster.fork()
+		worker.on('online', () => {
+			worker.send({
+				localBaseDir,
+			})
+		})
+	}
+
+	await new Promise(resolve => {
+		let doneCount = 0
+		cluster.on('message', () => {
+			doneCount++
+			if (doneCount == NUM_WORKER) {
+				resolve(0)
+			}
+		})
+	})
+
+	const latest = path.join(LOCAL_ROOT, "latest")
 	if (fs.existsSync(latest)) {
 		fs.unlinkSync(latest)
 	}
 	fs.symlinkSync(localBaseDir, latest)
 
 	console.log(`all done!`)
+}
+
+async function main() {
+	const program = new commander.Command()
+	program
+		.option('--upload', 'upload the results to GS')
+		.option('--overwrite', 'overwrite existing local files')
+		.option('--ignore-dirty', 'ignore dirty (uncommitted) files')
+		.option('--development', 'upload files to devserver')
+	program.parse(process.argv)
+
+	const opts = program.opts() as Option
+
+	if (cluster.isPrimary) {
+		primaryFun(opts).catch(console.error)
+	} else {
+		workerFunc(opts).catch(console.error)
+	}
 }
 
 main().catch((e) => {
