@@ -492,14 +492,29 @@ export class APU {
 
 	frameInteruptFlag = 0 // TODO: CPU should read it.
 
-	oddCPUCycle = false
+	oddCPUCycle = false // if true APU is ticked
 	frameCounter = 0
+
+	timerResetIn = 0
+
 	// Call it at the same rate as the CPU clock cycle.
 	tick(): void {
 		if (this.oddCPUCycle) {
 			this.tickAPU()
 		}
 		this.oddCPUCycle = !this.oddCPUCycle
+
+		if (this.timerResetIn > 0) {
+			if (--this.timerResetIn === 0) {
+				this.resetFrameCounter()
+
+				if (this.fiveStepSequence) {
+					this.tickHalfFrame()
+					this.tickQuarterFrame()
+				}
+			}
+			return
+		}
 
 		this.triangle.tickCPU()
 		this.tickFrameCounterSequencer()
@@ -701,13 +716,16 @@ export class APU {
 				return
 			case 0x16:
 				throw new Error(`BUG: $4016 should be handled by Controller`)
-			case 0x17:
+			case 0x17: // $4017
+				// Set mode and interrupt (write)
 				this.fiveStepSequence = x >> 7 & 1
 				this.interruptInhibit = x >> 6 & 1
-				// TODO: make it cycle accurate (2-3 delay); see Frame Counter.
-				this.resetFrameCounter()
-				this.tickHalfFrame()
-				this.tickQuarterFrame()
+
+				// Side effects
+				// After 3 or 4 CPU clock cycles*, the timer is reset.
+				// If the mode flag is set, then both "quarter frame" and "half
+				// frame" signals are also generated.
+				this.timerResetIn = (this.oddCPUCycle) ? 3 : 4
 				return
 		}
 		throw new Error(`APU.write not implemented. 0x${pc.toString(16)}, ${x}`);
