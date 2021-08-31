@@ -42,8 +42,10 @@ See https://console.firebase.google.com/project/tsnes-324212/storage/tsnes-32421
 
 ### Github actions
 
-Github action to upload test results runs on push.
+Github action is set up to run test results and upload them on push.
 
+Set `FIREBASE_CONFIG` in Actions secrets page. The content is the same as
+`firebase_admin_key.json` .
 
 ### Emulator
 

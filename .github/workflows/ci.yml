@@ -19,3 +19,5 @@ jobs:
         node-version: 16.x
     - run: npm install
     - run: npx ts-node ./src/testing/ci/golden_gen.node.ts --upload
+      env:
+        FIREBASE_CONFIG: ${{secrets.FIREBASE_CONFIG}}
