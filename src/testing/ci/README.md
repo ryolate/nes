@@ -30,9 +30,15 @@ GS upload fails when the workspace is not clean.
 
 ## Developer note
 
-### Database schema
+### Firestore database schema
 
+See https://console.firebase.google.com/project/tsnes-324212/firestore/data
 
+### Storage files
+
+* $bucket/${commit_time_stamp}-${hash}/...  -- test results
+
+See https://console.firebase.google.com/project/tsnes-324212/storage/tsnes-324212.appspot.com/files
 
 ### Emulator
 
@@ -62,7 +68,3 @@ https://console.firebase.google.com/project/tsnes-324212/overview ,
 and create admin credential here
 https://console.firebase.google.com/project/tsnes-324212/settings/serviceaccounts/adminsdk .
 Download private key and put it as `firebase_admin_key.json` .
-
-### Storage files
-
-* $bucket/${commit_time_stamp}-${hash}/...  -- test results
