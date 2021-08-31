@@ -154,11 +154,15 @@ const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 		})
 	}, [history, onChange])
 
+	async function updateDB(history: History) {
+		setHistory(history)
+		const db = await DB.open<History>("history")
+		await db.set(history)
+	}
+
 	async function insertFileToHistory(name: string, file: File) {
 		const hist = [{ name: name, file: file }].concat(history)
-		setHistory(hist)
-		const db = await DB.open<History>("history")
-		await db.set(hist)
+		await updateDB(hist)
 	}
 
 	const chooser = <div style={{ height: 50, borderStyle: "inset" }}
@@ -178,7 +182,7 @@ const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 		const i = parseInt(event.target.value)
 		const hist = history.slice()
 		const head = hist.splice(i, 1)
-		setHistory(head.concat(hist))
+		updateDB(head.concat(hist))
 	}}>
 		{
 			history.map((entry, i) =>
