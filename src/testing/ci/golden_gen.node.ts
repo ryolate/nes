@@ -48,7 +48,7 @@ function parseLine(line: string): [string, number] {
 
 function localFilePath(tmpdir: string, testROM: string, frame: number): string {
 	return path.join(tmpdir,
-		path.basename(path.dirname(testROM)),
+		path.dirname(testROM),
 		path.basename(testROM) + `@${frame}.png`)
 }
 
@@ -74,7 +74,7 @@ function writeImages(tmpdir: string, overwrite?: boolean): Array<Promise<ImageDa
 			if (!overwrite && fs.existsSync(filepath)) {
 				return
 			}
-			const data = fs.readFileSync(path.join(__dirname, "../../..", testROM))
+			const data = fs.readFileSync(path.join(__dirname, "../../../testdata/nes-test-roms", testROM))
 			let nes: NES.NES
 			try {
 				nes = NES.NES.fromCartridgeData(data)
@@ -118,7 +118,6 @@ async function main() {
 		/^.*\.md$/,
 		/^.*\.tsx$/,
 		/^.*\.json$/,
-		new RegExp('^src/testing/ci/golden_gen.ts$'),
 	])
 	const isDirty = dirty.length > 0
 	if (isDirty) {

@@ -99,13 +99,13 @@ const ResultsView = (props: { results: ResultsSchema, answers: AnswersSchema, on
 	const rows = testROMs.map(testROM => {
 		return <tr key={testROM}>
 			<td><div style={{ width: 192, overflowWrap: "break-word" }}>{(() => {
-				const [dir, rom] = testROM.split(":")
+				const [dir, ...rom] = testROM.split(":")
 				return <>
 					<p>
 						<a href={"https://github.com/christopherpow/nes-test-roms/tree/master/" + dir}>{dir}
 						</a>
 					</p>
-					<p>{rom}</p>
+					<p>{rom[rom.length - 1]}</p>
 				</>
 			})()}</div></td>
 			{
@@ -143,7 +143,7 @@ const Results = (): JSX.Element => {
 
 	useEffect(() => {
 		async function f() {
-			const documentLimit = 20
+			const documentLimit = 5
 			const res = await firebase.firestore().collection('results')
 				.orderBy("id", 'desc')
 				.limit(documentLimit)
