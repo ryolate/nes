@@ -21,11 +21,8 @@ function Image(props: { src: string, status: "correct" | "wrong" | "unknown", on
 
 	const [selected, setSelected] = useState(false)
 
-	const img = < img width="128" src={src} onClick={() => {
-		if (selected) {
-			return
-		}
-		setSelected(true)
+	const img = < img width={selected ? 512 : 128} src={src} onClick={() => {
+		setSelected(!selected)
 	}} style={{
 		padding: "2px",
 		backgroundColor: status === "correct" ? "lightgreen" : status === "wrong" ? "red" : undefined,
@@ -102,7 +99,7 @@ const ResultsView = (props: { results: ResultsSchema, answers: AnswersSchema, on
 
 	const rows = testROMs.map(testROM => {
 		return <tr key={testROM}>
-			<td><div style={{ width: 128, overflowWrap: "break-word" }}>{testROM}</div></td>
+			<td><div style={{ width: 192, overflowWrap: "break-word" }}>{testROM.split(":").map((x, i) => <p key={i}>{x}</p>)}</div></td>
 			{
 				versions.map((version) => {
 					const result = urls.get(testROM)?.get(version)
