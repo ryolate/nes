@@ -32,8 +32,12 @@ export class Client {
 	}
 
 	async updateFirestore(version: string, testROM: string, persistentURL: string, imageSHA1: string): Promise<void> {
+		// Currently it's not possible to perform a descending query based on document ID.
+		// As an alternative, add id to the document.
+		// https://stackoverflow.com/questions/52119208/how-to-get-documents-descending-by-documentid
 		await firebase.firestore().collection("results").doc(version)
 			.set({
+				id: version,
 				[testROM]: {
 					url: persistentURL,
 					imageSHA1: imageSHA1,
@@ -51,7 +55,6 @@ export class Client {
 
 import firebase from 'firebase/app'
 import 'firebase/storage'
-import { firestore } from "firebase-admin";
 export class DevClient {
 	constructor() {
 		devInit()
