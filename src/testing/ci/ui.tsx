@@ -20,11 +20,11 @@ function Image(props: { src: string, status: "correct" | "wrong" | "unknown", on
 
 	const [selected, setSelected] = useState(false)
 
-	const img = < img width={selected ? 256 : 128} src={src} onClick={() => {
+	const img = < img width={selected ? 256 + 8 : 128 + 8} src={src} onClick={() => {
 		setSelected(!selected)
 	}} style={{
-		padding: "4px",
-		backgroundColor: status === "correct" ? "lightgreen" : status === "wrong" ? "red" : undefined,
+		padding: 4,
+		backgroundColor: status === "correct" ? "lightgreen" : status === "wrong" ? "#FF7F7F" : undefined,
 	}} />
 
 	const mark = "mark as " + (status === "correct" ? "unknown" : "correct")
