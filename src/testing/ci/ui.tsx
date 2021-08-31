@@ -100,7 +100,11 @@ const ResultsView = (props: { results: ResultsSchema, answers: AnswersSchema, on
 		return <tr key={testROM}>
 			<td><div style={{ width: 192, overflowWrap: "break-word" }}>{(() => {
 				const [dir, rom] = testROM.split(":")
-				return <><p><a href={"https://github.com/christopherpow/nes-test-roms/tree/master/" + dir}>{dir}</a></p>
+				return <>
+					<p>
+						<a href={"https://github.com/christopherpow/nes-test-roms/tree/master/" + dir}>{dir}
+						</a>
+					</p>
 					<p>{rom}</p>
 				</>
 			})()}</div></td>
@@ -108,7 +112,7 @@ const ResultsView = (props: { results: ResultsSchema, answers: AnswersSchema, on
 				versions.map((version) => {
 					const result = urls.get(testROM)?.get(version)
 					if (!result || !result.sha1 || !result.url) {
-						return <td></td>
+						return <td key={version}></td>
 					}
 
 					const correctSHA1 = props.answers[testROM]

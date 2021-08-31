@@ -675,12 +675,10 @@ export class CPU {
             }
             case "ARR": { // AND + ROR(imp)
                 const m = this.read(addr)
-                this.A = this.setNZ(this.A & m)
-                const sum = this.A + m
-                this.V = sign(this.A) == sign(m) && sign(this.A) != sign(sum) ? 1 : 0
-                const c = (this.A >> 7) & 1
+                this.A &= m
                 this.A = this.setNZ(this.A >> 1 | this.C << 7)
-                this.C = c
+                this.C = this.A >> 6 & 1
+                this.V = this.C ^ (this.A >> 5 & 1)
                 break
             }
             case "XAA": {
@@ -696,11 +694,25 @@ export class CPU {
                 break
             }
             case "SHY": {
-                this.write(addr, this.Y & inc(addr >> 8))
+                // SHX and SHY are bizzare
+                // https://csdb.dk/forums/?roomid=11&topicid=94460
+
+                // High byte of the address written to
+                let H = addr >> 8
+                if (pageBoundaryCrossed) {
+                    H = inc(addr >> 8) & this.Y
+                }
+                const value = this.Y & inc(addr >> 8)
+                this.write((H << 8) | (addr & 0xFF), value)
                 break
             }
             case "SHX": {
-                this.write(addr, this.X & inc(addr >> 8))
+                let H = addr >> 8
+                if (pageBoundaryCrossed) {
+                    H = inc(addr >> 8) & this.X
+                }
+                const value = this.X & inc(addr >> 8)
+                this.write((H << 8) | (addr & 0xFF), value)
                 break
             }
             case "TAS": {
