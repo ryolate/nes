@@ -48,7 +48,7 @@ Set `FIREBASE_CONFIG` in Actions secrets page. The content is the same as
 `firebase_admin_key.json` .
 
 For local testing of Github actions, run
-`act -P ubuntu-latest=catthehacker/ubuntu:act-latest`.
+`act -s FIREBASE_CONFIG="$(cat ./src/testing/ci/firebase_admin_key.json)"`.
 
 ### Emulator
 
