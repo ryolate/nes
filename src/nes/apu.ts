@@ -1,4 +1,5 @@
 import { Logger } from "./logger";
+import { Mapper } from "./mappers/mapper";
 import { assertInRange, assertUint8, uint16, uint8 } from "./num";
 /*
 References
@@ -171,53 +172,157 @@ class Noise {
 }
 
 class DMC {
+	readonly mapper
+	constructor(mapper: Mapper) {
+		this.mapper = mapper
+	}
 	setR1(x: uint8): void {// $4010
 		this.irqEnabled = x >> 7 & 1
 		this.loop = x >> 6 & 1
 		this.rateIndex = x & 15
+
+		if (!this.irqEnabled) {
+			this.interruptFlag = 0
+		}
 	}
 	setR2(x: uint8): void {// $4011
 		this.outputLevel = x & 0x7F
 	}
 	setR3(x: uint8): void {// $4012
-		this.sapmleAddress = 0xC000 + x * 64
+		this.sampleAddress = 0xC000 + x * 64
 	}
 	setR4(x: uint8): void {// $4013
-		this.sapmleLength = x * 16 + 1
+		this.sampleLength = x * 16 + 1
 	}
 	// IRQ enabled flag. If clear, the interrupt flag is cleared.
-	irqEnabled = 0
+	private irqEnabled = 0
 	// Loop flag
-	loop = 0
+	private loop = 0
 	// Rate index
-	rateIndex = 0
+	private rateIndex = 0
 	// The rate determines for how many CPU cycles happen between changes in the
 	// output level during automatic delta-encoded sample playback.
-	static rateTable = [428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54]
+	private static rateTable = [428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54]
 
-	outputLevel = 0
-	sapmleAddress = 0
-	sapmleLength = 0
-	// 8-bit sample buffer
-	buffer = 0
+	private outputLevel = 0
+	private sampleAddress = 0
+	private sampleLength = 0
+
+	interruptFlag = 0
+	// The sample buffer either holds a single 8-bit sample byte or is empty.
+	// It is filled by the reader and can only be emptied by the output unit;
+	// once loaded with a sample byte it will be played back.
+	private sampleBuffer: uint8 | null = null
 
 	// When the sample buffer is emptied, the memory reader fills the sample
 	// buffer with the next byte from the currently playing sample. It has an
 	// address counter and a bytes remaining counter.
-	readerAddress = 0
-	readerCounter = 0
-	emptyBuffer(): void {
-		this.buffer = this.readMemory()
-	}
-	readMemory(): uint8 {
-		// FIXME. Read memory.
-		return 0
+	private readAddress = 0
+	readBytesRemaining = 0
+	// https://wiki.nesdev.com/w/index.php/APU_DMC#Memory_reader
+	private emptyBuffer() {
+		this.sampleBuffer = null
+		if (this.readBytesRemaining === 0) {
+			return
+		}
+		// TODO: implement CPU stall
+
+		// The sample buffer is filled with the next sample byte read from the
+		// current address, subject to whatever mapping hardware is present.
+		this.sampleBuffer = this.mapper.readCPU(this.readAddress)
+
+		// The address is incremented; if it exceeds $FFFF, it is wrapped around
+		// to $8000.
+		this.readAddress++
+		if (this.readAddress > 0xFFFF) {
+			this.readAddress -= 0x8000
+		}
+		// The bytes remaining counter is decremented; if it becomes zero and
+		// the loop flag is set, the sample is restarted (see above); otherwise,
+		// if the bytes remaining counter becomes zero and the IRQ enabled flag
+		// is set, the interrupt flag is set.
+		this.readBytesRemaining--
+		if ((this.readBytesRemaining === 0) && this.loop) {
+			this.restart()
+		} else if (this.readBytesRemaining === 0 && this.irqEnabled) {
+			this.interruptFlag = 1
+		}
 	}
 
+	// restart the sample
+	restart() {
+		this.readAddress = this.sampleAddress
+		this.readBytesRemaining = this.sampleLength
+	}
+
+	timer = 0
+	tickAPU(): void {
+		if (this.timer === 0) {
+			this.timer = DMC.rateTable[this.rateIndex] / 2
+			this.timerClock()
+		} else {
+			this.timer--
+		}
+	}
+
+	// https://wiki.nesdev.com/w/index.php/APU_DMC#Output_unit
+	private timerClock() {
+		// The bits-remaining counter is updated whenever the timer outputs a
+		// clock, regardless of whether a sample is currently playing. When this
+		// counter reaches zero, we say that the output cycle ends. The DPCM
+		// unit can only transition from silent to playing at the end of an
+		// output cycle.
+
+		// When the timer outputs a clock, the following actions occur in order:
+		// 
+		// * If the silence flag is clear, the output level changes based on bit
+		//   0 of the shift register. If the bit is 1, add 2; otherwise,
+		//   subtract 2. But if adding or subtracting 2 would cause the output
+		//   level to leave the 0 - 127 range, leave the output level unchanged.
+		//   This means subtract 2 only if the current level is at least 2, or
+		//   add 2 only if the current level is at most 125.
+		// * The right shift register is clocked.
+		// * As stated above, the bits - remaining counter is decremented. If it
+		//   becomes zero, a new output cycle is started.
+		if (!this.outputSilence) {
+			if (this.outputShiftRegister & 1) {
+				if (this.outputLevel + 2 <= 127) {
+					this.outputLevel += 2
+				}
+			} else {
+				if (this.outputLevel - 2 >= 0) {
+					this.outputLevel -= 2
+				}
+			}
+		}
+		this.outputShiftRegister >>= 1
+		this.outputBitsRemainingCounter--
+
+		// When an output cycle ends, a new cycle is started as follows:
+		//
+		// * The bits-remaining counter is loaded with 8.
+		// * If the sample buffer is empty, then the silence flag is set;
+		//   otherwise, the silence flag is cleared and the sample buffer is
+		//   emptied into the shift register.
+		if (this.outputBitsRemainingCounter === 0) {
+			this.outputBitsRemainingCounter = 8
+			if (this.sampleBuffer === null) {
+				this.outputSilence = 1
+			} else {
+				this.outputSilence = 0
+				this.outputShiftRegister = this.sampleBuffer
+				this.emptyBuffer()
+			}
+		}
+	}
+
+	outputShiftRegister = 0
+	outputBitsRemainingCounter = 0
+	outputSilence = 0
 	output(): number {
+		assertInRange(this.outputLevel, 0, 127)
 		return this.outputLevel
 	}
-
 }
 
 // Outputs a clock periodically
@@ -524,16 +629,19 @@ class LinearCounter {
 }
 
 export class APU {
-	pulse1 = new Pulse(true)
-	pulse2 = new Pulse(false)
-	triangle = new Triangle()
-	noise = new Noise()
-	dmc = new DMC()
+	constructor(mapper: Mapper) {
+		this.dmc = new DMC(mapper)
+	}
+	readonly pulse1 = new Pulse(true)
+	readonly pulse2 = new Pulse(false)
+	readonly triangle = new Triangle()
+	readonly noise = new Noise()
+	readonly dmc: DMC
 
 	interruptInhibit = 0 // bit 6 of $4017
 	fiveStepSequence = 0 // bit 7 of $4017
 
-	frameInterruptFlag = 0 // TODO: CPU should read it.
+	frameInterruptFlag = 0
 
 	oddCPUCycle = false // if true APU is ticked
 	frameCounter = 0
@@ -541,7 +649,7 @@ export class APU {
 	timerResetIn = 0
 
 	irq(): boolean {
-		return this.frameInterruptFlag === 1
+		return (this.frameInterruptFlag === 1) || (this.dmc.interruptFlag === 1)
 	}
 
 	// Call it at the same rate as the CPU clock cycle.
@@ -641,6 +749,7 @@ export class APU {
 		this.pulse1.tickAPU()
 		this.pulse2.tickAPU()
 		this.noise.tickAPU()
+		this.dmc.tickAPU()
 	}
 	// Length counters & sweep units
 	private tickHalfFrame() {
@@ -664,25 +773,26 @@ export class APU {
 	read(pc: uint16): uint8 {
 		switch (pc) {
 			case 0x4015: {
+				const i = this.dmc.interruptFlag
 				const f = this.frameInterruptFlag
 				// Reading this register clears the frame interrupt flag (but
 				// not the DMC interrupt flag).
 				this.frameInterruptFlag = 0
 
-				// TODO: DMC interrupt, DMC active
-				//
 				// IF-D NT21
 				// DMC interrupt (I), frame interrupt (F), DMC active (D),
 				// length counter > 0 (N/T/2/1)
 				//
-				// N/T/2/1 will read as 1 if the corresponding length counter is
-				// greater than 0. For the triangle channel, the status of the
-				// linear counter is irrelevant.
+				// * N/T/2/1 will read as 1 if the corresponding length counter
+				//   is greater than 0. For the triangle channel, the status of
+				//   the linear counter is irrelevant.
+				// * D will read as 1 if the DMC bytes remaining is more than 0.
 				const p1 = this.pulse1.lengthCounter.output() ? 1 : 0
 				const p2 = this.pulse2.lengthCounter.output() ? 1 : 0
 				const t = this.triangle.lengthCounter.output() ? 1 : 0
 				const n = this.noise.lengthCounter.output() ? 1 : 0
-				return f << 6 | n << 3 | t << 2 | p2 << 1 | p1
+				const d = this.dmc.readBytesRemaining > 0 ? 1 : 0
+				return i << 7 | f << 6 | d << 4 | n << 3 | t << 2 | p2 << 1 | p1
 			}
 		}
 		// They are write-only except $4015.
@@ -742,16 +852,16 @@ export class APU {
 				this.noise.setR3(x)
 				return
 			case 0x10:
-				this.dmc.r1 = x
+				this.dmc.setR1(x)
 				return
 			case 0x11:
-				this.dmc.r2 = x
+				this.dmc.setR2(x)
 				return
 			case 0x12:
-				this.dmc.r3 = x
+				this.dmc.setR3(x)
 				return
 			case 0x13:
-				this.dmc.r4 = x
+				this.dmc.setR4(x)
 				return
 			case 0x14:
 				throw new Error(`BUG: $4014 should be handled by PPU`)
@@ -760,7 +870,19 @@ export class APU {
 				this.pulse2.lengthCounter.setEnabled(x >> 1 & 1)
 				this.triangle.lengthCounter.setEnabled(x >> 2 & 1)
 				this.noise.lengthCounter.setEnabled(x >> 3 & 1)
-				// TODO: DMC
+				// If the DMC bit is clear, the DMC bytes remaining will be set
+				// to 0 and the DMC will silence when it empties.
+				if ((x >> 4 & 1) === 0) {
+					this.dmc.readBytesRemaining = 0
+				} else {
+					// If the DMC bit is set, the DMC sample will be restarted
+					// only if its bytes remaining is 0.
+					if (this.dmc.readBytesRemaining === 0) {
+						this.dmc.restart()
+					}
+				}
+				// Writing to this register clears the DMC interrupt flag.
+				this.dmc.interruptFlag = 0
 				return
 			case 0x16:
 				throw new Error(`BUG: $4016 should be handled by Controller`)
@@ -804,9 +926,8 @@ export class APU {
 		const pulseOut = 95.88 / (8128 / (pulse1 + pulse2) + 100)
 
 		const triangle = this.triangle.output()
-		// TODO: dmc
 		const noise = this.noise.output()
-		const dmc = 0
+		const dmc = this.dmc.output()
 
 		assertInRange(triangle, 0, 15)
 		assertInRange(noise, 0, 15)

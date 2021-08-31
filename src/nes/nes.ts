@@ -33,7 +33,7 @@ export class NES {
 
 		const nmi = new NMI()
 
-		this.apu = new APU()
+		this.apu = new APU(this.mapper)
 		this.ppu = new PPU(this.mapper, nmi)
 		this.cpu = new CPU(this.mapper, this.ppu, nmi, this.controller, this.apu)
 	}
@@ -143,7 +143,7 @@ export class NES {
 	resetAll(): void {
 		const nmi = new NMI()
 		this.ppu = new PPU(this.mapper, nmi)
-		this.cpu = new CPU(this.mapper, this.ppu, nmi, this.controller, new APU())
+		this.cpu = new CPU(this.mapper, this.ppu, nmi, this.controller, new APU(this.mapper))
 
 		this.setLogger(this.logger)
 		console.clear()
