@@ -139,7 +139,9 @@ async function main() {
 	const filesToUpload = await writeImages(localBaseDir, opts.overwrite)
 
 	const latest = path.join(localRoot, "latest")
-	fs.unlinkSync(latest)
+	if (fs.existsSync(latest)) {
+		fs.unlinkSync(latest)
+	}
 	fs.symlinkSync(localBaseDir, latest)
 
 	if (opts.upload) {
