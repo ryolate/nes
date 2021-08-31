@@ -30,6 +30,14 @@ test.each([
 	await assertSameImageBuffers(got, want, filepath)
 })
 
+// JSNES doesn't work; test fails on Compare.
+test('Alter Ego', () => {
+	const filepath = 'testdata/secret/Alter_Ego.nes'
+	const data = fs.readFileSync(filepath)
+	const nes = NES.fromCartridgeData(data)
+	nes.frame(20)
+})
+
 test('thwaite.nes', async () => {
 	const filepath = 'src/asset/games/mapper0/thwaite.nes'
 	const data = fs.readFileSync(filepath)
