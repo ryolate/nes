@@ -269,7 +269,7 @@ const CPUInfo = (props: { cpu: CPU }) => {
 	</div>)
 }
 
-const UserInteraction = (props: { nes: NES.NES, onChange: () => void }) => {
+const UserInteraction = (props: { nes: NES.NES, onChange: () => void, onReset: () => void }) => {
 	const gameCanvasRef = useRef<HTMLCanvasElement>(null)
 	const [buttons, setButtons] = useState(0)
 	const [error, setError] = useState<Error | null>(null)
@@ -338,10 +338,8 @@ const UserInteraction = (props: { nes: NES.NES, onChange: () => void }) => {
 		})
 
 	const reset = () => {
-		props.nes.resetAll()
 		setError(null)
-		nesRender()
-		props.onChange()
+		props.onReset()
 	}
 
 	return <div>
@@ -413,7 +411,7 @@ const CartridgeInfo = (props: { cartridge: Cartridge }) => {
 	</tbody></table>
 }
 
-export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
+export const DebugGame = (props: { nes: NES.NES, onReset: () => void }): JSX.Element => {
 	// dummy state to tell when to update the view.
 	const [, setUpdateCounter] = useState(0)
 
@@ -425,7 +423,7 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 	}, [props.nes])
 
 	return <div style={{ display: "flex" }}>
-		<UserInteraction nes={props.nes} onChange={() => setUpdateCounter((x) => x + 1)} />
+		<UserInteraction nes={props.nes} onChange={() => setUpdateCounter((x) => x + 1)} onReset={props.onReset} />
 		<div>
 			<CartridgeInfo cartridge={props.nes.mapper.cartridge} />
 			<MapperInfo mapper={props.nes.mapper} />

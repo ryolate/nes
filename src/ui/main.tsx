@@ -196,7 +196,7 @@ const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 	</div >
 }
 
-const Game = (props: { nes: NES.NES }) => {
+const Game = (props: { nes: NES.NES, onReset: () => void }) => {
 	const [debugMode, setDebugMode] = useState<boolean>(() => !sessionStorage.getItem("noDebug"))
 
 	useEffect(() => {
@@ -208,7 +208,7 @@ const Game = (props: { nes: NES.NES }) => {
 	}, [debugMode])
 
 	const game = debugMode ?
-		<DebugGame nes={props.nes} /> :
+		<DebugGame nes={props.nes} onReset={props.onReset} /> :
 		<>
 			<RealGame nes={props.nes} />
 			<Controll />
@@ -240,15 +240,22 @@ const Controll = () => {
 
 export const App = (): JSX.Element => {
 	const [cartridgeData, setCartridgeData] = useState<Uint8Array | null>(null)
+	const [nes, setNES] = useState<NES.NES | null>(null)
 
 	let nesView = null
-	if (cartridgeData) {
+	if (!nes && cartridgeData) {
 		try {
-			nesView = <Game nes={NES.NES.fromCartridgeData(cartridgeData)} />
+			setNES(NES.NES.fromCartridgeData(cartridgeData))
 		} catch (e) {
 			console.error(e)
 			nesView = <ErrorBanner error={e.toString()} />
 		}
+	}
+
+	if (nes) {
+		nesView = <Game nes={nes} onReset={() => {
+			setNES(null)
+		}} />
 	}
 
 	return <div>

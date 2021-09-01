@@ -759,7 +759,21 @@ export class CPU {
             x[0](this.cpuStatus())
         });
 
+        const pc = this.PC
+
         const instr = this.fetchInstruction()
+
+        let name = ""
+        if (0xE22C <= pc && pc < 0xE23F) {
+            name = "should_be_playing"
+        }
+        if (0xE23F <= pc && pc < 0xE250) {
+            name = "should_be_silent"
+        }
+        if (name !== "") {
+            this.logger?.log(`${name}: $${pc.toString(16).toUpperCase()}\t${operation2str(instr)}`)
+        }
+
         this.execute(instr)
 
         return
@@ -826,6 +840,9 @@ export class CPU {
             // Controller
             this.controller.write4016(x)
         } else if (pc < 0x4018) {
+            if (pc >= 0x4010) {
+                this.logger?.log(`${this.cycle}: $${pc.toString(16)} <- 0x${x.toString(16).toUpperCase()}`)
+            }
             // APU
             this.apu.write(pc, x)
         } else if (pc < 0x4020) {
