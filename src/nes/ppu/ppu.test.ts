@@ -30,6 +30,21 @@ test.each([
 	await assertSameImageBuffers(got, want, filepath)
 })
 
+// 18.538s on 9f2645ca153c48fa0707811e8ea876c9fd7a2fd1
+
+test.skip('bench', () => {
+	const filepath = 'testdata/secret/SUPER_MARIO_BROS.NES'
+	const frameCount = 1200
+
+	const data = fs.readFileSync(filepath)
+	const nes = NES.fromCartridgeData(data)
+
+	const start = performance.now()
+	nes.frame(frameCount)
+
+	console.log(performance.now() - start)
+})
+
 // JSNES doesn't work; test fails on Compare.
 test('Alter Ego', () => {
 	const filepath = 'testdata/secret/Alter_Ego.nes'

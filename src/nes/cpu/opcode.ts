@@ -1,18 +1,19 @@
 import { uint8 } from '../num'
 
+// The order matters in fetchInstruction and execute.
 export enum Mode {
-  IMP = 0,
+  IMP = 0, // must be 0
   IMM,
   ZP,
   ZPX,
   ZPY,
   IZX,
   IZY,
+  REL,
   ABS,
   ABX,
   ABY,
   IND,
-  REL,
 }
 
 type FakeInstruction = "_IRQ" | "_NMI"

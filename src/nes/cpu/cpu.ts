@@ -183,28 +183,17 @@ export class CPU {
         } else {
             op = Opcode.opcodes[this.fetch()]
         }
-        const x = (() => {
-            switch (op.mode) {
-                case Opcode.Mode.IMP: // imp
-                    return 0
-                case Opcode.Mode.IMM:
-                case Opcode.Mode.ZP:
-                case Opcode.Mode.ZPX:
-                case Opcode.Mode.ZPY:
-                case Opcode.Mode.IZX:
-                case Opcode.Mode.IZY:
-                case Opcode.Mode.REL:
-                    return this.fetch()
-                case Opcode.Mode.ABS:
-                case Opcode.Mode.ABX:
-                case Opcode.Mode.ABY:
-                case Opcode.Mode.IND:
-                    return this.fetch16()
-            }
-        })()
+        let arg = 0
+        if (op.mode === Opcode.Mode.IMP) {
+            arg = 0
+        } else if (op.mode <= Opcode.Mode.REL) {
+            arg = this.fetch()
+        } else {
+            arg = this.fetch16()
+        }
         return {
             ...op,
-            arg: x,
+            arg,
         }
     }
 
