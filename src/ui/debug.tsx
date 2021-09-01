@@ -236,7 +236,7 @@ const CPUInfo = (props: { cpu: CPU }) => {
 			<table><tbody>
 				{disaList.map(([pc, s], i) => {
 					return <tr key={i} style={{
-						backgroundColor: pc === cpu.getPC()
+						backgroundColor: pc === cpu.PC
 							? "lightyellow" : undefined
 					}}>
 						<td>{pc.toString(16).toUpperCase()}</td>
@@ -251,7 +251,7 @@ const CPUInfo = (props: { cpu: CPU }) => {
 			<tbody>
 				{
 					[
-						["PC", "0x" + cpu.getPC().toString(16).toUpperCase()],
+						["PC", "0x" + cpu.PC.toString(16).toUpperCase()],
 						["A", "0x" + cpu.A.toString(16).toUpperCase()],
 						["X", "0x" + cpu.X.toString(16).toUpperCase()],
 						["Y", "0x" + cpu.Y.toString(16).toUpperCase()],

@@ -1,5 +1,5 @@
 import * as Opcode from './opcode'
-import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, assertUint8, assertUint16, assertInRange } from '../num'
+import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, assertUint8, assertUint16 } from '../num'
 import { PPU } from '../ppu/ppu'
 import { NMI } from './nmi'
 import { Controller } from '../controller'
