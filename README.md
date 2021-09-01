@@ -22,9 +22,8 @@ git push
 
 `npm test`
 
-## Roms
+## Running benchmark
 
-- starter.latest.nes (mapper 1)
-  - https://cppchriscpp.github.io/nes-starter-kit/
-- Thwaite (NROM 128)
-  - https://wiki.nesdev.com/w/index.php/Thwaite
+`npm run bench`
+
+15.67s on 9c791512ba29d09927aef2fbb5cc35661b3a249e
