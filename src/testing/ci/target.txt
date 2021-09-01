@@ -1,3 +1,12 @@
+apu_test/rom_singles/1-len_ctr.nes
+apu_test/rom_singles/2-len_table.nes
+apu_test/rom_singles/3-irq_flag.nes
+apu_test/rom_singles/4-jitter.nes
+apu_test/rom_singles/5-len_timing.nes 120
+apu_test/rom_singles/6-irq_flag_timing.nes
+apu_test/rom_singles/7-dmc_basics.nes
+apu_test/rom_singles/8-dmc_rates.nes
+
 blargg_apu_2005.07.30/01.len_ctr.nes
 blargg_apu_2005.07.30/02.len_table.nes
 blargg_apu_2005.07.30/03.irq_flag.nes
@@ -10,20 +19,23 @@ blargg_apu_2005.07.30/09.reset_timing.nes
 blargg_apu_2005.07.30/10.len_halt_timing.nes
 blargg_apu_2005.07.30/11.len_reload_timing.nes
 
+blargg_nes_cpu_test5/cpu.nes 1020
+blargg_nes_cpu_test5/official.nes 700
+
 blargg_ppu_tests_2005.09.15b/palette_ram.nes
 blargg_ppu_tests_2005.09.15b/power_up_palette.nes
 blargg_ppu_tests_2005.09.15b/sprite_ram.nes
 blargg_ppu_tests_2005.09.15b/vbl_clear_time.nes
 blargg_ppu_tests_2005.09.15b/vram_access.nes
 
-blargg_nes_cpu_test5/cpu.nes 1020
-blargg_nes_cpu_test5/official.nes 700
-
-apu_test/rom_singles/1-len_ctr.nes
-apu_test/rom_singles/2-len_table.nes
-apu_test/rom_singles/3-irq_flag.nes
-apu_test/rom_singles/4-jitter.nes
-apu_test/rom_singles/5-len_timing.nes 120
-apu_test/rom_singles/6-irq_flag_timing.nes
-apu_test/rom_singles/7-dmc_basics.nes
-apu_test/rom_singles/8-dmc_rates.nes
+sprite_hit_tests_2005.10.05/01.basics.nes
+sprite_hit_tests_2005.10.05/02.alignment.nes
+sprite_hit_tests_2005.10.05/03.corners.nes
+sprite_hit_tests_2005.10.05/04.flip.nes
+sprite_hit_tests_2005.10.05/05.left_clip.nes
+sprite_hit_tests_2005.10.05/06.right_edge.nes
+sprite_hit_tests_2005.10.05/07.screen_bottom.nes
+sprite_hit_tests_2005.10.05/08.double_height.nes
+sprite_hit_tests_2005.10.05/09.timing_basics.nes
+sprite_hit_tests_2005.10.05/10.timing_order.nes
+sprite_hit_tests_2005.10.05/11.edge_timing.nes
