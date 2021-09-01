@@ -15,15 +15,16 @@ References
 - NMI https://wiki.nesdev.com/w/index.php?title=NMI
 */
 
-export interface Operation extends Opcode.Opcode {
+interface Operation {
+    op: Opcode.Opcode
     arg: uint8 | uint16 // value used for addressing
 }
 
 export class CPUHaltError extends Error { }
 
-export function operation2str(op: Operation): string {
+export function operation2str(operation: Operation): string {
     const n = (() => {
-        switch (op.mode) {
+        switch (operation.op.mode) {
             case Opcode.Mode.IMP: // imp
                 return 0
             case Opcode.Mode.IMM:
@@ -42,10 +43,10 @@ export function operation2str(op: Operation): string {
         }
     })()
 
-    const addr = `$${op.arg.toString(16).toUpperCase().padStart(n, "0")}`
+    const addr = `$${operation.arg.toString(16).toUpperCase().padStart(n, "0")}`
 
-    return op.opcode + " " + ((): string => {
-        switch (op.mode) {
+    return operation.op.opcode + " " + ((): string => {
+        switch (operation.op.mode) {
             case Opcode.Mode.IMP: // imp
                 return ""
             case Opcode.Mode.IMM:
@@ -172,7 +173,7 @@ export class CPU {
             arg = this.fetch16()
         }
         return {
-            ...op,
+            op,
             arg,
         }
     }
@@ -231,7 +232,9 @@ export class CPU {
         return p
     }
 
-    private execute(instr: Operation): void {
+    private execute(operation: Operation): void {
+        const { op: instr, arg } = operation
+
         this.stallCount += instr.cycle - 1
         // https://wiki.nesdev.com/w/index.php/CPU_addressing_modes
         let pageBoundaryCrossed = false
@@ -243,42 +246,42 @@ export class CPU {
                 break
             case Opcode.Mode.ZP:
                 // absolute addressing of the first 256 bytes
-                addr = instr.arg
+                addr = arg
                 break
             case Opcode.Mode.ZPX: // d,x
-                addr = (instr.arg + this.X) & UINT8_MAX
+                addr = (arg + this.X) & UINT8_MAX
                 break
             case Opcode.Mode.ZPY: // d,y
-                addr = (instr.arg + this.Y) & UINT8_MAX
+                addr = (arg + this.Y) & UINT8_MAX
                 break
             case Opcode.Mode.IZX: // (d,x)
-                addr = this.read16((instr.arg + this.X) & UINT8_MAX)
+                addr = this.read16((arg + this.X) & UINT8_MAX)
                 break
             case Opcode.Mode.IZY: {// (d), y
-                const base = this.read16(instr.arg)
+                const base = this.read16(arg)
                 const p = (base + this.Y) & UINT16_MAX
                 pageBoundaryCrossed = (p >> 8) != (base >> 8)
                 addr = p
                 break
             }
             case Opcode.Mode.ABS:
-                addr = instr.arg
+                addr = arg
                 break
             case Opcode.Mode.ABX: { // a,x
-                addr = (instr.arg + this.X) & UINT16_MAX
-                pageBoundaryCrossed = (addr >> 8) != (instr.arg >> 8)
+                addr = (arg + this.X) & UINT16_MAX
+                pageBoundaryCrossed = (addr >> 8) != (arg >> 8)
                 break
             }
             case Opcode.Mode.ABY: {// a,y
-                addr = (instr.arg + this.Y) & UINT16_MAX
-                pageBoundaryCrossed = (addr >> 8) != (instr.arg >> 8)
+                addr = (arg + this.Y) & UINT16_MAX
+                pageBoundaryCrossed = (addr >> 8) != (arg >> 8)
                 break
             }
             case Opcode.Mode.IND:
-                addr = this.read16(instr.arg)
+                addr = this.read16(arg)
                 break
             case Opcode.Mode.REL:
-                addr = (this.PC + uint8ToSigned(instr.arg)) & UINT16_MAX
+                addr = (this.PC + uint8ToSigned(arg)) & UINT16_MAX
                 break
         }
 
@@ -709,7 +712,7 @@ export class CPU {
                 break
             }
             default: {
-                throw new Error(`BUG: unimplemented opcode ${instr.opcode}`)
+                throw new Error(`BUG: unimplemented opcode ${instr.op}`)
             }
         }
         if (branched) {
@@ -886,7 +889,7 @@ export class CPU {
             }
         })()
         return [{
-            ...op,
+            op,
             arg: x,
         }, pc]
     }

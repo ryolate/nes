@@ -21,7 +21,7 @@ test("Parse iNES", () => {
     ]
     for (const want of wants) {
         const got = cpu.fetchInstruction()
-        expect(got.opcode).toBe(want)
+        expect(got.op.opcode).toBe(want)
     }
 })
 
