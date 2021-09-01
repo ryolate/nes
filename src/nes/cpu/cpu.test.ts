@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { CPUStatus, CPUHaltError } from './cpu'
-import { Instruction } from './opcode'
+import { CPUStatus, CPUHaltError, operation2str } from './cpu'
+import * as Opcode from './opcode'
 import * as fs from 'fs'
 import { NES } from '../nes'
 
@@ -12,12 +12,12 @@ test("Parse iNES", () => {
 
     cpu.setPC(0xc000)
 
-    const wants: Array<Instruction> = [
-        Instruction.JMP,
-        Instruction.RTS,
-        Instruction.SEI,
-        Instruction.CLD,
-        Instruction.LDX,
+    const wants: Array<Opcode.Instruction> = [
+        Opcode.Instruction.JMP,
+        Opcode.Instruction.RTS,
+        Opcode.Instruction.SEI,
+        Opcode.Instruction.CLD,
+        Opcode.Instruction.LDX,
     ]
     for (const want of wants) {
         const got = cpu.fetchInstruction()
@@ -84,3 +84,10 @@ function parseNesTestLog(): Array<[Object, string]> {
         }, s]
     })
 }
+
+test("operation2str", () => {
+    expect(operation2str({
+        op: Opcode.opcodes[193],
+        arg: 8
+    })).toEqual("CMP ($08,X)")
+})

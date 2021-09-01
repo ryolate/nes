@@ -45,7 +45,7 @@ export function operation2str(operation: Operation): string {
 
     const addr = `$${operation.arg.toString(16).toUpperCase().padStart(n, "0")}`
 
-    return operation.op.opcode + " " + ((): string => {
+    return Opcode.Instruction[operation.op.opcode] + " " + ((): string => {
         switch (operation.op.mode) {
             case Opcode.Mode.IMP: // imp
                 return ""
@@ -741,8 +741,13 @@ export class CPU {
             x[0](this.cpuStatus())
         });
 
+        const pc = this.PC
+
         const instr = this.fetchInstruction()
         this.execute(instr)
+
+        if (0xE6A0 <= pc && pc <= 0xE6FF)
+            this.logger?.log(`${this.instructionCount}: $${pc.toString(16).toUpperCase()}: ${operation2str(instr)}`)
 
         return
     }

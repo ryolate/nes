@@ -32,6 +32,7 @@ const APUInfo = (props: { apu: APU }) => {
 						["DMC.readBytesRemaining", "" + apu.dmc.readBytesRemaining],
 						["DMC.interruptFlag", "" + apu.dmc.interruptFlag],
 						["DMC.outputSilence", "" + apu.dmc.outputSilence],
+						["DMC.sampleBuffer", "" + apu.dmc.sampleBuffer],
 
 					].map(([name, value], i) => {
 						return <TableRow key={i} row={[name, value]} />

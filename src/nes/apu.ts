@@ -212,7 +212,7 @@ class DMC {
 	// The sample buffer either holds a single 8-bit sample byte or is empty.
 	// It is filled by the reader and can only be emptied by the output unit;
 	// once loaded with a sample byte it will be played back.
-	private sampleBuffer: uint8 | null = null
+	sampleBuffer: uint8 | null = null
 
 	// When the sample buffer is emptied, the memory reader fills the sample
 	// buffer with the next byte from the currently playing sample. It has an
@@ -224,7 +224,6 @@ class DMC {
 		this.sampleBuffer = null
 		this.fillBuffer()
 	}
-
 	private fillBuffer() {
 		if (this.sampleBuffer !== null) {
 			return
@@ -240,9 +239,10 @@ class DMC {
 
 		// The address is incremented; if it exceeds $FFFF, it is wrapped around
 		// to $8000.
-		this.readAddress++
-		if (this.readAddress > 0xFFFF) {
-			this.readAddress -= 0x8000
+		if (this.readAddress === 0xFFFF) {
+			this.readAddress = 0x8000
+		} else {
+			this.readAddress++
 		}
 		// The bytes remaining counter is decremented; if it becomes zero and
 		// the loop flag is set, the sample is restarted (see above); otherwise,
@@ -252,12 +252,14 @@ class DMC {
 		if ((this.readBytesRemaining === 0) && this.loop) {
 			this.restart()
 		} else if (this.readBytesRemaining === 0 && this.irqEnabled) {
+			console.log(`fillBuffer: setting interruptFlag`)
 			this.interruptFlag = 1
 		}
 	}
 
 	// restart the sample
 	restart() {
+		console.log(`DMC restart`)
 		this.readAddress = this.sampleAddress
 		this.readBytesRemaining = this.sampleLength
 		this.fillBuffer()
@@ -800,7 +802,7 @@ export class APU {
 				const p2 = this.pulse2.lengthCounter.output() ? 1 : 0
 				const t = this.triangle.lengthCounter.output() ? 1 : 0
 				const n = this.noise.lengthCounter.output() ? 1 : 0
-				const d = this.dmc.readBytesRemaining > 0 ? 1 : 0
+				const d = (this.dmc.readBytesRemaining > 0) ? 1 : 0
 				return i << 7 | f << 6 | d << 4 | n << 3 | t << 2 | p2 << 1 | p1
 			}
 		}
@@ -874,7 +876,10 @@ export class APU {
 				return
 			case 0x14:
 				throw new Error(`BUG: $4014 should be handled by PPU`)
-			case 0x15:
+			case 0x15: // $4015
+				// Writing to this register clears the DMC interrupt flag.
+				this.dmc.interruptFlag = 0
+
 				this.pulse1.lengthCounter.setEnabled(x >> 0 & 1)
 				this.pulse2.lengthCounter.setEnabled(x >> 1 & 1)
 				this.triangle.lengthCounter.setEnabled(x >> 2 & 1)
@@ -890,8 +895,6 @@ export class APU {
 						this.dmc.restart()
 					}
 				}
-				// Writing to this register clears the DMC interrupt flag.
-				this.dmc.interruptFlag = 0
 				return
 			case 0x16:
 				throw new Error(`BUG: $4016 should be handled by Controller`)

@@ -16,6 +16,7 @@ export enum Mode {
   IND,
 }
 
+// The order is used in instruction2str
 export enum Instruction {
   ADC,
   AHX,
