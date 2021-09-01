@@ -341,7 +341,7 @@ export class PPU {
             (this.patternTableData1 >> this.internalX & 1) << 1
         const bgAttr = (this.paletteAttributes0 >> this.internalX & 1) |
             (this.paletteAttributes1 >> this.internalX & 1) << 1
-        const bgColorIndex = bgPixel === 0 ? -1 : this.bus.backgroundPalettes[bgAttr][bgPixel - 1]
+        const bgColorIndex = bgPixel === 0 ? -1 : this.bus.backgroundPalettes[bgAttr * 3 + bgPixel - 1]
         assertInRange(bgColorIndex, -1, 63)
         this.patternTableData0 >>= 1
         this.patternTableData1 >>= 1
@@ -724,7 +724,7 @@ export class PPU {
                         const x2 = (x >> 4 & 1) << 1, y2 = (y >> 4 & 1) << 1
                         const at = b >> (y2 << 1 | x2) & 3
 
-                        const ci = this.bus.backgroundPalettes[at][pi - 1]
+                        const ci = this.bus.backgroundPalettes[at * 3 + pi - 1]
                         colorIndex = ci
                     }
 
@@ -798,9 +798,9 @@ class PPUBus {
 
     // PPU palettes
     universalBackgroundColor = 0
-    backgroundPalettes: Array<Palette> = [0, 0, 0, 0].map(() => {
-        return newPalette()
-    })
+
+    // (i * 3 + j)-th element contains palette[i]'s j-th color.
+    backgroundPalettes = new Uint8Array(12)
     spritePalettes: Array<Palette> = [0, 0, 0, 0].map(() => {
         return newPalette()
     })
@@ -845,7 +845,7 @@ class PPUBus {
             }
             const i = k >> 2, j = (k & 3) - 1
             if (i < 4) {
-                return this.backgroundPalettes[i][j]
+                return this.backgroundPalettes[i * 3 + j]
             } else {
                 return this.spritePalettes[i - 4][j]
             }
@@ -881,10 +881,21 @@ class PPUBus {
             }
             const i = k >> 2
             if (i < 4) {
-                this.backgroundPalettes[i][(k & 3) - 1] = x & 63
+                this.backgroundPalettes[i * 3 + (k & 3) - 1] = x & 63
             } else {
                 this.spritePalettes[i - 4][(k & 3) - 1] = x & 63
             }
         }
     }
 }
+
+export function to2DPalettes(palettes1D: Uint8Array): Array<Palette> {
+    const p = palettes1D
+    return [
+        [p[0],p[1],p[2]],
+        [p[3],p[4],p[5]],
+        [p[6],p[7],p[8]],
+        [p[9],p[10],p[11]],
+    ]
+}
+

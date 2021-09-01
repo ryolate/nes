@@ -217,7 +217,7 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 			</span>
 		</div>
 		<PPUPalettes universal={ppu.bus.universalBackgroundColor}
-			bg={ppu.bus.backgroundPalettes}
+			bg={PPU.to2DPalettes(ppu.bus.backgroundPalettes)}
 			sprite={ppu.bus.spritePalettes} />
 		<div style={{ marginTop: "1px" }}>
 			<canvas ref={canvasRef}></canvas>
