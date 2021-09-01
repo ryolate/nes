@@ -25,5 +25,3 @@ git push
 ## Running benchmark
 
 `npm run bench`
-
-3.69s on d7e4ea642585a6e6c01167b71bdff5a9848f771d
