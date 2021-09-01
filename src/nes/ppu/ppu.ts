@@ -289,17 +289,6 @@ export class PPU {
     //
     // NT byte, AT byte, Low BG tile byte, High BG tile byte in https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     private fetchTileData() {
-        if ((this.scanline <= 239 || this.scanline === 261) &&
-            (this.scanlineCycle & 7) === 7 &&
-            (this.scanlineCycle >= 7 && this.scanlineCycle <= 255 ||
-                this.scanlineCycle >= 327 && this.scanlineCycle <= 335)) {
-            // OK.
-            // scanline: -1 ~ 239
-            // tick: 7, 15, ..., 255, 327, 335
-        } else {
-            throw new Error(`fetchTileData() at (${this.scanline}, ${this.scanlineCycle})`)
-        }
-
         const fineY = this.internalV >> 12
         // Name table address.
         const tileAddress = 0x2000 | (this.internalV & 0xFFF)
@@ -321,7 +310,6 @@ export class PPU {
 
         // --- -- ---Y- ---X- -> YX0
         const at = attrByte >> ((this.internalV >> 4) & 4 | this.internalV & 2) & 3
-        assertInRange(at, 0, 3)
 
         this.patternByte0Latch = uint8Reverse(patternByte0)
         this.patternByte1Latch = uint8Reverse(patternByte1)
@@ -392,7 +380,7 @@ export class PPU {
                         this.coarseXIncrement()
                         break
                     case 1:
-                        // 329, 337, 9, 17, 25, ..., 250
+                        // 329, 337, 9, 17, 25, ..., 249
                         this.reloadShifters()
                 }
             }
