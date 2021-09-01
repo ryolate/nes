@@ -180,7 +180,7 @@ export class CPU {
 
     private setNZ(x: uint8): uint8 {
         this.N = hasBit(x, 7)
-        this.Z = x == 0
+        this.Z = x === 0
         return x
     }
 
@@ -188,7 +188,7 @@ export class CPU {
         this.C = hasBit(x, 8)
         x &= UINT8_MAX
         this.N = hasBit(x, 7)
-        this.Z = x == 0
+        this.Z = x === 0
         return x
     }
 
@@ -314,14 +314,14 @@ export class CPU {
                 const a = this.A
                 const m = this.read(addr)
                 this.A = this.setNZC(a + (this.C ? 1 : 0) + m)
-                this.V = sign(a) == sign(m) && sign(a) != sign(this.A)
+                this.V = sign(a) === sign(m) && sign(a) != sign(this.A)
                 break
             }
             case Opcode.Instruction.SBC: {
                 const a = this.A
                 const m = this.read(addr) ^ UINT8_MAX
                 this.A = this.setNZC(a + (this.C ? 1 : 0) + m)
-                this.V = sign(a) == sign(m) && sign(a) != sign(this.A)
+                this.V = sign(a) === sign(m) && sign(a) != sign(this.A)
                 break
             }
             case Opcode.Instruction.CMP: {
@@ -556,7 +556,7 @@ export class CPU {
             }
             case Opcode.Instruction.BIT: {
                 const m = this.read(addr)
-                this.Z = (m & this.A) == 0
+                this.Z = (m & this.A) === 0
                 this.N = (m >> 7 & 1) === 1
                 this.V = (m >> 6 & 1) === 1
                 break
@@ -619,7 +619,7 @@ export class CPU {
                 this.write(addr, m)
                 const a = this.A
                 this.A = this.setNZC(a + (this.C ? 1 : 0) + m)
-                this.V = sign(a) == sign(m) && sign(a) != sign(this.A)
+                this.V = sign(a) === sign(m) && sign(a) != sign(this.A)
                 break
             }
             case Opcode.Instruction.SAX: {
@@ -641,7 +641,7 @@ export class CPU {
                 const a = this.A
                 const m = this.read(addr) ^ UINT8_MAX
                 this.A = this.setNZC(a + (this.C ? 1 : 0) + m)
-                this.V = sign(a) == sign(m) && sign(a) != sign(this.A)
+                this.V = sign(a) === sign(m) && sign(a) != sign(this.A)
                 break
             }
             case Opcode.Instruction.ANC: {

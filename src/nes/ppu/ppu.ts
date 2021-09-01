@@ -201,10 +201,9 @@ export class PPU {
         this.bus = new PPUBus(mapper)
         this.nmi = nmi
 
-        for (let i = 0; i < this.buffers.length; i++) {
-            for (let j = 0; j < this.buffers[i].length; j += 4) {
-                this.buffers[i][j + 3] = 255 // opaque
-            }
+        for (let j = 0; j < this.frontBuffer.length; j += 4) {
+            this.frontBuffer[j + 3] = 255 // opaque
+            this.backBuffer[j + 3] = 255
         }
     }
 
@@ -217,13 +216,16 @@ export class PPU {
         if (this.scanline >= 262) {
             this.scanline = 0
             this.frameCount++
-            this.frontBufferIndex = 1 - this.frontBufferIndex
+
+            const tmp = this.frontBuffer
+            this.frontBuffer = this.backBuffer
+            this.backBuffer = tmp
         }
     }
 
     // inc hori(v) in https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     private coarseXIncrement() {
-        if ((this.scanline <= 239 || this.scanline == 261) &&
+        if ((this.scanline <= 239 || this.scanline === 261) &&
             (this.scanlineCycle & 7) === 0 &&
             (this.scanlineCycle >= 8 && this.scanlineCycle <= 256 ||
                 this.scanlineCycle >= 328 && this.scanlineCycle <= 336)) {
@@ -235,7 +237,7 @@ export class PPU {
         }
         // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Wrapping_around
         // Coarse X increment
-        if ((this.internalV & 0x001F) == 31) { // if coarse X == 31
+        if ((this.internalV & 0x001F) === 31) { // if coarse X == 31
             this.internalV &= ~0x001F          // coarse X = 0
             this.internalV ^= 0x0400           // switch horizontal nametable
         } else {
@@ -245,7 +247,7 @@ export class PPU {
 
     // inc vert(v) in https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     private yIncrement() {
-        if ((this.scanline <= 239 || this.scanline == 261) &&
+        if ((this.scanline <= 239 || this.scanline === 261) &&
             (this.scanlineCycle === 256)) {
             // OK.
             // scanline: -1 ~ 239
@@ -287,7 +289,7 @@ export class PPU {
     //
     // NT byte, AT byte, Low BG tile byte, High BG tile byte in https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     private fetchTileData() {
-        if ((this.scanline <= 239 || this.scanline == 261) &&
+        if ((this.scanline <= 239 || this.scanline === 261) &&
             (this.scanlineCycle & 7) === 7 &&
             (this.scanlineCycle >= 7 && this.scanlineCycle <= 255 ||
                 this.scanlineCycle >= 327 && this.scanlineCycle <= 335)) {
@@ -476,17 +478,16 @@ export class PPU {
         }
     }
 
-    private buffers = [new Uint8ClampedArray(WIDTH * HEIGHT * 4), new Uint8ClampedArray(WIDTH * HEIGHT * 4)]
-    private frontBufferIndex = 0
+    private frontBuffer = new Uint8ClampedArray(WIDTH * HEIGHT * 4)
+    private backBuffer = new Uint8ClampedArray(WIDTH * HEIGHT * 4)
+
     private putPixel(x: number, y: number, colorIndex: number) {
-        if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT || colorIndex < 0 || colorIndex >= 64) {
-            throw new Error(`BUG`)
-        }
-        const c = Color.get(colorIndex)
+        const [r, g, b] = Color.get(colorIndex)
         const i = y * WIDTH + x
-        this.buffers[1 - this.frontBufferIndex][i * 4 + 0] = c[0] // R
-        this.buffers[1 - this.frontBufferIndex][i * 4 + 1] = c[1] // G
-        this.buffers[1 - this.frontBufferIndex][i * 4 + 2] = c[2] // B
+
+        this.backBuffer[i * 4 + 0] = r // R
+        this.backBuffer[i * 4 + 1] = g // G
+        this.backBuffer[i * 4 + 2] = b // B
     }
 
     // Holds the result of spriteLine.
@@ -582,11 +583,11 @@ export class PPU {
     }
 
     render(ctx: CanvasRenderingContext2D): void {
-        const img = new ImageData(this.buffers[this.frontBufferIndex], WIDTH, HEIGHT)
+        const img = new ImageData(this.frontBuffer, WIDTH, HEIGHT)
         ctx.putImageData(img, 0, 0)
     }
     buffer(): Uint8ClampedArray {
-        return this.buffers[this.frontBufferIndex]
+        return this.frontBuffer
     }
 
     readCPU(pc: uint16): uint8 {

@@ -192,7 +192,7 @@ async function primaryFun(opts: Option) {
 		let doneCount = 0
 		cluster.on('message', () => {
 			doneCount++
-			if (doneCount == NUM_WORKER) {
+			if (doneCount === NUM_WORKER) {
 				resolve(0)
 			}
 		})

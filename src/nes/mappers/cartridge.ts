@@ -30,7 +30,7 @@ class Scanner {
         return res
     }
     isEOF(): boolean {
-        return this.data.length == this.p
+        return this.data.length === this.p
     }
     assertEOF() {
         if (this.isEOF()) {

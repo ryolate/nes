@@ -60,7 +60,7 @@ export const assertSameImageBuffers = async (ours: Uint8ClampedArray, theirs: Ui
 			break
 		}
 	}
-	if (failCount == 0) {
+	if (failCount === 0) {
 		return
 	}
 	// Create diff image

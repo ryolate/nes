@@ -5,7 +5,7 @@ export const UINT8_MAX = (1 << 8) - 1
 export const UINT16_MAX = (1 << 16) - 1
 
 export function hasBit(x: uint8, i: number): boolean {
-    return ((x >> i) & 1) == 1
+    return ((x >> i) & 1) === 1
 }
 
 export function uint8ToSigned(x: uint8): number {
