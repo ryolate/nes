@@ -141,7 +141,8 @@ export class PPU {
             // internal buffer though, but the data placed in it is the mirrored
             // nametable data that would appear "underneath" the palette.
             // (Checking the PPU memory map should make this clearer.)
-            res = this.internalReadBuffer = this.bus.read(this.internalV)
+            res = this.bus.read(this.internalV)
+            this.internalReadBuffer = this.bus.read(this.internalV - 0x1000)
         }
         this.incrementInternalV()
         return res
