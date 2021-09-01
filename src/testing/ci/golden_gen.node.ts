@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 // Image generator
 // Creates images running nes against each rom in target.txt.
 // They are uploaded to GS or stored locally.

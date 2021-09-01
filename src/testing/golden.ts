@@ -20,7 +20,7 @@ export const wantFrame = (filepath: string, frameCount: number): Uint8ClampedArr
 }
 
 const sameColor = (i: number, j: number): boolean => {
-	return Color.sameColor(Color.get(i), Color.get(j))
+	return Color.get(i) === Color.get(j)
 }
 
 export const assertSameImageBuffers = async (ours: Uint8ClampedArray, theirs: Uint8ClampedArray, filepath?: string): Promise<void> => {

@@ -42,9 +42,9 @@ const APUInfo = (props: { apu: APU }) => {
 	</div>)
 }
 
-const PaletteColor = (props: { color: Color.RGB }) => {
+const PaletteColor = (props: { color: number }) => {
 	const sz = 10
-	const [r, g, b] = props.color
+	const [r, g, b] = Color.toRGB(props.color)
 	return <div style={{
 		backgroundColor: `rgb(${r}, ${g}, ${b})`,
 		height: sz, width: sz,

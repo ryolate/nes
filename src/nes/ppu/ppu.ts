@@ -200,11 +200,6 @@ export class PPU {
     constructor(mapper: Mapper, nmi: NMI) {
         this.bus = new PPUBus(mapper)
         this.nmi = nmi
-
-        for (let j = 0; j < this.frontBuffer.length; j += 4) {
-            this.frontBuffer[j + 3] = 255 // opaque
-            this.backBuffer[j + 3] = 255
-        }
     }
 
     private updateIndices() {
@@ -217,9 +212,12 @@ export class PPU {
             this.scanline = 0
             this.frameCount++
 
-            const tmp = this.frontBuffer
+            const tmp = this.frontView
+            this.frontView = this.backView
+            this.backView = tmp
+            const tmp2 = this.frontBuffer
             this.frontBuffer = this.backBuffer
-            this.backBuffer = tmp
+            this.backBuffer = tmp2
         }
     }
 
@@ -478,16 +476,15 @@ export class PPU {
         }
     }
 
-    private frontBuffer = new Uint8ClampedArray(WIDTH * HEIGHT * 4)
-    private backBuffer = new Uint8ClampedArray(WIDTH * HEIGHT * 4)
+    private frontBuffer = new ArrayBuffer(WIDTH * HEIGHT * 4)
+    private backBuffer = new ArrayBuffer(WIDTH * HEIGHT * 4)
+    private frontView = new Uint32Array(this.frontBuffer)
+    private backView = new Uint32Array(this.backBuffer)
 
     private putPixel(x: number, y: number, colorIndex: number) {
-        const [r, g, b] = Color.get(colorIndex)
+        const rgba = Color.get(colorIndex)
         const i = y * WIDTH + x
-
-        this.backBuffer[i * 4 + 0] = r // R
-        this.backBuffer[i * 4 + 1] = g // G
-        this.backBuffer[i * 4 + 2] = b // B
+        this.backView[i] = rgba
     }
 
     // Holds the result of spriteLine.
@@ -583,11 +580,11 @@ export class PPU {
     }
 
     render(ctx: CanvasRenderingContext2D): void {
-        const img = new ImageData(this.frontBuffer, WIDTH, HEIGHT)
+        const img = new ImageData(new Uint8ClampedArray(this.frontBuffer), WIDTH, HEIGHT)
         ctx.putImageData(img, 0, 0)
     }
     buffer(): Uint8ClampedArray {
-        return this.frontBuffer
+        return new Uint8ClampedArray(this.frontBuffer)
     }
 
     readCPU(pc: uint16): uint8 {
@@ -731,7 +728,8 @@ export class PPU {
                         colorIndex = ci
                     }
 
-                    let color = Color.get(colorIndex)
+                    const color32 = Color.get(colorIndex)
+                    let color = [color32 & 0xFF, color32 >> 8 & 0xFF, color32 >> 16 & 0xFF]
 
                     const x2 = x + (h & 1) * WIDTH
                     const y2 = y + (h >> 1) * HEIGHT
