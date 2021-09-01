@@ -580,7 +580,7 @@ export class PPU {
     }
 
     render(ctx: CanvasRenderingContext2D): void {
-        const img = new ImageData(new Uint8ClampedArray(this.frontBuffer), WIDTH, HEIGHT)
+        const img = new ImageData(this.buffer(), WIDTH, HEIGHT)
         ctx.putImageData(img, 0, 0)
     }
     buffer(): Uint8ClampedArray {
@@ -892,10 +892,9 @@ class PPUBus {
 export function to2DPalettes(palettes1D: Uint8Array): Array<Palette> {
     const p = palettes1D
     return [
-        [p[0],p[1],p[2]],
-        [p[3],p[4],p[5]],
-        [p[6],p[7],p[8]],
-        [p[9],p[10],p[11]],
+        [p[0], p[1], p[2]],
+        [p[3], p[4], p[5]],
+        [p[6], p[7], p[8]],
+        [p[9], p[10], p[11]],
     ]
 }
-
