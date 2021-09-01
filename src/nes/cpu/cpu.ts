@@ -105,14 +105,14 @@ export class CPU {
 
     // https://wiki.nesdev.com/w/index.php/User:Karatorian/6502_Instruction_Set#The_X_Index_Register
     // Status flags: https://wiki.nesdev.com/w/index.php/Status_flags
-    private N: uint8 = 0 // negative
-    private V: uint8 = 0 // overflow
-    private D: uint8 = 0 // decimal
+    private N = false // negative
+    private V = false // overflow
+    private D = false // decimal
     // I: Interrupt Disable
     // When set, all interrupts except the NMI are inhibited.
-    private I: number
-    private Z: uint8 = 0 // zero
-    private C: uint8 = 0 // carry
+    private I = false
+    private Z = false // zero
+    private C = false // carry
 
     private halt = false
     private nmi: NMI
@@ -123,7 +123,7 @@ export class CPU {
         this.nmi = nmi
         // https://wiki.nesdev.com/w/index.php/CPU_power_up_state
         this.S = 0xFD
-        this.I = 1
+        this.I = true
 
         this.CPURAM = new Uint8Array(0x800)
         this.mapper = mapper
@@ -178,19 +178,20 @@ export class CPU {
     }
 
     private setNZ(x: uint8): uint8 {
-        assertUint8(x)
-        this.N = hasBit(x, 7) ? 1 : 0
-        this.Z = x == 0 ? 1 : 0
+        this.N = hasBit(x, 7)
+        this.Z = x == 0
         return x
     }
 
     private setNZC(x: number): uint8 {
-        this.C = hasBit(x, 8) ? 1 : 0
-        return this.setNZ(x & UINT8_MAX)
+        this.C = hasBit(x, 8)
+        x &= UINT8_MAX
+        this.N = hasBit(x, 7)
+        this.Z = x == 0
+        return x
     }
 
     private push(x: uint8) {
-        assertUint8(x)
         this.write(0x100 + this.S, x)
         this.S = dec(this.S)
     }
@@ -212,15 +213,22 @@ export class CPU {
     }
 
     private setP(p: uint8): void {
-        this.N = (p >> 7) & 1
-        this.V = (p >> 6) & 1
-        this.D = (p >> 3) & 1
-        this.I = (p >> 2) & 1
-        this.Z = (p >> 1) & 1
-        this.C = (p >> 0) & 1
+        this.N = ((p >> 7) & 1) === 1
+        this.V = ((p >> 6) & 1) === 1
+        this.D = ((p >> 3) & 1) === 1
+        this.I = ((p >> 2) & 1) === 1
+        this.Z = ((p >> 1) & 1) === 1
+        this.C = ((p >> 0) & 1) === 1
     }
     getP(): uint8 {
-        return this.N << 7 | this.V << 6 | 1 << 5 | 0 << 4 | this.D << 3 | this.I << 2 | this.Z << 1 | this.C
+        let p = 0x20
+        if (this.N) p |= 0x80
+        if (this.V) p |= 0x40
+        if (this.D) p |= 0x08
+        if (this.I) p |= 0x04
+        if (this.Z) p |= 0x02
+        if (this.C) p |= 0x01
+        return p
     }
 
     private execute(instr: Operation): void {
@@ -281,13 +289,13 @@ export class CPU {
                 this.push16(this.PC)
                 this.push(this.getP())
                 this.PC = this.read16(0xFFFA)
-                this.I = 1
+                this.I = true
                 break
             case Opcode.Instruction._IRQ:
                 this.push16(this.PC)
                 this.push(this.getP())
                 this.PC = this.read16(0xFFFE)
-                this.I = 1
+                this.I = true
                 break
             // Logical and arithmetic commands
             case Opcode.Instruction.ORA:
@@ -302,15 +310,15 @@ export class CPU {
             case Opcode.Instruction.ADC: {
                 const a = this.A
                 const m = this.read(addr)
-                this.A = this.setNZC(a + this.C + m)
-                this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
+                this.A = this.setNZC(a + (this.C ? 1 : 0) + m)
+                this.V = sign(a) == sign(m) && sign(a) != sign(this.A)
                 break
             }
             case Opcode.Instruction.SBC: {
                 const a = this.A
                 const m = this.read(addr) ^ UINT8_MAX
-                this.A = this.setNZC(a + this.C + m)
-                this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
+                this.A = this.setNZC(a + (this.C ? 1 : 0) + m)
+                this.V = sign(a) == sign(m) && sign(a) != sign(this.A)
                 break
             }
             case Opcode.Instruction.CMP: {
@@ -361,7 +369,7 @@ export class CPU {
             }
             case Opcode.Instruction.ROL: {
                 const m = instr.mode ? this.read(addr) : this.A
-                const v = this.setNZC(m * 2 + this.C)
+                const v = this.setNZC(m * 2 + (this.C ? 1 : 0))
                 if (instr.mode) {
                     this.write(addr, v)
                 } else {
@@ -381,7 +389,7 @@ export class CPU {
             }
             case Opcode.Instruction.ROR: {
                 const m = instr.mode ? this.read(addr) : this.A
-                const v = this.setNZC(m >> 1 | this.C << 7 | (m & 1) << 8)
+                const v = this.setNZC(m >> 1 | (this.C ? 1 : 0) << 7 | (m & 1) << 8)
                 if (instr.mode) {
                     this.write(addr, v)
                 } else {
@@ -545,37 +553,37 @@ export class CPU {
             }
             case Opcode.Instruction.BIT: {
                 const m = this.read(addr)
-                this.Z = (m & this.A) == 0 ? 1 : 0
-                this.N = m >> 7 & 1
-                this.V = m >> 6 & 1
+                this.Z = (m & this.A) == 0
+                this.N = (m >> 7 & 1) === 1
+                this.V = (m >> 6 & 1) === 1
                 break
             }
             case Opcode.Instruction.CLC: {
-                this.C = 0
+                this.C = false
                 break
             }
             case Opcode.Instruction.SEC: {
-                this.C = 1
+                this.C = true
                 break
             }
             case Opcode.Instruction.CLD: {
-                this.D = 0
+                this.D = false
                 break
             }
             case Opcode.Instruction.SED: {
-                this.D = 1
+                this.D = true
                 break
             }
             case Opcode.Instruction.CLI: {
-                this.I = 0
+                this.I = false
                 break
             }
             case Opcode.Instruction.SEI: {
-                this.I = 1
+                this.I = true
                 break
             }
             case Opcode.Instruction.CLV: {
-                this.V = 0
+                this.V = false
                 break
             }
             case Opcode.Instruction.NOP: {
@@ -589,14 +597,14 @@ export class CPU {
                 break
             }
             case Opcode.Instruction.RLA: {
-                const m = this.setNZC(this.read(addr) * 2 + this.C)
+                const m = this.setNZC(this.read(addr) * 2 + (this.C ? 1 : 0))
                 this.write(addr, m)
                 this.A = this.setNZ(this.A & m)
                 break
             }
             case Opcode.Instruction.SRE: {
                 let m = this.read(addr)
-                this.C = m & 1
+                this.C = (m & 1) === 1
                 m = this.setNZ(m >> 1)
                 this.write(addr, m)
                 this.A = this.setNZ(this.A ^ m)
@@ -604,11 +612,11 @@ export class CPU {
             }
             case Opcode.Instruction.RRA: {
                 let m = this.read(addr)
-                m = this.setNZC(((m & 1) << 8) | m >> 1 | this.C << 7)
+                m = this.setNZC(((m & 1) << 8) | m >> 1 | (this.C ? 1 : 0) << 7)
                 this.write(addr, m)
                 const a = this.A
-                this.A = this.setNZC(a + this.C + m)
-                this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
+                this.A = this.setNZC(a + (this.C ? 1 : 0) + m)
+                this.V = sign(a) == sign(m) && sign(a) != sign(this.A)
                 break
             }
             case Opcode.Instruction.SAX: {
@@ -629,27 +637,27 @@ export class CPU {
                 this.write(addr, this.setNZ(inc(this.read(addr))))
                 const a = this.A
                 const m = this.read(addr) ^ UINT8_MAX
-                this.A = this.setNZC(a + this.C + m)
-                this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
+                this.A = this.setNZC(a + (this.C ? 1 : 0) + m)
+                this.V = sign(a) == sign(m) && sign(a) != sign(this.A)
                 break
             }
             case Opcode.Instruction.ANC: {
                 this.A = this.setNZ(this.A & this.read(addr))
-                this.C = (this.A >> 7) & 1
+                this.C = ((this.A >> 7) & 1) === 1
                 break
             }
             case Opcode.Instruction.ALR: { // AND + LSR(imp)
                 const m = this.A & this.read(addr)
                 this.A = this.setNZ(m >> 1)
-                this.C = m & 1
+                this.C = (m & 1) === 1
                 break
             }
             case Opcode.Instruction.ARR: { // AND + ROR(imp)
                 const m = this.read(addr)
                 this.A &= m
-                this.A = this.setNZ(this.A >> 1 | this.C << 7)
-                this.C = this.A >> 6 & 1
-                this.V = this.C ^ (this.A >> 5 & 1)
+                this.A = this.setNZ(this.A >> 1 | (this.C ? 1 : 0) << 7)
+                this.C = (this.A >> 6 & 1) === 1
+                this.V = ((this.C ? 1 : 0) ^ (this.A >> 5 & 1)) === 1
                 break
             }
             case Opcode.Instruction.XAA: {
