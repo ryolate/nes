@@ -16,8 +16,85 @@ export enum Mode {
   IND,
 }
 
-type FakeInstruction = "_IRQ" | "_NMI"
-export type Instruction = FakeInstruction | "ADC" | "AHX" | "ALR" | "ANC" | "AND" | "ARR" | "ASL" | "AXS" | "BCC" | "BCS" | "BEQ" | "BIT" | "BMI" | "BNE" | "BPL" | "BRK" | "BVC" | "BVS" | "CLC" | "CLD" | "CLI" | "CLV" | "CMP" | "CPX" | "CPY" | "DCP" | "DEC" | "DEX" | "DEY" | "EOR" | "INC" | "INX" | "INY" | "ISC" | "JMP" | "JSR" | "KIL" | "LAS" | "LAX" | "LDA" | "LDX" | "LDY" | "LSR" | "NOP" | "ORA" | "PHA" | "PHP" | "PLA" | "PLP" | "RLA" | "ROL" | "ROR" | "RRA" | "RTI" | "RTS" | "SAX" | "SBC" | "SEC" | "SED" | "SEI" | "SHX" | "SHY" | "SLO" | "SRE" | "STA" | "STX" | "STY" | "TAS" | "TAX" | "TAY" | "TSX" | "TXA" | "TXS" | "TYA" | "XAA"
+export enum Instruction {
+  ADC,
+  AHX,
+  ALR,
+  ANC,
+  AND,
+  ARR,
+  ASL,
+  AXS,
+  BCC,
+  BCS,
+  BEQ,
+  BIT,
+  BMI,
+  BNE,
+  BPL,
+  BRK,
+  BVC,
+  BVS,
+  CLC,
+  CLD,
+  CLI,
+  CLV,
+  CMP,
+  CPX,
+  CPY,
+  DCP,
+  DEC,
+  DEX,
+  DEY,
+  EOR,
+  INC,
+  INX,
+  INY,
+  ISC,
+  JMP,
+  JSR,
+  KIL,
+  LAS,
+  LAX,
+  LDA,
+  LDX,
+  LDY,
+  LSR,
+  NOP,
+  ORA,
+  PHA,
+  PHP,
+  PLA,
+  PLP,
+  RLA,
+  ROL,
+  ROR,
+  RRA,
+  RTI,
+  RTS,
+  SAX,
+  SBC,
+  SEC,
+  SED,
+  SEI,
+  SHX,
+  SHY,
+  SLO,
+  SRE,
+  STA,
+  STX,
+  STY,
+  TAS,
+  TAX,
+  TAY,
+  TSX,
+  TXA,
+  TXS,
+  TYA,
+  XAA,
+  _NMI, // NMI, IRQ are fake instructions
+  _IRQ,
+}
 
 export interface Opcode {
   op: uint8
@@ -29,14 +106,14 @@ export interface Opcode {
 
 export const nmi: Opcode = {
   "op": 256,
-  "opcode": "_NMI",
+  "opcode": Instruction._NMI,
   "mode": Mode.IMP,
   "cycle": 7,
   "extra": false
 }
 export const irq: Opcode = {
   "op": 257,
-  "opcode": "_IRQ",
+  "opcode": Instruction._IRQ,
   "mode": Mode.IMP,
   "cycle": 7,
   "extra": false
@@ -46,1792 +123,1792 @@ export const irq: Opcode = {
 export const opcodes: Array<Opcode> = [
   {
     "op": 0,
-    "opcode": "BRK",
+    "opcode": Instruction.BRK,
     "mode": Mode.IMP,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 1,
-    "opcode": "ORA",
+    "opcode": Instruction.ORA,
     "mode": Mode.IZX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 2,
-    "opcode": "KIL",
+    "opcode": Instruction.KIL,
     "mode": Mode.IMP,
     "cycle": 0,
     "extra": false
   },
   {
     "op": 3,
-    "opcode": "SLO",
+    "opcode": Instruction.SLO,
     "mode": Mode.IZX,
     "cycle": 8,
     "extra": false
   },
   {
     "op": 4,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 5,
-    "opcode": "ORA",
+    "opcode": Instruction.ORA,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 6,
-    "opcode": "ASL",
+    "opcode": Instruction.ASL,
     "mode": Mode.ZP,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 7,
-    "opcode": "SLO",
+    "opcode": Instruction.SLO,
     "mode": Mode.ZP,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 8,
-    "opcode": "PHP",
+    "opcode": Instruction.PHP,
     "mode": Mode.IMP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 9,
-    "opcode": "ORA",
+    "opcode": Instruction.ORA,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 10,
-    "opcode": "ASL",
+    "opcode": Instruction.ASL,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 11,
-    "opcode": "ANC",
+    "opcode": Instruction.ANC,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 12,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 13,
-    "opcode": "ORA",
+    "opcode": Instruction.ORA,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 14,
-    "opcode": "ASL",
+    "opcode": Instruction.ASL,
     "mode": Mode.ABS,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 15,
-    "opcode": "SLO",
+    "opcode": Instruction.SLO,
     "mode": Mode.ABS,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 16,
-    "opcode": "BPL",
+    "opcode": Instruction.BPL,
     "mode": Mode.REL,
     "cycle": 2,
     "extra": true
   },
   {
     "op": 17,
-    "opcode": "ORA",
+    "opcode": Instruction.ORA,
     "mode": Mode.IZY,
     "cycle": 5,
     "extra": true
   },
   {
     "op": 18,
-    "opcode": "KIL",
+    "opcode": Instruction.KIL,
     "mode": Mode.IMP,
     "cycle": 0,
     "extra": false
   },
   {
     "op": 19,
-    "opcode": "SLO",
+    "opcode": Instruction.SLO,
     "mode": Mode.IZY,
     "cycle": 8,
     "extra": false
   },
   {
     "op": 20,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 21,
-    "opcode": "ORA",
+    "opcode": Instruction.ORA,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 22,
-    "opcode": "ASL",
+    "opcode": Instruction.ASL,
     "mode": Mode.ZPX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 23,
-    "opcode": "SLO",
+    "opcode": Instruction.SLO,
     "mode": Mode.ZPX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 24,
-    "opcode": "CLC",
+    "opcode": Instruction.CLC,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 25,
-    "opcode": "ORA",
+    "opcode": Instruction.ORA,
     "mode": Mode.ABY,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 26,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 27,
-    "opcode": "SLO",
+    "opcode": Instruction.SLO,
     "mode": Mode.ABY,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 28,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 29,
-    "opcode": "ORA",
+    "opcode": Instruction.ORA,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 30,
-    "opcode": "ASL",
+    "opcode": Instruction.ASL,
     "mode": Mode.ABX,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 31,
-    "opcode": "SLO",
+    "opcode": Instruction.SLO,
     "mode": Mode.ABX,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 32,
-    "opcode": "JSR",
+    "opcode": Instruction.JSR,
     "mode": Mode.ABS,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 33,
-    "opcode": "AND",
+    "opcode": Instruction.AND,
     "mode": Mode.IZX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 34,
-    "opcode": "KIL",
+    "opcode": Instruction.KIL,
     "mode": Mode.IMP,
     "cycle": 0,
     "extra": false
   },
   {
     "op": 35,
-    "opcode": "RLA",
+    "opcode": Instruction.RLA,
     "mode": Mode.IZX,
     "cycle": 8,
     "extra": false
   },
   {
     "op": 36,
-    "opcode": "BIT",
+    "opcode": Instruction.BIT,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 37,
-    "opcode": "AND",
+    "opcode": Instruction.AND,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 38,
-    "opcode": "ROL",
+    "opcode": Instruction.ROL,
     "mode": Mode.ZP,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 39,
-    "opcode": "RLA",
+    "opcode": Instruction.RLA,
     "mode": Mode.ZP,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 40,
-    "opcode": "PLP",
+    "opcode": Instruction.PLP,
     "mode": Mode.IMP,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 41,
-    "opcode": "AND",
+    "opcode": Instruction.AND,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 42,
-    "opcode": "ROL",
+    "opcode": Instruction.ROL,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 43,
-    "opcode": "ANC",
+    "opcode": Instruction.ANC,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 44,
-    "opcode": "BIT",
+    "opcode": Instruction.BIT,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 45,
-    "opcode": "AND",
+    "opcode": Instruction.AND,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 46,
-    "opcode": "ROL",
+    "opcode": Instruction.ROL,
     "mode": Mode.ABS,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 47,
-    "opcode": "RLA",
+    "opcode": Instruction.RLA,
     "mode": Mode.ABS,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 48,
-    "opcode": "BMI",
+    "opcode": Instruction.BMI,
     "mode": Mode.REL,
     "cycle": 2,
     "extra": true
   },
   {
     "op": 49,
-    "opcode": "AND",
+    "opcode": Instruction.AND,
     "mode": Mode.IZY,
     "cycle": 5,
     "extra": true
   },
   {
     "op": 50,
-    "opcode": "KIL",
+    "opcode": Instruction.KIL,
     "mode": Mode.IMP,
     "cycle": 0,
     "extra": false
   },
   {
     "op": 51,
-    "opcode": "RLA",
+    "opcode": Instruction.RLA,
     "mode": Mode.IZY,
     "cycle": 8,
     "extra": false
   },
   {
     "op": 52,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 53,
-    "opcode": "AND",
+    "opcode": Instruction.AND,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 54,
-    "opcode": "ROL",
+    "opcode": Instruction.ROL,
     "mode": Mode.ZPX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 55,
-    "opcode": "RLA",
+    "opcode": Instruction.RLA,
     "mode": Mode.ZPX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 56,
-    "opcode": "SEC",
+    "opcode": Instruction.SEC,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 57,
-    "opcode": "AND",
+    "opcode": Instruction.AND,
     "mode": Mode.ABY,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 58,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 59,
-    "opcode": "RLA",
+    "opcode": Instruction.RLA,
     "mode": Mode.ABY,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 60,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 61,
-    "opcode": "AND",
+    "opcode": Instruction.AND,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 62,
-    "opcode": "ROL",
+    "opcode": Instruction.ROL,
     "mode": Mode.ABX,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 63,
-    "opcode": "RLA",
+    "opcode": Instruction.RLA,
     "mode": Mode.ABX,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 64,
-    "opcode": "RTI",
+    "opcode": Instruction.RTI,
     "mode": Mode.IMP,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 65,
-    "opcode": "EOR",
+    "opcode": Instruction.EOR,
     "mode": Mode.IZX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 66,
-    "opcode": "KIL",
+    "opcode": Instruction.KIL,
     "mode": Mode.IMP,
     "cycle": 0,
     "extra": false
   },
   {
     "op": 67,
-    "opcode": "SRE",
+    "opcode": Instruction.SRE,
     "mode": Mode.IZX,
     "cycle": 8,
     "extra": false
   },
   {
     "op": 68,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 69,
-    "opcode": "EOR",
+    "opcode": Instruction.EOR,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 70,
-    "opcode": "LSR",
+    "opcode": Instruction.LSR,
     "mode": Mode.ZP,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 71,
-    "opcode": "SRE",
+    "opcode": Instruction.SRE,
     "mode": Mode.ZP,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 72,
-    "opcode": "PHA",
+    "opcode": Instruction.PHA,
     "mode": Mode.IMP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 73,
-    "opcode": "EOR",
+    "opcode": Instruction.EOR,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 74,
-    "opcode": "LSR",
+    "opcode": Instruction.LSR,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 75,
-    "opcode": "ALR",
+    "opcode": Instruction.ALR,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 76,
-    "opcode": "JMP",
+    "opcode": Instruction.JMP,
     "mode": Mode.ABS,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 77,
-    "opcode": "EOR",
+    "opcode": Instruction.EOR,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 78,
-    "opcode": "LSR",
+    "opcode": Instruction.LSR,
     "mode": Mode.ABS,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 79,
-    "opcode": "SRE",
+    "opcode": Instruction.SRE,
     "mode": Mode.ABS,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 80,
-    "opcode": "BVC",
+    "opcode": Instruction.BVC,
     "mode": Mode.REL,
     "cycle": 2,
     "extra": true
   },
   {
     "op": 81,
-    "opcode": "EOR",
+    "opcode": Instruction.EOR,
     "mode": Mode.IZY,
     "cycle": 5,
     "extra": true
   },
   {
     "op": 82,
-    "opcode": "KIL",
+    "opcode": Instruction.KIL,
     "mode": Mode.IMP,
     "cycle": 0,
     "extra": false
   },
   {
     "op": 83,
-    "opcode": "SRE",
+    "opcode": Instruction.SRE,
     "mode": Mode.IZY,
     "cycle": 8,
     "extra": false
   },
   {
     "op": 84,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 85,
-    "opcode": "EOR",
+    "opcode": Instruction.EOR,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 86,
-    "opcode": "LSR",
+    "opcode": Instruction.LSR,
     "mode": Mode.ZPX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 87,
-    "opcode": "SRE",
+    "opcode": Instruction.SRE,
     "mode": Mode.ZPX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 88,
-    "opcode": "CLI",
+    "opcode": Instruction.CLI,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 89,
-    "opcode": "EOR",
+    "opcode": Instruction.EOR,
     "mode": Mode.ABY,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 90,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 91,
-    "opcode": "SRE",
+    "opcode": Instruction.SRE,
     "mode": Mode.ABY,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 92,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 93,
-    "opcode": "EOR",
+    "opcode": Instruction.EOR,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 94,
-    "opcode": "LSR",
+    "opcode": Instruction.LSR,
     "mode": Mode.ABX,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 95,
-    "opcode": "SRE",
+    "opcode": Instruction.SRE,
     "mode": Mode.ABX,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 96,
-    "opcode": "RTS",
+    "opcode": Instruction.RTS,
     "mode": Mode.IMP,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 97,
-    "opcode": "ADC",
+    "opcode": Instruction.ADC,
     "mode": Mode.IZX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 98,
-    "opcode": "KIL",
+    "opcode": Instruction.KIL,
     "mode": Mode.IMP,
     "cycle": 0,
     "extra": false
   },
   {
     "op": 99,
-    "opcode": "RRA",
+    "opcode": Instruction.RRA,
     "mode": Mode.IZX,
     "cycle": 8,
     "extra": false
   },
   {
     "op": 100,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 101,
-    "opcode": "ADC",
+    "opcode": Instruction.ADC,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 102,
-    "opcode": "ROR",
+    "opcode": Instruction.ROR,
     "mode": Mode.ZP,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 103,
-    "opcode": "RRA",
+    "opcode": Instruction.RRA,
     "mode": Mode.ZP,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 104,
-    "opcode": "PLA",
+    "opcode": Instruction.PLA,
     "mode": Mode.IMP,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 105,
-    "opcode": "ADC",
+    "opcode": Instruction.ADC,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 106,
-    "opcode": "ROR",
+    "opcode": Instruction.ROR,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 107,
-    "opcode": "ARR",
+    "opcode": Instruction.ARR,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 108,
-    "opcode": "JMP",
+    "opcode": Instruction.JMP,
     "mode": Mode.IND,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 109,
-    "opcode": "ADC",
+    "opcode": Instruction.ADC,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 110,
-    "opcode": "ROR",
+    "opcode": Instruction.ROR,
     "mode": Mode.ABS,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 111,
-    "opcode": "RRA",
+    "opcode": Instruction.RRA,
     "mode": Mode.ABS,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 112,
-    "opcode": "BVS",
+    "opcode": Instruction.BVS,
     "mode": Mode.REL,
     "cycle": 2,
     "extra": true
   },
   {
     "op": 113,
-    "opcode": "ADC",
+    "opcode": Instruction.ADC,
     "mode": Mode.IZY,
     "cycle": 5,
     "extra": true
   },
   {
     "op": 114,
-    "opcode": "KIL",
+    "opcode": Instruction.KIL,
     "mode": Mode.IMP,
     "cycle": 0,
     "extra": false
   },
   {
     "op": 115,
-    "opcode": "RRA",
+    "opcode": Instruction.RRA,
     "mode": Mode.IZY,
     "cycle": 8,
     "extra": false
   },
   {
     "op": 116,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 117,
-    "opcode": "ADC",
+    "opcode": Instruction.ADC,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 118,
-    "opcode": "ROR",
+    "opcode": Instruction.ROR,
     "mode": Mode.ZPX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 119,
-    "opcode": "RRA",
+    "opcode": Instruction.RRA,
     "mode": Mode.ZPX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 120,
-    "opcode": "SEI",
+    "opcode": Instruction.SEI,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 121,
-    "opcode": "ADC",
+    "opcode": Instruction.ADC,
     "mode": Mode.ABY,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 122,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 123,
-    "opcode": "RRA",
+    "opcode": Instruction.RRA,
     "mode": Mode.ABY,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 124,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 125,
-    "opcode": "ADC",
+    "opcode": Instruction.ADC,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 126,
-    "opcode": "ROR",
+    "opcode": Instruction.ROR,
     "mode": Mode.ABX,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 127,
-    "opcode": "RRA",
+    "opcode": Instruction.RRA,
     "mode": Mode.ABX,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 128,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 129,
-    "opcode": "STA",
+    "opcode": Instruction.STA,
     "mode": Mode.IZX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 130,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 131,
-    "opcode": "SAX",
+    "opcode": Instruction.SAX,
     "mode": Mode.IZX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 132,
-    "opcode": "STY",
+    "opcode": Instruction.STY,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 133,
-    "opcode": "STA",
+    "opcode": Instruction.STA,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 134,
-    "opcode": "STX",
+    "opcode": Instruction.STX,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 135,
-    "opcode": "SAX",
+    "opcode": Instruction.SAX,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 136,
-    "opcode": "DEY",
+    "opcode": Instruction.DEY,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 137,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 138,
-    "opcode": "TXA",
+    "opcode": Instruction.TXA,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 139,
-    "opcode": "XAA",
+    "opcode": Instruction.XAA,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 140,
-    "opcode": "STY",
+    "opcode": Instruction.STY,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 141,
-    "opcode": "STA",
+    "opcode": Instruction.STA,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 142,
-    "opcode": "STX",
+    "opcode": Instruction.STX,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 143,
-    "opcode": "SAX",
+    "opcode": Instruction.SAX,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 144,
-    "opcode": "BCC",
+    "opcode": Instruction.BCC,
     "mode": Mode.REL,
     "cycle": 2,
     "extra": true
   },
   {
     "op": 145,
-    "opcode": "STA",
+    "opcode": Instruction.STA,
     "mode": Mode.IZY,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 146,
-    "opcode": "KIL",
+    "opcode": Instruction.KIL,
     "mode": Mode.IMP,
     "cycle": 0,
     "extra": false
   },
   {
     "op": 147,
-    "opcode": "AHX",
+    "opcode": Instruction.AHX,
     "mode": Mode.IZY,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 148,
-    "opcode": "STY",
+    "opcode": Instruction.STY,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 149,
-    "opcode": "STA",
+    "opcode": Instruction.STA,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 150,
-    "opcode": "STX",
+    "opcode": Instruction.STX,
     "mode": Mode.ZPY,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 151,
-    "opcode": "SAX",
+    "opcode": Instruction.SAX,
     "mode": Mode.ZPY,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 152,
-    "opcode": "TYA",
+    "opcode": Instruction.TYA,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 153,
-    "opcode": "STA",
+    "opcode": Instruction.STA,
     "mode": Mode.ABY,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 154,
-    "opcode": "TXS",
+    "opcode": Instruction.TXS,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 155,
-    "opcode": "TAS",
+    "opcode": Instruction.TAS,
     "mode": Mode.ABY,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 156,
-    "opcode": "SHY",
+    "opcode": Instruction.SHY,
     "mode": Mode.ABX,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 157,
-    "opcode": "STA",
+    "opcode": Instruction.STA,
     "mode": Mode.ABX,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 158,
-    "opcode": "SHX",
+    "opcode": Instruction.SHX,
     "mode": Mode.ABY,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 159,
-    "opcode": "AHX",
+    "opcode": Instruction.AHX,
     "mode": Mode.ABY,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 160,
-    "opcode": "LDY",
+    "opcode": Instruction.LDY,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 161,
-    "opcode": "LDA",
+    "opcode": Instruction.LDA,
     "mode": Mode.IZX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 162,
-    "opcode": "LDX",
+    "opcode": Instruction.LDX,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 163,
-    "opcode": "LAX",
+    "opcode": Instruction.LAX,
     "mode": Mode.IZX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 164,
-    "opcode": "LDY",
+    "opcode": Instruction.LDY,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 165,
-    "opcode": "LDA",
+    "opcode": Instruction.LDA,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 166,
-    "opcode": "LDX",
+    "opcode": Instruction.LDX,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 167,
-    "opcode": "LAX",
+    "opcode": Instruction.LAX,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 168,
-    "opcode": "TAY",
+    "opcode": Instruction.TAY,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 169,
-    "opcode": "LDA",
+    "opcode": Instruction.LDA,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 170,
-    "opcode": "TAX",
+    "opcode": Instruction.TAX,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 171,
-    "opcode": "LAX",
+    "opcode": Instruction.LAX,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 172,
-    "opcode": "LDY",
+    "opcode": Instruction.LDY,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 173,
-    "opcode": "LDA",
+    "opcode": Instruction.LDA,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 174,
-    "opcode": "LDX",
+    "opcode": Instruction.LDX,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 175,
-    "opcode": "LAX",
+    "opcode": Instruction.LAX,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 176,
-    "opcode": "BCS",
+    "opcode": Instruction.BCS,
     "mode": Mode.REL,
     "cycle": 2,
     "extra": true
   },
   {
     "op": 177,
-    "opcode": "LDA",
+    "opcode": Instruction.LDA,
     "mode": Mode.IZY,
     "cycle": 5,
     "extra": true
   },
   {
     "op": 178,
-    "opcode": "KIL",
+    "opcode": Instruction.KIL,
     "mode": Mode.IMP,
     "cycle": 0,
     "extra": false
   },
   {
     "op": 179,
-    "opcode": "LAX",
+    "opcode": Instruction.LAX,
     "mode": Mode.IZY,
     "cycle": 5,
     "extra": true
   },
   {
     "op": 180,
-    "opcode": "LDY",
+    "opcode": Instruction.LDY,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 181,
-    "opcode": "LDA",
+    "opcode": Instruction.LDA,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 182,
-    "opcode": "LDX",
+    "opcode": Instruction.LDX,
     "mode": Mode.ZPY,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 183,
-    "opcode": "LAX",
+    "opcode": Instruction.LAX,
     "mode": Mode.ZPY,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 184,
-    "opcode": "CLV",
+    "opcode": Instruction.CLV,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 185,
-    "opcode": "LDA",
+    "opcode": Instruction.LDA,
     "mode": Mode.ABY,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 186,
-    "opcode": "TSX",
+    "opcode": Instruction.TSX,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 187,
-    "opcode": "LAS",
+    "opcode": Instruction.LAS,
     "mode": Mode.ABY,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 188,
-    "opcode": "LDY",
+    "opcode": Instruction.LDY,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 189,
-    "opcode": "LDA",
+    "opcode": Instruction.LDA,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 190,
-    "opcode": "LDX",
+    "opcode": Instruction.LDX,
     "mode": Mode.ABY,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 191,
-    "opcode": "LAX",
+    "opcode": Instruction.LAX,
     "mode": Mode.ABY,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 192,
-    "opcode": "CPY",
+    "opcode": Instruction.CPY,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 193,
-    "opcode": "CMP",
+    "opcode": Instruction.CMP,
     "mode": Mode.IZX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 194,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 195,
-    "opcode": "DCP",
+    "opcode": Instruction.DCP,
     "mode": Mode.IZX,
     "cycle": 8,
     "extra": false
   },
   {
     "op": 196,
-    "opcode": "CPY",
+    "opcode": Instruction.CPY,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 197,
-    "opcode": "CMP",
+    "opcode": Instruction.CMP,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 198,
-    "opcode": "DEC",
+    "opcode": Instruction.DEC,
     "mode": Mode.ZP,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 199,
-    "opcode": "DCP",
+    "opcode": Instruction.DCP,
     "mode": Mode.ZP,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 200,
-    "opcode": "INY",
+    "opcode": Instruction.INY,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 201,
-    "opcode": "CMP",
+    "opcode": Instruction.CMP,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 202,
-    "opcode": "DEX",
+    "opcode": Instruction.DEX,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 203,
-    "opcode": "AXS",
+    "opcode": Instruction.AXS,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 204,
-    "opcode": "CPY",
+    "opcode": Instruction.CPY,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 205,
-    "opcode": "CMP",
+    "opcode": Instruction.CMP,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 206,
-    "opcode": "DEC",
+    "opcode": Instruction.DEC,
     "mode": Mode.ABS,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 207,
-    "opcode": "DCP",
+    "opcode": Instruction.DCP,
     "mode": Mode.ABS,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 208,
-    "opcode": "BNE",
+    "opcode": Instruction.BNE,
     "mode": Mode.REL,
     "cycle": 2,
     "extra": true
   },
   {
     "op": 209,
-    "opcode": "CMP",
+    "opcode": Instruction.CMP,
     "mode": Mode.IZY,
     "cycle": 5,
     "extra": true
   },
   {
     "op": 210,
-    "opcode": "KIL",
+    "opcode": Instruction.KIL,
     "mode": Mode.IMP,
     "cycle": 0,
     "extra": false
   },
   {
     "op": 211,
-    "opcode": "DCP",
+    "opcode": Instruction.DCP,
     "mode": Mode.IZY,
     "cycle": 8,
     "extra": false
   },
   {
     "op": 212,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 213,
-    "opcode": "CMP",
+    "opcode": Instruction.CMP,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 214,
-    "opcode": "DEC",
+    "opcode": Instruction.DEC,
     "mode": Mode.ZPX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 215,
-    "opcode": "DCP",
+    "opcode": Instruction.DCP,
     "mode": Mode.ZPX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 216,
-    "opcode": "CLD",
+    "opcode": Instruction.CLD,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 217,
-    "opcode": "CMP",
+    "opcode": Instruction.CMP,
     "mode": Mode.ABY,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 218,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 219,
-    "opcode": "DCP",
+    "opcode": Instruction.DCP,
     "mode": Mode.ABY,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 220,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 221,
-    "opcode": "CMP",
+    "opcode": Instruction.CMP,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 222,
-    "opcode": "DEC",
+    "opcode": Instruction.DEC,
     "mode": Mode.ABX,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 223,
-    "opcode": "DCP",
+    "opcode": Instruction.DCP,
     "mode": Mode.ABX,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 224,
-    "opcode": "CPX",
+    "opcode": Instruction.CPX,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 225,
-    "opcode": "SBC",
+    "opcode": Instruction.SBC,
     "mode": Mode.IZX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 226,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 227,
-    "opcode": "ISC",
+    "opcode": Instruction.ISC,
     "mode": Mode.IZX,
     "cycle": 8,
     "extra": false
   },
   {
     "op": 228,
-    "opcode": "CPX",
+    "opcode": Instruction.CPX,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 229,
-    "opcode": "SBC",
+    "opcode": Instruction.SBC,
     "mode": Mode.ZP,
     "cycle": 3,
     "extra": false
   },
   {
     "op": 230,
-    "opcode": "INC",
+    "opcode": Instruction.INC,
     "mode": Mode.ZP,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 231,
-    "opcode": "ISC",
+    "opcode": Instruction.ISC,
     "mode": Mode.ZP,
     "cycle": 5,
     "extra": false
   },
   {
     "op": 232,
-    "opcode": "INX",
+    "opcode": Instruction.INX,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 233,
-    "opcode": "SBC",
+    "opcode": Instruction.SBC,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 234,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 235,
-    "opcode": "SBC",
+    "opcode": Instruction.SBC,
     "mode": Mode.IMM,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 236,
-    "opcode": "CPX",
+    "opcode": Instruction.CPX,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 237,
-    "opcode": "SBC",
+    "opcode": Instruction.SBC,
     "mode": Mode.ABS,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 238,
-    "opcode": "INC",
+    "opcode": Instruction.INC,
     "mode": Mode.ABS,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 239,
-    "opcode": "ISC",
+    "opcode": Instruction.ISC,
     "mode": Mode.ABS,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 240,
-    "opcode": "BEQ",
+    "opcode": Instruction.BEQ,
     "mode": Mode.REL,
     "cycle": 2,
     "extra": true
   },
   {
     "op": 241,
-    "opcode": "SBC",
+    "opcode": Instruction.SBC,
     "mode": Mode.IZY,
     "cycle": 5,
     "extra": true
   },
   {
     "op": 242,
-    "opcode": "KIL",
+    "opcode": Instruction.KIL,
     "mode": Mode.IMP,
     "cycle": 0,
     "extra": false
   },
   {
     "op": 243,
-    "opcode": "ISC",
+    "opcode": Instruction.ISC,
     "mode": Mode.IZY,
     "cycle": 8,
     "extra": false
   },
   {
     "op": 244,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 245,
-    "opcode": "SBC",
+    "opcode": Instruction.SBC,
     "mode": Mode.ZPX,
     "cycle": 4,
     "extra": false
   },
   {
     "op": 246,
-    "opcode": "INC",
+    "opcode": Instruction.INC,
     "mode": Mode.ZPX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 247,
-    "opcode": "ISC",
+    "opcode": Instruction.ISC,
     "mode": Mode.ZPX,
     "cycle": 6,
     "extra": false
   },
   {
     "op": 248,
-    "opcode": "SED",
+    "opcode": Instruction.SED,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 249,
-    "opcode": "SBC",
+    "opcode": Instruction.SBC,
     "mode": Mode.ABY,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 250,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.IMP,
     "cycle": 2,
     "extra": false
   },
   {
     "op": 251,
-    "opcode": "ISC",
+    "opcode": Instruction.ISC,
     "mode": Mode.ABY,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 252,
-    "opcode": "NOP",
+    "opcode": Instruction.NOP,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 253,
-    "opcode": "SBC",
+    "opcode": Instruction.SBC,
     "mode": Mode.ABX,
     "cycle": 4,
     "extra": true
   },
   {
     "op": 254,
-    "opcode": "INC",
+    "opcode": Instruction.INC,
     "mode": Mode.ABX,
     "cycle": 7,
     "extra": false
   },
   {
     "op": 255,
-    "opcode": "ISC",
+    "opcode": Instruction.ISC,
     "mode": Mode.ABX,
     "cycle": 7,
     "extra": false

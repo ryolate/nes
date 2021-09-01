@@ -12,7 +12,13 @@ test("Parse iNES", () => {
 
     cpu.setPC(0xc000)
 
-    const wants: Array<Instruction> = ["JMP", "RTS", "SEI", "CLD", "LDX"]
+    const wants: Array<Instruction> = [
+        Instruction.JMP,
+        Instruction.RTS,
+        Instruction.SEI,
+        Instruction.CLD,
+        Instruction.LDX,
+    ]
     for (const want of wants) {
         const got = cpu.fetchInstruction()
         expect(got.opcode).toBe(want)

@@ -295,79 +295,79 @@ export class CPU {
         let branched = false
         switch (instr.opcode) {
             // Fake opcodes
-            case "_NMI":
+            case Opcode.Instruction._NMI:
                 this.push16(this.PC)
                 this.push(this.getP())
                 this.PC = this.read16(0xFFFA)
                 this.I = 1
                 break
-            case "_IRQ":
+            case Opcode.Instruction._IRQ:
                 this.push16(this.PC)
                 this.push(this.getP())
                 this.PC = this.read16(0xFFFE)
                 this.I = 1
                 break
             // Logical and arithmetic commands
-            case "ORA":
+            case Opcode.Instruction.ORA:
                 this.A = this.setNZ(this.A | this.read(addr))
                 break
-            case "AND":
+            case Opcode.Instruction.AND:
                 this.A = this.setNZ(this.A & this.read(addr))
                 break
-            case "EOR":
+            case Opcode.Instruction.EOR:
                 this.A = this.setNZ(this.A ^ this.read(addr))
                 break
-            case "ADC": {
+            case Opcode.Instruction.ADC: {
                 const a = this.A
                 const m = this.read(addr)
                 this.A = this.setNZC(a + this.C + m)
                 this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
                 break
             }
-            case "SBC": {
+            case Opcode.Instruction.SBC: {
                 const a = this.A
                 const m = this.read(addr) ^ UINT8_MAX
                 this.A = this.setNZC(a + this.C + m)
                 this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
                 break
             }
-            case "CMP": {
+            case Opcode.Instruction.CMP: {
                 this.setNZC(this.A + comp(this.read(addr)))
                 break
             }
-            case "CPX": {
+            case Opcode.Instruction.CPX: {
                 this.setNZC(this.X + comp(this.read(addr)))
                 break
             }
-            case "CPY": {
+            case Opcode.Instruction.CPY: {
                 this.setNZC(this.Y + comp(this.read(addr)))
                 break
             }
-            case "DEC": {
+            case Opcode.Instruction.DEC: {
                 this.write(addr, this.setNZ(dec(this.read(addr))))
                 break
             }
-            case "DEX": {
+            case Opcode.Instruction.DEX: {
                 this.X = this.setNZ(dec(this.X))
                 break
             }
-            case "DEY": {
+            case Opcode.Instruction.DEY: {
                 this.Y = this.setNZ(dec(this.Y))
                 break
             }
-            case "INC": {
+            case Opcode.Instruction.INC: {
                 this.write(addr, this.setNZ(inc(this.read(addr))))
                 break
             }
-            case "INX": {
+            case Opcode.Instruction.INX: {
                 this.X = this.setNZ(inc(this.X))
                 break
             }
-            case "INY": {
+            case Opcode.Instruction.INY: {
                 this.Y = this.setNZ(inc(this.Y))
                 break
             }
-            case "ASL": {
+            case Opcode.Instruction.ASL: {
                 const m = instr.mode ? this.read(addr) : this.A
                 const v = this.setNZC(m * 2)
                 if (instr.mode) {
@@ -377,7 +377,7 @@ export class CPU {
                 }
                 break
             }
-            case "ROL": {
+            case Opcode.Instruction.ROL: {
                 const m = instr.mode ? this.read(addr) : this.A
                 const v = this.setNZC(m * 2 + this.C)
                 if (instr.mode) {
@@ -387,7 +387,7 @@ export class CPU {
                 }
                 break
             }
-            case "LSR": {
+            case Opcode.Instruction.LSR: {
                 const m = instr.mode ? this.read(addr) : this.A
                 const v = this.setNZC(m >> 1 | (m & 1) << 8)
                 if (instr.mode) {
@@ -397,7 +397,7 @@ export class CPU {
                 }
                 break
             }
-            case "ROR": {
+            case Opcode.Instruction.ROR: {
                 const m = instr.mode ? this.read(addr) : this.A
                 const v = this.setNZC(m >> 1 | this.C << 7 | (m & 1) << 8)
                 if (instr.mode) {
@@ -408,72 +408,72 @@ export class CPU {
                 break
             }
             // Move commands
-            case "LDA": {
+            case Opcode.Instruction.LDA: {
                 this.A = this.setNZ(this.read(addr))
                 break
             }
-            case "STA": {
+            case Opcode.Instruction.STA: {
                 this.write(addr, this.A)
                 break
             }
-            case "LDX": {
+            case Opcode.Instruction.LDX: {
                 this.X = this.setNZ(this.read(addr))
                 break
             }
-            case "STX": {
+            case Opcode.Instruction.STX: {
                 this.write(addr, this.X)
                 break
             }
-            case "LDY": {
+            case Opcode.Instruction.LDY: {
                 this.Y = this.setNZ(this.read(addr))
                 break
             }
-            case "STY": {
+            case Opcode.Instruction.STY: {
                 this.write(addr, this.Y)
                 break
             }
-            case "TAX": {
+            case Opcode.Instruction.TAX: {
                 this.X = this.setNZ(this.A)
                 break
             }
-            case "TXA": {
+            case Opcode.Instruction.TXA: {
                 this.A = this.setNZ(this.X)
                 break
             }
-            case "TAY": {
+            case Opcode.Instruction.TAY: {
                 this.Y = this.setNZ(this.A)
                 break
             }
-            case "TYA": {
+            case Opcode.Instruction.TYA: {
                 this.A = this.setNZ(this.Y)
                 break
             }
-            case "TSX": {
+            case Opcode.Instruction.TSX: {
                 this.X = this.setNZ(this.S)
                 break
             }
-            case "TXS": {
+            case Opcode.Instruction.TXS: {
                 this.S = this.X
                 break
             }
-            case "PLA": {
+            case Opcode.Instruction.PLA: {
                 this.A = this.setNZ(this.pop())
                 break
             }
-            case "PHA": {
+            case Opcode.Instruction.PHA: {
                 this.push(this.A)
                 break
             }
-            case "PLP": {
+            case Opcode.Instruction.PLP: {
                 this.setP(this.pop())
                 break
             }
-            case "PHP": {
+            case Opcode.Instruction.PHP: {
                 this.push(this.getP() | 1 << 4 | 1 << 5)
                 break
             }
             // Jump/Flag commands
-            case "BPL": {
+            case Opcode.Instruction.BPL: {
                 if (!this.N) {
                     pageBoundaryCrossed = addr >> 8 != this.PC >> 8
                     this.PC = addr
@@ -481,7 +481,7 @@ export class CPU {
                 }
                 break
             }
-            case "BMI": {
+            case Opcode.Instruction.BMI: {
                 if (this.N) {
                     pageBoundaryCrossed = addr >> 8 != this.PC >> 8
                     this.PC = addr
@@ -489,7 +489,7 @@ export class CPU {
                 }
                 break
             }
-            case "BVC": {
+            case Opcode.Instruction.BVC: {
                 if (!this.V) {
                     pageBoundaryCrossed = addr >> 8 != this.PC >> 8
                     this.PC = addr
@@ -497,7 +497,7 @@ export class CPU {
                 }
                 break
             }
-            case "BVS": {
+            case Opcode.Instruction.BVS: {
                 if (this.V) {
                     pageBoundaryCrossed = addr >> 8 != this.PC >> 8
                     this.PC = addr
@@ -505,7 +505,7 @@ export class CPU {
                 }
                 break
             }
-            case "BCC": {
+            case Opcode.Instruction.BCC: {
                 if (!this.C) {
                     pageBoundaryCrossed = addr >> 8 != this.PC >> 8
                     this.PC = addr
@@ -513,7 +513,7 @@ export class CPU {
                 }
                 break
             }
-            case "BCS": {
+            case Opcode.Instruction.BCS: {
                 if (this.C) {
                     pageBoundaryCrossed = addr >> 8 != this.PC >> 8
                     this.PC = addr
@@ -521,7 +521,7 @@ export class CPU {
                 }
                 break
             }
-            case "BNE": {
+            case Opcode.Instruction.BNE: {
                 if (!this.Z) {
                     pageBoundaryCrossed = addr >> 8 != this.PC >> 8
                     this.PC = addr
@@ -529,7 +529,7 @@ export class CPU {
                 }
                 break
             }
-            case "BEQ": {
+            case Opcode.Instruction.BEQ: {
                 if (this.Z) {
                     pageBoundaryCrossed = addr >> 8 != this.PC >> 8
                     this.PC = addr
@@ -537,82 +537,82 @@ export class CPU {
                 }
                 break
             }
-            case "BRK": {
+            case Opcode.Instruction.BRK: {
                 this.push16(this.PC)
                 this.push(this.getP())
                 this.PC = this.read16(0xFFFE)
                 break
             }
-            case "RTI": {
+            case Opcode.Instruction.RTI: {
                 this.setP(this.pop())
                 this.PC = this.pop16()
                 break
             }
-            case "JSR": {
+            case Opcode.Instruction.JSR: {
                 this.push16(dec16(this.PC))
                 this.PC = addr
                 break
             }
-            case "RTS": {
+            case Opcode.Instruction.RTS: {
                 this.PC = inc16(this.pop16())
                 break
             }
-            case "JMP": {
+            case Opcode.Instruction.JMP: {
                 this.PC = addr
                 break
             }
-            case "BIT": {
+            case Opcode.Instruction.BIT: {
                 const m = this.read(addr)
                 this.Z = (m & this.A) == 0 ? 1 : 0
                 this.N = m >> 7 & 1
                 this.V = m >> 6 & 1
                 break
             }
-            case "CLC": {
+            case Opcode.Instruction.CLC: {
                 this.C = 0
                 break
             }
-            case "SEC": {
+            case Opcode.Instruction.SEC: {
                 this.C = 1
                 break
             }
-            case "CLD": {
+            case Opcode.Instruction.CLD: {
                 this.D = 0
                 break
             }
-            case "SED": {
+            case Opcode.Instruction.SED: {
                 this.D = 1
                 break
             }
-            case "CLI": {
+            case Opcode.Instruction.CLI: {
                 this.I = 0
                 break
             }
-            case "SEI": {
+            case Opcode.Instruction.SEI: {
                 this.I = 1
                 break
             }
-            case "CLV": {
+            case Opcode.Instruction.CLV: {
                 this.V = 0
                 break
             }
-            case "NOP": {
+            case Opcode.Instruction.NOP: {
                 break
             }
             // Illegal opcodes
-            case "SLO": {
+            case Opcode.Instruction.SLO: {
                 const m = this.setNZC(this.read(addr) << 1)
                 this.write(addr, m)
                 this.A = this.setNZ(this.A | m)
                 break
             }
-            case "RLA": {
+            case Opcode.Instruction.RLA: {
                 const m = this.setNZC(this.read(addr) * 2 + this.C)
                 this.write(addr, m)
                 this.A = this.setNZ(this.A & m)
                 break
             }
-            case "SRE": {
+            case Opcode.Instruction.SRE: {
                 let m = this.read(addr)
                 this.C = m & 1
                 m = this.setNZ(m >> 1)
@@ -620,7 +620,7 @@ export class CPU {
                 this.A = this.setNZ(this.A ^ m)
                 break
             }
-            case "RRA": {
+            case Opcode.Instruction.RRA: {
                 let m = this.read(addr)
                 m = this.setNZC(((m & 1) << 8) | m >> 1 | this.C << 7)
                 this.write(addr, m)
@@ -629,21 +629,21 @@ export class CPU {
                 this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
                 break
             }
-            case "SAX": {
+            case Opcode.Instruction.SAX: {
                 this.write(addr, this.A & this.X)
                 break
             }
-            case "LAX": {
+            case Opcode.Instruction.LAX: {
                 this.A = this.X = this.setNZ(this.read(addr))
                 break
             }
-            case "DCP": { // DEC + CMP
+            case Opcode.Instruction.DCP: { // DEC + CMP
                 const m = this.setNZ(dec(this.read(addr)))
                 this.write(addr, m)
                 this.setNZC(this.A + comp(m))
                 break
             }
-            case "ISC": { // INC + SBC
+            case Opcode.Instruction.ISC: { // INC + SBC
                 this.write(addr, this.setNZ(inc(this.read(addr))))
                 const a = this.A
                 const m = this.read(addr) ^ UINT8_MAX
@@ -651,18 +651,18 @@ export class CPU {
                 this.V = sign(a) == sign(m) && sign(a) != sign(this.A) ? 1 : 0
                 break
             }
-            case "ANC": {
+            case Opcode.Instruction.ANC: {
                 this.A = this.setNZ(this.A & this.read(addr))
                 this.C = (this.A >> 7) & 1
                 break
             }
-            case "ALR": { // AND + LSR(imp)
+            case Opcode.Instruction.ALR: { // AND + LSR(imp)
                 const m = this.A & this.read(addr)
                 this.A = this.setNZ(m >> 1)
                 this.C = m & 1
                 break
             }
-            case "ARR": { // AND + ROR(imp)
+            case Opcode.Instruction.ARR: { // AND + ROR(imp)
                 const m = this.read(addr)
                 this.A &= m
                 this.A = this.setNZ(this.A >> 1 | this.C << 7)
@@ -670,19 +670,19 @@ export class CPU {
                 this.V = this.C ^ (this.A >> 5 & 1)
                 break
             }
-            case "XAA": {
+            case Opcode.Instruction.XAA: {
                 this.A = this.setNZ(this.X & this.read(addr))
                 break
             }
-            case "AXS": {
+            case Opcode.Instruction.AXS: {
                 this.X = this.setNZC((this.A & this.X) + comp(this.read(addr)))
                 break
             }
-            case "AHX": {
+            case Opcode.Instruction.AHX: {
                 this.write(addr, this.A & this.X & inc(addr >> 8))
                 break
             }
-            case "SHY": {
+            case Opcode.Instruction.SHY: {
                 // SHX and SHY are bizzare
                 // https://csdb.dk/forums/?roomid=11&topicid=94460
 
@@ -695,7 +695,7 @@ export class CPU {
                 this.write((H << 8) | (addr & 0xFF), value)
                 break
             }
-            case "SHX": {
+            case Opcode.Instruction.SHX: {
                 let H = addr >> 8
                 if (pageBoundaryCrossed) {
                     H = inc(addr >> 8) & this.X
@@ -704,17 +704,17 @@ export class CPU {
                 this.write((H << 8) | (addr & 0xFF), value)
                 break
             }
-            case "TAS": {
+            case Opcode.Instruction.TAS: {
                 this.S = this.A & this.X
                 this.write(addr, this.S & inc(addr >> 8))
                 break
             }
-            case "LAS": {
+            case Opcode.Instruction.LAS: {
                 this.A = this.X = this.S = this.setNZ(this.read(addr) & this.S)
                 break
             }
             // Halt
-            case "KIL": {
+            case Opcode.Instruction.KIL: {
                 this.halt = true
                 break
             }
