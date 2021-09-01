@@ -36,7 +36,7 @@ test("nestest", () => {
 
     try {
         for (; ;) {
-            cpu.tick()
+            cpu.tickCPU()
         }
     } catch (e) {
         if (!(e instanceof CPUHaltError)) {

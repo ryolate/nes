@@ -352,7 +352,7 @@ export class PPU {
         return bgColorIndex
     }
 
-    tick(): void {
+    tickPPU(): void {
         this.updateIndices()
 
         // Scroll

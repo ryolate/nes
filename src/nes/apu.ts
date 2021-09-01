@@ -662,9 +662,9 @@ export class APU {
 	}
 
 	// Call it at the same rate as the CPU clock cycle.
-	tick(): void {
+	tickAPU(): void {
 		if (this.oddCPUCycle) {
-			this.tickAPU()
+			this.clockAPU()
 		}
 		this.oddCPUCycle = !this.oddCPUCycle
 
@@ -754,7 +754,7 @@ export class APU {
 		this.frameCounter = 0
 	}
 	// Tick APU cycle
-	private tickAPU() {
+	private clockAPU() {
 		this.pulse1.tickAPU()
 		this.pulse2.tickAPU()
 		this.noise.tickAPU()

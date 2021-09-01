@@ -742,7 +742,7 @@ export class CPU {
     }
 
     // throw error on CPU halt.
-    tick(): void {
+    tickCPU(): void {
         if (this.halt) {
             throw new CPUHaltError("CPU halt")
         }

@@ -66,11 +66,11 @@ export class NES {
 	}
 
 	tick(): void {
-		this.ppu.tick()
-		this.ppu.tick()
-		this.ppu.tick()
-		this.cpu.tick()
-		this.apu.tick()
+		this.ppu.tickPPU()
+		this.ppu.tickPPU()
+		this.ppu.tickPPU()
+		this.cpu.tickCPU()
+		this.apu.tickAPU()
 
 		this.cycleCount++
 		if (this.nextAudioSampleCount < this.cycleCount) {
