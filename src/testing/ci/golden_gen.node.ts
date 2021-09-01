@@ -180,7 +180,7 @@ async function primaryFun(opts: Option) {
 
 	// process
 	for (let i = 0; i < NUM_WORKER; i++) {
-		let worker = cluster.fork()
+		const worker = cluster.fork()
 		worker.on('online', () => {
 			worker.send({
 				localBaseDir,
