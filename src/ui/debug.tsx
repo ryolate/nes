@@ -6,12 +6,40 @@ import { ConsoleLogSink, Logger } from '../nes/logger'
 import { CPU } from '../nes/cpu/cpu'
 import { Cartridge } from '../nes/mappers/cartridge'
 import { Mapper } from '../nes/mappers/mapper'
+import { APU } from '../nes/apu'
 
 const withHeader = (title: string, e: JSX.Element) => {
 	return <div>
 		<label><strong>{title}</strong></label>
 		{e}
 	</div>
+}
+
+const APUInfo = (props: { apu: APU }) => {
+	const { apu } = props
+
+	return withHeader("APU", <div>
+		<table>
+			<tbody>
+				{
+					[
+						["DMC.irqEnabled", "" + apu.dmc.irqEnabled],
+						["DMC.loop", "" + apu.dmc.loop],
+						["DMC.rateIndex", "" + apu.dmc.rateIndex],
+						["DMC.outputLevel", "" + apu.dmc.outputLevel],
+						["DMC.sampleAddress", "$" + apu.dmc.sampleAddress.toString(16).toUpperCase()],
+						["DMC.sampleLength", "" + apu.dmc.sampleLength],
+						["DMC.readBytesRemaining", "" + apu.dmc.readBytesRemaining],
+						["DMC.interruptFlag", "" + apu.dmc.interruptFlag],
+						["DMC.outputSilence", "" + apu.dmc.outputSilence],
+
+					].map(([name, value], i) => {
+						return <TableRow key={i} row={[name, value]} />
+					})
+				}
+			</tbody>
+		</table>
+	</div>)
 }
 
 const PaletteColor = (props: { color: Color.RGB }) => {
@@ -246,6 +274,7 @@ const UserInteraction = (props: { nes: NES.NES, onChange: () => void }) => {
 	const [buttons, setButtons] = useState(0)
 	const [error, setError] = useState<Error | null>(null)
 
+	const [cycleCount, setCycleCount] = useState(1)
 	const [stepCount, setStepCount] = useState(1)
 	const [frameCount, setFrameCount] = useState(1)
 
@@ -263,7 +292,9 @@ const UserInteraction = (props: { nes: NES.NES, onChange: () => void }) => {
 
 	const onCycle = () => {
 		try {
-			props.nes.tick()
+			for (let i = 0; i < cycleCount; i++) {
+				props.nes.tick()
+			}
 		} catch (e) {
 			setError(e)
 		}
@@ -321,6 +352,12 @@ const UserInteraction = (props: { nes: NES.NES, onChange: () => void }) => {
 			</div>
 			<div>
 				<button onClick={onCycle}>cycle</button>
+				<input min="1" type="number" value={cycleCount ? cycleCount : ""} onChange={(e) => {
+					if (e.target.value === "") {
+						setCycleCount(0)
+					}
+					setCycleCount(parseInt(e.target.value))
+				}}></input>
 			</div>
 			<div>
 				<button onClick={onStep}>step</button>
@@ -392,6 +429,7 @@ export const DebugGame = (props: { nes: NES.NES }): JSX.Element => {
 		<div>
 			<CartridgeInfo cartridge={props.nes.mapper.cartridge} />
 			<MapperInfo mapper={props.nes.mapper} />
+			<APUInfo apu={props.nes.apu} />
 			<CPUInfo cpu={props.nes.cpu} />
 		</div>
 		<PPUInfo ppu={props.nes.ppu} />

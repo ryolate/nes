@@ -195,18 +195,18 @@ class DMC {
 		this.sampleLength = x * 16 + 1
 	}
 	// IRQ enabled flag. If clear, the interrupt flag is cleared.
-	private irqEnabled = 0
+	irqEnabled = 0
 	// Loop flag
-	private loop = 0
+	loop = 0
 	// Rate index
-	private rateIndex = 0
+	rateIndex = 0
 	// The rate determines for how many CPU cycles happen between changes in the
 	// output level during automatic delta-encoded sample playback.
 	private static rateTable = [428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54]
 
-	private outputLevel = 0
-	private sampleAddress = 0
-	private sampleLength = 0
+	outputLevel = 0
+	sampleAddress = 0xC000
+	sampleLength = 1
 
 	interruptFlag = 0
 	// The sample buffer either holds a single 8-bit sample byte or is empty.
@@ -222,6 +222,13 @@ class DMC {
 	// https://wiki.nesdev.com/w/index.php/APU_DMC#Memory_reader
 	private emptyBuffer() {
 		this.sampleBuffer = null
+		this.fillBuffer()
+	}
+
+	private fillBuffer() {
+		if (this.sampleBuffer !== null) {
+			return
+		}
 		if (this.readBytesRemaining === 0) {
 			return
 		}
@@ -253,6 +260,7 @@ class DMC {
 	restart() {
 		this.readAddress = this.sampleAddress
 		this.readBytesRemaining = this.sampleLength
+		this.fillBuffer()
 	}
 
 	timer = 0
@@ -282,7 +290,7 @@ class DMC {
 		//   This means subtract 2 only if the current level is at least 2, or
 		//   add 2 only if the current level is at most 125.
 		// * The right shift register is clocked.
-		// * As stated above, the bits - remaining counter is decremented. If it
+		// * As stated above, the bits-remaining counter is decremented. If it
 		//   becomes zero, a new output cycle is started.
 		if (!this.outputSilence) {
 			if (this.outputShiftRegister & 1) {
@@ -297,6 +305,7 @@ class DMC {
 		}
 		this.outputShiftRegister >>= 1
 		this.outputBitsRemainingCounter--
+		assertInRange(this.outputBitsRemainingCounter, 0, 7)
 
 		// When an output cycle ends, a new cycle is started as follows:
 		//
@@ -317,7 +326,7 @@ class DMC {
 	}
 
 	outputShiftRegister = 0
-	outputBitsRemainingCounter = 0
+	outputBitsRemainingCounter = 1
 	outputSilence = 0
 	output(): number {
 		assertInRange(this.outputLevel, 0, 127)
@@ -933,6 +942,10 @@ export class APU {
 		assertInRange(noise, 0, 15)
 		assertInRange(dmc, 0, 127)
 
+		if (this.prevDMC != dmc) {
+			this.prevDMC = dmc
+		}
+
 		const tndOut = 159.79 /
 			(1 / (triangle / 8227 + noise / 12241 + dmc / 22638) + 100)
 
@@ -940,4 +953,6 @@ export class APU {
 	}
 	//////////////////////////////	Debug  //////////////////////////////
 	logger?: Logger
+
+	private prevDMC = 0
 }

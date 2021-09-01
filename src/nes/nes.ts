@@ -17,7 +17,7 @@ export class NES {
 	readonly mapper: Mapper
 	private readonly controller: Controller
 
-	private readonly apu: APU
+	apu: APU
 	ppu: PPU
 	cpu: CPU
 
