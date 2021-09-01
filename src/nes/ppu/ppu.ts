@@ -99,9 +99,6 @@ export class PPU {
     // OAMADDR $2003 > write
     oamAddr: uint8 = 0
 
-    // OAMDATA $2004 <> read/write
-    oamData: uint8 = 0
-
     // PPUSCROLL $2005 >> write x2
     // PPUADDR $2006 >> write x2
     // https://wiki.nesdev.com/w/index.php?title=PPU_scrolling
@@ -145,8 +142,6 @@ export class PPU {
             // nametable data that would appear "underneath" the palette.
             // (Checking the PPU memory map should make this clearer.)
             res = this.internalReadBuffer = this.bus.read(this.internalV)
-
-            console.log(`$${this.internalV.toString(16)} = ${res.toString(16)}`)
         }
         this.incrementInternalV()
         return res
@@ -601,7 +596,7 @@ export class PPU {
                 return this.readStatus()
             }
             case 3: return 0
-            case 4: return this.oamData
+            case 4: return this.bus.oam[this.oamAddr]
             case 5: return 0
             case 6: return 0
             case 7: return this.readData()
@@ -622,12 +617,12 @@ export class PPU {
             case 0: // $2000 write
                 this.setCtrl(x)
                 return
-            case 1:
+            case 1: // $2001
                 this.setMask(x)
                 return
             case 2: // status is read only
                 return
-            case 3:
+            case 3: // $2003
                 this.oamAddr = x
                 return
             case 4:
@@ -636,8 +631,8 @@ export class PPU {
                 if (this.scanline === 261 || this.scanline < HEIGHT) {
                     return
                 }
-                this.bus.write(this.oamData, x)
-                this.oamAddr++
+                this.bus.oam[this.oamAddr] = x
+                this.oamAddr = (this.oamAddr + 1) & 0xFF
                 return
             // OAMDATA
             case 5:
@@ -673,8 +668,16 @@ export class PPU {
     }
 
     sendDMA(buf: Array<uint8>): void {
+        // The DMA transfer will begin at the current OAM write address. It is
+        // common practice to initialize it to 0 with a write to OAMADDR before
+        // the DMA transfer. Different starting addresses can be used for a
+        // simple OAM cycling technique, to alleviate sprite priority conflicts
+        // by flickering. If using this technique, after the DMA OAMADDR should
+        // be set to 0 before the end of vblank to prevent potential OAM
+        // corruption (See: Errata). However, due to OAMADDR writes also having
+        // a "corruption" effect[3] this technique is not recommended.
         for (let i = 0; i < 256; i++) {
-            this.bus.oam[i] = buf[i]
+            this.bus.oam[(i + this.oamAddr) & 0xFF] = buf[i]
         }
     }
 
@@ -793,8 +796,6 @@ export class PPU {
 }
 
 export type Palette = [uint8, uint8, uint8]
-
-const newPalette = (): Palette => { return [0, 0, 0] }
 
 class PPUBus {
     mapper: Mapper

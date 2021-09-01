@@ -194,8 +194,6 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		["spriteOverflow [$2002@5]", ppu.spriteOverflow],
 		// $2003
 		["oamAddr", ppu.oamAddr, 16],
-		// $2004
-		["oamData", ppu.oamData],
 	].map((a, i) => {
 		const name = a[0] as string
 		const value = a[1] as number

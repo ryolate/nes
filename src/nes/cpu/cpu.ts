@@ -796,7 +796,7 @@ export class CPU {
             // upload 256 bytes of data from CPU page $XX00-$XXFF to the
             // internal PPU OAM
             for (let i = 0; i < 256; i++) {
-                this.dmaBuf[i] = this.read(x << 8 | i)
+                this.dmaBuf[i] = this.read((x << 8) | i)
             }
             this.ppu.sendDMA(this.dmaBuf)
             // The CPU is suspended during the transfer, which will take 513 or
