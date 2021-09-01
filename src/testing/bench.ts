@@ -2,7 +2,7 @@ import fs from 'fs'
 import { NES } from '../nes/nes'
 import { performance } from 'node:perf_hooks'
 
-// 18.54s on 9f2645ca153c48fa0707811e8ea876c9fd7a2fd1
+// 15.67s on 9c791512ba29d09927aef2fbb5cc35661b3a249e
 // run with `npx ts-node src/testing/bench.ts`.
 const filepath = 'testdata/secret/SUPER_MARIO_BROS.NES'
 const frameCount = 1200
