@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect, useState, useCallback } from 'react'
 import * as NES from '../nes/nes'
 import { DB } from './db'
 import { DebugGame, ErrorBanner } from './debug'
@@ -127,6 +127,7 @@ const FileChooser = (props: { onChange: (data: Uint8Array) => void }) => {
 
 	// Initialize history
 	useEffect(() => {
+		console.log('initializing history')
 		async function f() {
 			const db = await DB.open<History>("history")
 			const hist = await db.get()
@@ -242,6 +243,11 @@ export const App = (): JSX.Element => {
 	const [cartridgeData, setCartridgeData] = useState<Uint8Array | null>(null)
 	const [nes, setNES] = useState<NES.NES | null>(null)
 
+	const onChange = useCallback((data: Uint8Array) => {
+		setCartridgeData(data)
+		setNES(null)
+	}, [])
+
 	let nesView = null
 	if (!nes && cartridgeData) {
 		try {
@@ -259,7 +265,7 @@ export const App = (): JSX.Element => {
 	}
 
 	return <div>
-		<FileChooser onChange={setCartridgeData} />
+		<FileChooser onChange={onChange} />
 		{nesView}
 	</div>
 }
