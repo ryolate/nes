@@ -145,6 +145,8 @@ export class PPU {
             // nametable data that would appear "underneath" the palette.
             // (Checking the PPU memory map should make this clearer.)
             res = this.internalReadBuffer = this.bus.read(this.internalV)
+
+            console.log(`$${this.internalV.toString(16)} = ${res.toString(16)}`)
         }
         this.incrementInternalV()
         return res
@@ -348,6 +350,18 @@ export class PPU {
         // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
         let bgColorIndex = BG_TRANSPARENT
         if (this.renderingEnabled() && (this.scanline === 261 || this.scanline <= 239)) {
+            // y in [0,239]  [261]
+
+            // Event happen when x is in
+            // 7, 8, 9,
+            // 15, 16, 17,
+            // ...
+            // 247, 248, 249,
+            // 255
+            // 256, 257
+            // 327, 328, 329
+            // 335, 336, 337
+
             if (this.scanlineCycle === 256) {
                 // If rendering is enabled, the PPU increments the vertical
                 // position in v.
@@ -786,15 +800,23 @@ class PPUBus {
     mapper: Mapper
 
     // PPU palettes
-    universalBackgroundColor = 0
+    universalBackgroundColor = 9 // $3F00
 
     // (i * 3 + j)-th element contains palette[i]'s j-th color.
-    backgroundPalettes = new Uint8Array(12)
-    spritePalettes: Array<Palette> = [0, 0, 0, 0].map(() => {
-        return newPalette()
-    })
+    backgroundPalettes = new Uint8Array([
+        1, 0, 1,       // $3F01-$3F03
+        2, 2, 0xD,     // $3F05-$3F07
+        0x10, 8, 0x24, // $3F09-$3F0B
+        0, 4, 0x2C     // $3F0D-$3F0F
+    ])
+    spritePalettes: Array<Palette> = [
+        [1, 0x34, 3],    // $3F11-$3F13
+        [4, 0, 0x14],    // $3F15-$3F17
+        [0x3A, 0, 2],    // $3F19-$3F1B
+        [0x20, 0x2C, 8], // $3F1D-$3F1F
+    ]
     // $3F04, $3F08, $3F0C
-    unusedData: Array<uint8> = [0, 0, 0]
+    unusedData: Array<uint8> = [0, 8, 0]
 
     // The OAM (Object Attribute Memory) is internal memory inside the PPU that
     // contains a display list of up to 64 sprites, where each sprite's
@@ -811,13 +833,13 @@ class PPUBus {
         if (pc <= 0x1FFF) {
             // Pattern table
             return this.mapper.readCHR(pc)
-        } else if (pc < 0x3F00) {
+        } else if (pc <= 0x3EFF) {
             let i = pc
             if (i >= 0x3000) {
                 i -= 0x1000
             }
             return this.mapper.readNametable(i)
-        } else {
+        } else { // Palette RAM $3F00-$3F1F. Mirrors $3F20-$3FFF
             let k = pc & 0x1F
             // Palette RAM
 
