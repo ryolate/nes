@@ -24,20 +24,20 @@ export class CPUHaltError extends Error { }
 export function operation2str(op: Operation): string {
     const n = (() => {
         switch (op.mode) {
-            case "": // imp
+            case Opcode.Mode.IMP: // imp
                 return 0
-            case "imm":
-            case "zp":
-            case "zpx":
-            case "zpy":
-            case "izx":
-            case "izy":
+            case Opcode.Mode.IMM:
+            case Opcode.Mode.ZP:
+            case Opcode.Mode.ZPX:
+            case Opcode.Mode.ZPY:
+            case Opcode.Mode.IZX:
+            case Opcode.Mode.IZY:
                 return 2
-            case "abs":
-            case "abx":
-            case "aby":
-            case "ind":
-            case "rel":
+            case Opcode.Mode.ABS:
+            case Opcode.Mode.ABX:
+            case Opcode.Mode.ABY:
+            case Opcode.Mode.IND:
+            case Opcode.Mode.REL:
                 return 4
         }
     })()
@@ -46,29 +46,29 @@ export function operation2str(op: Operation): string {
 
     return op.opcode + " " + ((): string => {
         switch (op.mode) {
-            case "": // imp
+            case Opcode.Mode.IMP: // imp
                 return ""
-            case "imm":
+            case Opcode.Mode.IMM:
                 return `#${addr}`
-            case "zp":
+            case Opcode.Mode.ZP:
                 return `${addr}`
-            case "zpx":
+            case Opcode.Mode.ZPX:
                 return `${addr},X`
-            case "zpy":
+            case Opcode.Mode.ZPY:
                 return `${addr},Y`
-            case "izx":
+            case Opcode.Mode.IZX:
                 return `(${addr},X)`
-            case "izy":
+            case Opcode.Mode.IZY:
                 return `(${addr}),Y`
-            case "abs":
+            case Opcode.Mode.ABS:
                 return `${addr}`
-            case "abx":
+            case Opcode.Mode.ABX:
                 return `${addr},X`
-            case "aby":
+            case Opcode.Mode.ABY:
                 return `${addr},Y`
-            case "ind":
+            case Opcode.Mode.IND:
                 return `(${addr})`
-            case "rel":
+            case Opcode.Mode.REL:
                 return `${addr} (relative)`
         }
     })()
@@ -185,20 +185,20 @@ export class CPU {
         }
         const x = (() => {
             switch (op.mode) {
-                case "": // imp
+                case Opcode.Mode.IMP: // imp
                     return 0
-                case "imm":
-                case "zp":
-                case "zpx":
-                case "zpy":
-                case "izx":
-                case "izy":
-                case "rel":
+                case Opcode.Mode.IMM:
+                case Opcode.Mode.ZP:
+                case Opcode.Mode.ZPX:
+                case Opcode.Mode.ZPY:
+                case Opcode.Mode.IZX:
+                case Opcode.Mode.IZY:
+                case Opcode.Mode.REL:
                     return this.fetch()
-                case "abs":
-                case "abx":
-                case "aby":
-                case "ind":
+                case Opcode.Mode.ABS:
+                case Opcode.Mode.ABX:
+                case Opcode.Mode.ABY:
+                case Opcode.Mode.IND:
                     return this.fetch16()
             }
         })()
@@ -260,40 +260,40 @@ export class CPU {
         let pageBoundaryCrossed = false
         const addr = ((): uint16 => {
             switch (instr.mode) {
-                case "":
+                case Opcode.Mode.IMP:
                     return 0
-                case "imm":
+                case Opcode.Mode.IMM:
                     return dec16(this.PC)
-                case "zp":
+                case Opcode.Mode.ZP:
                     // absolute addressing of the first 256 bytes
                     return instr.arg
-                case "zpx": // d,x
+                case Opcode.Mode.ZPX: // d,x
                     return (instr.arg + this.X) & UINT8_MAX
-                case "zpy": // d,y
+                case Opcode.Mode.ZPY: // d,y
                     return (instr.arg + this.Y) & UINT8_MAX
-                case "izx": // (d,x)
+                case Opcode.Mode.IZX: // (d,x)
                     return this.read16((instr.arg + this.X) & UINT8_MAX)
-                case "izy": {// (d), y
+                case Opcode.Mode.IZY: {// (d), y
                     const base = this.read16(instr.arg)
                     const p = (base + this.Y) & UINT16_MAX
                     pageBoundaryCrossed = (p >> 8) != (base >> 8)
                     return p
                 }
-                case "abs":
+                case Opcode.Mode.ABS:
                     return instr.arg
-                case "abx": { // a,x
+                case Opcode.Mode.ABX: { // a,x
                     const p = (instr.arg + this.X) & UINT16_MAX
                     pageBoundaryCrossed = (p >> 8) != (instr.arg >> 8)
                     return p
                 }
-                case "aby": {// a,y
+                case Opcode.Mode.ABY: {// a,y
                     const p = (instr.arg + this.Y) & UINT16_MAX
                     pageBoundaryCrossed = (p >> 8) != (instr.arg >> 8)
                     return p
                 }
-                case "ind":
+                case Opcode.Mode.IND:
                     return this.read16(instr.arg)
-                case "rel": {
+                case Opcode.Mode.REL: {
                     return (this.PC + uint8ToSigned(instr.arg)) & UINT16_MAX
                 }
             }
@@ -886,20 +886,20 @@ export class CPU {
         const op = Opcode.opcodes[this.read(pc++)]
         const x = (() => {
             switch (op.mode) {
-                case "": // imp
+                case Opcode.Mode.IMP: // imp
                     return 0
-                case "imm":
-                case "zp":
-                case "zpx":
-                case "zpy":
-                case "izx":
-                case "izy":
-                case "rel":
+                case Opcode.Mode.IMM:
+                case Opcode.Mode.ZP:
+                case Opcode.Mode.ZPX:
+                case Opcode.Mode.ZPY:
+                case Opcode.Mode.IZX:
+                case Opcode.Mode.IZY:
+                case Opcode.Mode.REL:
                     return this.read(pc++)
-                case "abs":
-                case "abx":
-                case "aby":
-                case "ind": {
+                case Opcode.Mode.ABS:
+                case Opcode.Mode.ABX:
+                case Opcode.Mode.ABY:
+                case Opcode.Mode.IND: {
                     const res = this.read16(pc)
                     pc += 2
                     return res
