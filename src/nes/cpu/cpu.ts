@@ -1,5 +1,5 @@
 import * as Opcode from './opcode'
-import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, assertUint8, assertUint16 } from '../num'
+import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, assertUint8, assertUint16, assertInRange } from '../num'
 import { PPU } from '../ppu/ppu'
 import { NMI } from './nmi'
 import { Controller } from '../controller'
@@ -83,6 +83,9 @@ function inc(x: uint8): uint8 {
 function comp(x: uint8): uint8 {
     return (x ^ UINT8_MAX) + 1
 }
+function sign(x: uint8): boolean { // true -> negative
+    return hasBit(x, 7)
+}
 
 function dec16(x: uint16): uint16 {
     return (x + UINT16_MAX) & UINT16_MAX
@@ -92,15 +95,7 @@ function inc16(x: uint16): uint16 {
 }
 
 export class CPU {
-    private _A: uint8 = 0
-
-    set A(x: uint8) {
-        this._A = x
-    }
-    get A(): uint8 {
-        return this._A
-    }
-
+    A: uint8 = 0
     X: uint8 = 0
     Y: uint8 = 0
     S: uint8
@@ -109,9 +104,7 @@ export class CPU {
     debugMode = false
 
     private set PC(x: uint16) {
-        while (x > UINT16_MAX) {
-            x -= UINT16_MAX
-        }
+        assertUint16(x)
         this._PC = x
     }
 
@@ -250,8 +243,6 @@ export class CPU {
 
         let addr = 0
         switch (instr.mode) {
-            case Opcode.Mode.IMP:
-                break
             case Opcode.Mode.IMM:
                 addr = dec16(this.PC)
                 break
@@ -294,10 +285,6 @@ export class CPU {
             case Opcode.Mode.REL:
                 addr = (this.PC + uint8ToSigned(instr.arg)) & UINT16_MAX
                 break
-        }
-
-        function sign(x: uint8): boolean { // true -> negative
-            return hasBit(x, 7)
         }
 
         let branched = false
