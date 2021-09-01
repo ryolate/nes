@@ -23,7 +23,7 @@ Reference:
 export const WIDTH = 256
 export const HEIGHT = 240
 
-const TRANSPARENT = 64 // transparent color
+const BG_TRANSPARENT = 64 // transparent color
 
 // NTCS
 export class PPU {
@@ -343,7 +343,7 @@ export class PPU {
             (this.patternTableData1 >> this.internalX & 1) << 1
         const bgAttr = (this.paletteAttributes0 >> this.internalX & 1) |
             (this.paletteAttributes1 >> this.internalX & 1) << 1
-        const bgColorIndex = bgPixel === 0 ? TRANSPARENT : this.bus.backgroundPalettes[bgAttr * 3 + bgPixel - 1]
+        const bgColorIndex = bgPixel === 0 ? BG_TRANSPARENT : this.bus.backgroundPalettes[bgAttr * 3 + bgPixel - 1]
         this.patternTableData0 >>= 1
         this.patternTableData1 >>= 1
         this.paletteAttributes0 >>= 1
@@ -358,7 +358,7 @@ export class PPU {
 
         // Scroll
         // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
-        let bgColorIndex = TRANSPARENT
+        let bgColorIndex = BG_TRANSPARENT
         if (this.renderingEnabled() && (this.scanline === 261 || this.scanline <= 239)) {
             if (this.scanlineCycle === 256) {
                 // If rendering is enabled, the PPU increments the vertical
@@ -416,7 +416,7 @@ export class PPU {
             if (this.scanlineCycle >= 1 && this.scanlineCycle <= WIDTH) { // Cycles 1-256
                 const x = (this.scanlineCycle - 1), y = this.scanline
 
-                let colorIndex = TRANSPARENT
+                let colorIndex = BG_TRANSPARENT
                 if (this.backgroundEnable && (x >= 8 || this.backgroundLeftColumnEnable)) {
                     colorIndex = bgColorIndex
                 }
@@ -426,14 +426,14 @@ export class PPU {
                     const priority = (spritePixel >> 6) & 1
                     const spriteZero = (spritePixel >> 7) & 1
 
-                    if (colorIndex >= 0 && spriteZero) {
+                    if (colorIndex !== BG_TRANSPARENT && spriteZero) {
                         this.spriteZeroHit = 1
                     }
-                    if (priority === 0 || colorIndex === TRANSPARENT) {
+                    if (priority === 0 || colorIndex === BG_TRANSPARENT) {
                         colorIndex = spriteColorIndex
                     }
                 }
-                if (colorIndex === TRANSPARENT) {
+                if (colorIndex === BG_TRANSPARENT) {
                     colorIndex = this.bus.universalBackgroundColor
                 }
                 this.putPixel(x, y, colorIndex)
