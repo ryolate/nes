@@ -51,5 +51,4 @@ export class AudioEventDeque {
 export interface AudioEvent {
 	value: number
 	cycle: number
-	timestampMillis: DOMHighResTimeStamp
 }

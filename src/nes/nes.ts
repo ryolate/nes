@@ -78,7 +78,6 @@ export class NES {
 			this.audioSampleBuffer.pushBack({
 				value: this.apu.output(),
 				cycle: this.cycleCount,
-				timestampMillis: performance.now(),
 			})
 			this.audioSampleBuffer.ensureCapacity(1024)
 		}
