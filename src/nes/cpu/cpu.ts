@@ -99,22 +99,9 @@ export class CPU {
     X: uint8 = 0
     Y: uint8 = 0
     S: uint8
-    private _PC: uint16 = 0
+    PC: uint16 = 0
     cycle = 0
     debugMode = false
-
-    private set PC(x: uint16) {
-        assertUint16(x)
-        this._PC = x
-    }
-
-    private get PC(): uint16 {
-        return this._PC
-    }
-
-    getPC(): uint16 {
-        return this.PC
-    }
 
     // https://wiki.nesdev.com/w/index.php/User:Karatorian/6502_Instruction_Set#The_X_Index_Register
     // Status flags: https://wiki.nesdev.com/w/index.php/Status_flags
@@ -898,7 +885,7 @@ export class CPU {
 
     // disasm next n instructions without side effect.
     disasm(n: number): Array<[number, string]> {
-        let pc = this.getPC()
+        let pc = this.PC
         const res = new Array<[number, string]>()
         for (let i = 0; i < n && pc < 0xFFFC; i++) {
             const [op, nextPC] = this.getInstruction(pc)
