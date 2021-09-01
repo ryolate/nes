@@ -247,46 +247,54 @@ export class CPU {
         this.stallCount += instr.cycle - 1
         // https://wiki.nesdev.com/w/index.php/CPU_addressing_modes
         let pageBoundaryCrossed = false
-        const addr = ((): uint16 => {
-            switch (instr.mode) {
-                case Opcode.Mode.IMP:
-                    return 0
-                case Opcode.Mode.IMM:
-                    return dec16(this.PC)
-                case Opcode.Mode.ZP:
-                    // absolute addressing of the first 256 bytes
-                    return instr.arg
-                case Opcode.Mode.ZPX: // d,x
-                    return (instr.arg + this.X) & UINT8_MAX
-                case Opcode.Mode.ZPY: // d,y
-                    return (instr.arg + this.Y) & UINT8_MAX
-                case Opcode.Mode.IZX: // (d,x)
-                    return this.read16((instr.arg + this.X) & UINT8_MAX)
-                case Opcode.Mode.IZY: {// (d), y
-                    const base = this.read16(instr.arg)
-                    const p = (base + this.Y) & UINT16_MAX
-                    pageBoundaryCrossed = (p >> 8) != (base >> 8)
-                    return p
-                }
-                case Opcode.Mode.ABS:
-                    return instr.arg
-                case Opcode.Mode.ABX: { // a,x
-                    const p = (instr.arg + this.X) & UINT16_MAX
-                    pageBoundaryCrossed = (p >> 8) != (instr.arg >> 8)
-                    return p
-                }
-                case Opcode.Mode.ABY: {// a,y
-                    const p = (instr.arg + this.Y) & UINT16_MAX
-                    pageBoundaryCrossed = (p >> 8) != (instr.arg >> 8)
-                    return p
-                }
-                case Opcode.Mode.IND:
-                    return this.read16(instr.arg)
-                case Opcode.Mode.REL: {
-                    return (this.PC + uint8ToSigned(instr.arg)) & UINT16_MAX
-                }
+
+        let addr = 0
+        switch (instr.mode) {
+            case Opcode.Mode.IMP:
+                break
+            case Opcode.Mode.IMM:
+                addr = dec16(this.PC)
+                break
+            case Opcode.Mode.ZP:
+                // absolute addressing of the first 256 bytes
+                addr = instr.arg
+                break
+            case Opcode.Mode.ZPX: // d,x
+                addr = (instr.arg + this.X) & UINT8_MAX
+                break
+            case Opcode.Mode.ZPY: // d,y
+                addr = (instr.arg + this.Y) & UINT8_MAX
+                break
+            case Opcode.Mode.IZX: // (d,x)
+                addr = this.read16((instr.arg + this.X) & UINT8_MAX)
+                break
+            case Opcode.Mode.IZY: {// (d), y
+                const base = this.read16(instr.arg)
+                const p = (base + this.Y) & UINT16_MAX
+                pageBoundaryCrossed = (p >> 8) != (base >> 8)
+                addr = p
+                break
             }
-        })()
+            case Opcode.Mode.ABS:
+                addr = instr.arg
+                break
+            case Opcode.Mode.ABX: { // a,x
+                addr = (instr.arg + this.X) & UINT16_MAX
+                pageBoundaryCrossed = (addr >> 8) != (instr.arg >> 8)
+                break
+            }
+            case Opcode.Mode.ABY: {// a,y
+                addr = (instr.arg + this.Y) & UINT16_MAX
+                pageBoundaryCrossed = (addr >> 8) != (instr.arg >> 8)
+                break
+            }
+            case Opcode.Mode.IND:
+                addr = this.read16(instr.arg)
+                break
+            case Opcode.Mode.REL:
+                addr = (this.PC + uint8ToSigned(instr.arg)) & UINT16_MAX
+                break
+        }
 
         function sign(x: uint8): boolean { // true -> negative
             return hasBit(x, 7)
