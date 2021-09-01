@@ -36,6 +36,6 @@
   "scripts": {
     "start": "webpack serve --config ./webpack.dev.js",
     "build": "webpack build --config ./webpack.prod.js",
-    "test": "jest"
+    "test": "jest src/nes"
   }
 }
