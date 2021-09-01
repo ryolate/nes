@@ -611,9 +611,6 @@ export class PPU {
         if (pc < 0x2000 || pc > 0x3FFF) {
             throw new Error(`Out of range PPC.writeCPU(${pc}, ${x})`)
         }
-        // if (this.logger) {
-        //     this.logger.log(`${PPU.registerNames.get(pc)} <- 0x${x.toString(16)}`)
-        // }
         switch (pc & 7) {
             case 0: // $2000 write
                 this.setCtrl(x)

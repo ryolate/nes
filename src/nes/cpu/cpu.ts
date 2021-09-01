@@ -741,13 +741,8 @@ export class CPU {
             x[0](this.cpuStatus())
         });
 
-        const pc = this.PC
-
         const instr = this.fetchInstruction()
         this.execute(instr)
-
-        if (0xE6A0 <= pc && pc <= 0xE6FF)
-            this.logger?.log(`${this.instructionCount}: $${pc.toString(16).toUpperCase()}: ${operation2str(instr)}`)
 
         return
     }
@@ -813,9 +808,6 @@ export class CPU {
             // Controller
             this.controller.write4016(x)
         } else if (pc < 0x4018) {
-            if (pc >= 0x4010) {
-                this.logger?.log(`${this.cycle}: $${pc.toString(16)} <- 0x${x.toString(16).toUpperCase()}`)
-            }
             // APU
             this.apu.write(pc, x)
         } else if (pc < 0x4020) {

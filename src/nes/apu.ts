@@ -217,14 +217,11 @@ class DMC {
 	// When the sample buffer is emptied, the memory reader fills the sample
 	// buffer with the next byte from the currently playing sample. It has an
 	// address counter and a bytes remaining counter.
-	private readAddress = 0
+	readAddress = 0
 	readBytesRemaining = 0
+
 	// https://wiki.nesdev.com/w/index.php/APU_DMC#Memory_reader
-	private emptyBuffer() {
-		this.sampleBuffer = null
-		this.fillBuffer()
-	}
-	private fillBuffer() {
+	fillBuffer() { // idempotent
 		if (this.sampleBuffer !== null) {
 			return
 		}
@@ -249,18 +246,13 @@ class DMC {
 		// if the bytes remaining counter becomes zero and the IRQ enabled flag
 		// is set, the interrupt flag is set.
 		this.readBytesRemaining--
-		if ((this.readBytesRemaining === 0) && this.loop) {
-			this.restart()
-		} else if (this.readBytesRemaining === 0 && this.irqEnabled) {
-			this.interruptFlag = 1
+		if (this.readBytesRemaining === 0) {
+			if (this.loop) {
+				this.restart()
+			} else if (this.irqEnabled) {
+				this.interruptFlag = 1
+			}
 		}
-	}
-
-	// restart the sample
-	restart() {
-		this.readAddress = this.sampleAddress
-		this.readBytesRemaining = this.sampleLength
-		this.fillBuffer()
 	}
 
 	timer = 0
@@ -273,8 +265,16 @@ class DMC {
 		}
 	}
 
+	restart() {
+		this.readAddress = this.sampleAddress
+		this.readBytesRemaining = this.sampleLength
+		this.fillBuffer()
+	}
+
 	// https://wiki.nesdev.com/w/index.php/APU_DMC#Output_unit
 	private timerClock() {
+		this.fillBuffer()
+
 		// The bits-remaining counter is updated whenever the timer outputs a
 		// clock, regardless of whether a sample is currently playing. When this
 		// counter reaches zero, we say that the output cycle ends. The DPCM
@@ -302,10 +302,9 @@ class DMC {
 					this.outputLevel -= 2
 				}
 			}
+			this.outputShiftRegister >>= 1
 		}
-		this.outputShiftRegister >>= 1
 		this.outputBitsRemainingCounter--
-		assertInRange(this.outputBitsRemainingCounter, 0, 7)
 
 		// When an output cycle ends, a new cycle is started as follows:
 		//
@@ -320,7 +319,7 @@ class DMC {
 			} else {
 				this.outputSilence = 0
 				this.outputShiftRegister = this.sampleBuffer
-				this.emptyBuffer()
+				this.sampleBuffer = null
 			}
 		}
 	}
