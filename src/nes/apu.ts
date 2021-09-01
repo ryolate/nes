@@ -252,14 +252,12 @@ class DMC {
 		if ((this.readBytesRemaining === 0) && this.loop) {
 			this.restart()
 		} else if (this.readBytesRemaining === 0 && this.irqEnabled) {
-			console.log(`fillBuffer: setting interruptFlag`)
 			this.interruptFlag = 1
 		}
 	}
 
 	// restart the sample
 	restart() {
-		console.log(`DMC restart`)
 		this.readAddress = this.sampleAddress
 		this.readBytesRemaining = this.sampleLength
 		this.fillBuffer()
