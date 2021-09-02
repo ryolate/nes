@@ -30,7 +30,6 @@ export class PPU {
     // PPUCTRL $2000 > write
     // Various flags controlling PPU operation
     ctrlNMIEnable = 0 // cause NMI on VBlank
-    ctrlPPUMaster = 1 // always 1
     ctrlSpriteHeight = 0 // Sprite size; 0:8x8, 1:8x16
     ctrlBackgroundTileSelect = 0 // Background pattern table address 0:$0000, 1: $1000
     ctrlSpriteTileSelect = 0 // Sprite pattern table address 0:$0000, 1: $1000
@@ -40,7 +39,6 @@ export class PPU {
         const oldCtrlNMIEnable = this.ctrlNMIEnable
 
         this.ctrlNMIEnable = x >> 7 & 1
-        this.ctrlPPUMaster = x >> 6 & 1
         this.ctrlSpriteHeight = x >> 5 & 1
         this.ctrlBackgroundTileSelect = x >> 4 & 1
         this.ctrlSpriteTileSelect = x >> 3 & 1

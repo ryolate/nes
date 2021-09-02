@@ -177,7 +177,6 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 		["fineY", ppu.fineY()],
 		// $2000
 		["ctrlNMIEnable [$2000@7]", ppu.ctrlNMIEnable],
-		// ["ctrlPPUMaster", ppu.ctrlPPUMaster],
 		["ctrlSpriteHeight [$2000@5]", ppu.ctrlSpriteHeight],
 		["ctrlBackgroundTileSelect [$2000@4]", ppu.ctrlBackgroundTileSelect],
 		["ctrlSpriteTileSelect [$2000@3]", ppu.ctrlSpriteTileSelect],
