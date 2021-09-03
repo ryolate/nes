@@ -6,7 +6,7 @@ import { ConsoleLogSink, Logger } from '../nes/logger'
 import { CPU } from '../nes/cpu/cpu'
 import { Cartridge } from '../nes/mappers/cartridge'
 import { Mapper } from '../nes/mappers/mapper'
-import { APU } from '../nes/apu'
+import { APU } from '../nes/apu/apu'
 
 const withHeader = (title: string, e: JSX.Element) => {
 	return <div>

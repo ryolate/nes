@@ -5,6 +5,7 @@
 import canvas from 'canvas'
 import cluster from 'node:cluster'
 import fs from 'node:fs'
+import { glob } from 'glob'
 import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
@@ -17,13 +18,47 @@ import * as fire from './upload.node'
 
 const NUM_WORKER = os.cpus().length
 
-function allTargets(): Array<string> {
-	return fs.readFileSync(__dirname + '/target.txt', 'utf8').split("\n").filter((line: string) => {
+interface TestCase {
+	filepath: string
+	frameCount: number
+}
+
+const PREFIX = 'testdata/nes-test-roms/'
+
+async function allTargets(): Promise<Array<TestCase>> {
+	const frameMap = new Map<string, number>()
+	for (const line of fs.readFileSync(__dirname + '/target.txt', 'utf8').split("\n")) {
 		if (line.length === 0 || line[0] === '#') {
-			return false
+			continue
 		}
-		return true
-	})
+		const ss = line.split(/\s+/)
+
+		const fileglob = PREFIX + ss[0]
+		const frame = ss.length > 1 ? parseInt(ss[1]) : 60
+		await new Promise<void>((resolve, reject) => {
+			glob.glob(fileglob, (err, files) => {
+				if (err) {
+					reject(err)
+					return
+				}
+				if (files.length === 0) {
+					reject(new Error(`No file matches ${fileglob}`))
+				}
+				for (const filepath of files) {
+					frameMap.set(filepath, Math.max((frameMap.get(filepath) || 0), frame))
+				}
+				resolve()
+			})
+		})
+	}
+	const res = new Array<TestCase>()
+	for (const [k, v] of frameMap.entries()) {
+		res.push({
+			filepath: k,
+			frameCount: v,
+		})
+	}
+	return res
 }
 
 async function writeBufferAsImage(buffer: Uint8ClampedArray, filepath: string) {
@@ -46,15 +81,8 @@ async function writeBufferAsImage(buffer: Uint8ClampedArray, filepath: string) {
 	})
 }
 
-function parseLine(line: string): [string, number] {
-	const ss = line.split(/\s+/)
-
-	const filepath = ss[0]
-	const frame = ss.length > 1 ? parseInt(ss[1]) : 60
-	return [filepath, frame]
-}
-
-function localFilePath(tmpdir: string, testROM: string, frame: number): string {
+function localFilePath(tmpdir: string, testROMPath: string, frame: number): string {
+	const testROM = testROMPath.replace(PREFIX, "")
 	return path.join(tmpdir,
 		path.dirname(testROM),
 		path.basename(testROM) + `@${frame}.png`)
@@ -74,15 +102,14 @@ function sha1sum(data: Buffer): string {
 // write images without overwriting existing files.
 // Retuns updated file paths.
 // If overwrite is true, files are overwritten even if they exist.
-function writeImages(targets: Array<string>, tmpdir: string, overwrite?: boolean): Array<Promise<ImageData | undefined>> {
-	return targets.map(line => {
+function writeImages(targets: Array<TestCase>, tmpdir: string, overwrite?: boolean): Array<Promise<ImageData | undefined>> {
+	return targets.map(({ filepath: testROM, frameCount: frame }) => {
 		async function f() {
-			const [testROM, frame] = parseLine(line)
 			const filepath = localFilePath(tmpdir, testROM, frame)
 			if (!overwrite && fs.existsSync(filepath)) {
 				return
 			}
-			const data = fs.readFileSync(path.join(__dirname, "../../../testdata/nes-test-roms", testROM))
+			const data = fs.readFileSync(path.join(__dirname, "../../../", testROM))
 			let nes: NES.NES
 			try {
 				nes = NES.NES.fromCartridgeData(data)
@@ -122,7 +149,7 @@ async function isDirty(): Promise<boolean> {
 
 const LOCAL_ROOT = "/tmp/nes"
 
-async function processTargets(opts: Option, localBaseDir: string, targets: Array<string>) {
+async function processTargets(opts: Option, localBaseDir: string, targets: Array<TestCase>) {
 	const filesToUpload = writeImages(targets, localBaseDir, opts.overwrite)
 
 	if (opts.development) {
@@ -151,12 +178,11 @@ async function processTargets(opts: Option, localBaseDir: string, targets: Array
 
 interface Message {
 	localBaseDir: string
+	targets: Array<TestCase>
 }
 
 async function workerFunc(opts: Option) {
-	process.on("message", ({ localBaseDir }: Message) => {
-		const targets = allTargets().filter((_, i) => i % NUM_WORKER === cluster.worker!.id - 1)
-
+	process.on("message", ({ localBaseDir, targets }: Message) => {
 		processTargets(opts, localBaseDir, targets).catch((e) => {
 			console.error(`Error on worker ${cluster.worker!.id}: ${e}`)
 		}).then(() => {
@@ -179,12 +205,20 @@ async function primaryFun(opts: Option) {
 	const remoteBaseDir = timestamp + "-" + hash + (await isDirty() ? '-dirty' : '')
 	const localBaseDir = path.join(LOCAL_ROOT, remoteBaseDir)
 
+	const all = await allTargets()
+
 	// process
 	for (let i = 0; i < NUM_WORKER; i++) {
 		const worker = cluster.fork()
+
+		const targets = new Array<TestCase>()
+		for (let j = i; j < all.length; j += NUM_WORKER) {
+			targets.push(all[j])
+		}
 		worker.on('online', () => {
 			worker.send({
 				localBaseDir,
+				targets,
 			})
 		})
 	}
