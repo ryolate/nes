@@ -3,7 +3,7 @@ import { uint8, uint16, uint8ToSigned, UINT8_MAX, UINT16_MAX, hasBit, assertUint
 import { PPU } from '../ppu/ppu'
 import { NMI } from './nmi'
 import { Controller } from '../controller'
-import { APU } from '../apu'
+import { APU } from '../apu/apu'
 import { Logger } from '../logger'
 import { Mapper } from '../mappers/mapper'
 
@@ -727,6 +727,11 @@ export class CPU {
     tickCPU(): void {
         if (this.halt) {
             throw new CPUHaltError("CPU halt")
+        }
+
+        if (this.apu.dmc.cpuStallCount > 0) {
+            this.apu.dmc.cpuStallCount--
+            return
         }
 
         this.cycle++

@@ -32,6 +32,8 @@ branch_timing_tests/1.Branch_Basics.nes
 branch_timing_tests/2.Backward_Branch.nes
 branch_timing_tests/3.Forward_Branch.nes
 
+cpu_timing_test6/cpu_timing_test.nes 960
+
 scanline/scanline.nes
 
 sprite_hit_tests_2005.10.05/01.basics.nes
