@@ -99,7 +99,7 @@ export class DMC {
         }
     }
 
-    restart() {
+    restart(): void {
         this.readAddress = this.sampleAddress
         this.readBytesRemaining = this.sampleLength
         this.fillBuffer()
