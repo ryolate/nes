@@ -6,6 +6,7 @@ import { DebugGame, ErrorBanner } from './debug'
 
 const RealGame = (props: { nes: NES.NES }) => {
 	const canvasRef = useRef<HTMLCanvasElement>(null)
+	const [speed, setSpeed] = useState(100)
 	const [fps, setFPS] = useState(0)
 
 	// Controller
@@ -63,7 +64,7 @@ const RealGame = (props: { nes: NES.NES }) => {
 			const elapsed = timestamp - prevTimestamp
 			prevTimestamp = timestamp
 
-			props.nes.play(elapsed)
+			props.nes.play(elapsed * speed / 100)
 			props.nes.render(ctx)
 
 			countInSecond++
@@ -98,7 +99,16 @@ const RealGame = (props: { nes: NES.NES }) => {
 		}
 	}, [props.nes])
 
+	const maxSpeed = 300
 	return <>
+		<div>
+			Speed 100%<input type="range" value={speed} min={100} max={maxSpeed} onChange={(e) => {
+				const v = parseInt(e.target.value)
+				if (100 <= v && v <= maxSpeed) {
+					setSpeed(v)
+				}
+			}} />{maxSpeed}%
+		</div>
 		<div className="row">
 			<div className="col-6">
 				<canvas
