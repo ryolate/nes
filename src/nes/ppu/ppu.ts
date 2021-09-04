@@ -711,8 +711,8 @@ export class PPU {
             for (let y = 0; y < HEIGHT; y++) {
                 for (let x = 0; x < WIDTH; x++) {
                     const i = (x >> 3) | ((y >> 3) << 5)
-                    // const pt = this.bus.mapper.readNametable(h << 10 | i)
-                    const pt = this.bus.mapper.vram[(h << 10 | i) & (this.bus.mapper.vram.length - 1)]
+                    const pt = this.bus.mapper.readNametable(0x2000 + h * 0x400 + i)
+                    // const pt = this.bus.mapper.vram[(h << 10 | i) & (this.bus.mapper.vram.length - 1)]
                     const pi = this.patternValue(this.ctrlBackgroundTileSelect, pt, x, y)
                     assertInRange(pi, 0, 3)
 
@@ -721,8 +721,8 @@ export class PPU {
                         colorIndex = this.bus.universalBackgroundColor
                     } else {
                         const j = (y >> 5) << 3 | (x >> 5)
-                        // const b = this.bus.mapper.readNametable(h << 10 | (0x3C0 + j))
-                        const b = this.bus.mapper.vram[h << 10 | (0x3C0 + j)] & (this.bus.mapper.vram.length - 1)
+                        const b = this.bus.mapper.readNametable(0x2000 + h * 0x400 | (0x3C0 + j))
+                        // const b = this.bus.mapper.vram[h << 10 | (0x3C0 + j)] & (this.bus.mapper.vram.length - 1)
                         const x2 = (x >> 4 & 1) << 1, y2 = (y >> 4 & 1) << 1
                         const at = b >> (y2 << 1 | x2) & 3
 

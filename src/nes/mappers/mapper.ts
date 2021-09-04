@@ -15,7 +15,6 @@ export interface Mapper {
 	writeNametable(pc: uint16, x: uint8): void
 	////////////////////////////// Debug //////////////////////////////
 	cartridge: Cartridge
-	vram: Uint8Array
 	state(): MapperState
 }
 
