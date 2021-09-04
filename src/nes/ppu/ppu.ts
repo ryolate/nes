@@ -751,6 +751,40 @@ export class PPU {
         ctx.putImageData(img, 0, 0)
     }
 
+    getNametableTileInfo(i: number, j: number): {
+        addr: number,
+        nameTable: number,
+        location: [number, number],
+        tileIndex: number,
+        tileAddr: number,
+        attributeData: number,
+        attributeAddr: number,
+        paletteAddr: number,
+    } {
+        const nameTable = Math.floor(i / 32) + Math.floor(j / 30) * 2
+        const location: [number, number] = [i % 32, j % 30]
+        const addr = 0x2000 + nameTable * 0x400 + (location[0] + location[1] * 32)
+        const tileIndex = this.bus.read(addr)
+        const tileAddr = this.ctrlBackgroundTileSelect * 0x1000 + tileIndex * 16
+
+        const attributeAddr = 0x2000 + nameTable * 0x400 + 960 + Math.floor(location[0] / 4) + Math.floor(location[1] / 4) * 8
+        const attributeData = this.bus.read(attributeAddr)
+
+        const [i2, j2] = [Math.floor((location[0] % 4 / 2)), Math.floor(location[1] % 4 / 2)]
+        const paletteAddr = 0x3F01 + ((attributeData >> (i2 + j2 * 2) * 2) & 3) * 4
+
+        return {
+            addr,
+            nameTable,
+            location,
+            tileIndex,
+            tileAddr,
+            attributeData,
+            attributeAddr,
+            paletteAddr,
+        }
+    }
+
     // render pattern table using predefined colors.
     renderCharacters(canvas: HTMLCanvasElement): void {
         const pixelSize = 2

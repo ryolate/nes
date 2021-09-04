@@ -125,29 +125,97 @@ const Register = (props: { name: string, value: number, radix?: 2 | 10 | 16 }) =
 		<td width="60px">{pref + props.value.toString(radix).toUpperCase()}</td>
 	</tr>
 }
-const TableRow = (props: { row: Array<string> }) => {
+const TableRow = (props: { row: Array<string>, width?: number }) => {
 	return <tr>
 		{
 			props.row.map((x, i) => {
-				return <td key={i}>{x}</td>
+				return <td key={i} style={{ minWidth: props.width }}>{x}</td>
 			})
 		}
-	</tr>
+	</tr >
 }
-const PPUInfo = (props: { ppu: PPU.PPU }) => {
-	const canvasRef = useRef<HTMLCanvasElement>(null)
-	const charsCanvasRef = useRef<HTMLCanvasElement>(null)
-	const colorsCanvasRef = useRef<HTMLCanvasElement>(null)
 
-	const ppu = props.ppu
+const NametableView = (props: { ppu: PPU.PPU }) => {
+	const { ppu } = props
+
+	const nametableCanvasRef = useRef<HTMLCanvasElement>(null)
+
+	const [cursor, setCursor] = useState([0, 0])
+	const [focus, setFocus] = useState(false)
+
+	const tileInfo = ppu.getNametableTileInfo(cursor[0], cursor[1])
 
 	useEffect(() => {
-		if (!canvasRef.current) {
+		if (!nametableCanvasRef.current) {
 			return
 		}
-		const canvas = canvasRef.current
+		const canvas = nametableCanvasRef.current
 		ppu.renderNametable(canvas)
-	})
+		const ctx = canvas.getContext('2d')
+		if (!ctx) {
+			return
+		}
+		ctx.strokeStyle = 'red'
+		const [x, y] = cursor
+		ctx.strokeRect(x * 8 + 1, y * 8 + 1, 8, 8)
+	}, [ppu, cursor])
+
+	useEffect(() => {
+		if (!focus) {
+			return
+		}
+		const keypressListener = (e: KeyboardEvent) => {
+			const i = "asdw".indexOf(e.key)
+			if (i < 0) {
+				return
+			}
+			const dy = [0, 1, 0, -1]
+			const dx = [-1, 0, 1, 0]
+			setCursor(([x, y]) => {
+				x += dx[i]
+				y += dy[i]
+				if (x < 0) x = 0
+				if (x >= 64) x = 63
+				if (y < 0) y = 0
+				if (y >= 60) y = 59
+				return [x, y]
+			})
+		}
+		document.addEventListener("keypress", keypressListener)
+		return () => {
+			document.removeEventListener("keypress", keypressListener)
+		}
+	}, [focus])
+
+	return <div style={{ display: "flex" }}>
+		<canvas tabIndex={0} ref={nametableCanvasRef}
+			onFocus={() => setFocus(true)}
+			onBlur={() => setFocus(false)} />
+		<div>
+			<table><tbody>
+				{
+					[
+						["PPU Addr", tileInfo.addr.toString(16).toUpperCase()],
+						["Name Table", tileInfo.nameTable + ""],
+						["Location", tileInfo.location.join(", ")],
+						["Tile Index", tileInfo.tileIndex.toString(16).toUpperCase()],
+						["Tile Addr", tileInfo.tileAddr.toString(16).toUpperCase()],
+						["Attribute Data", tileInfo.attributeData.toString(16).toUpperCase()],
+						["Attribute Addr", tileInfo.attributeAddr.toString(16).toUpperCase()],
+						["Palette Addr", tileInfo.paletteAddr.toString(16).toUpperCase()],
+					].map((row, i) => <TableRow key={i} row={row} width={120} />
+					)
+				}
+			</tbody></table>
+		</div>
+	</div>
+}
+
+const PPUView = (props: { ppu: PPU.PPU }) => {
+	const { ppu } = props
+
+	const charsCanvasRef = useRef<HTMLCanvasElement>(null)
+	const colorsCanvasRef = useRef<HTMLCanvasElement>(null)
 
 	useEffect(() => {
 		const cvs = charsCanvasRef.current
@@ -218,7 +286,7 @@ const PPUInfo = (props: { ppu: PPU.PPU }) => {
 			bg={PPU.to2DPalettes(ppu.bus.backgroundPalettes)}
 			sprite={ppu.bus.spritePalettes} />
 		<div style={{ marginTop: "1px" }}>
-			<canvas ref={canvasRef}></canvas>
+			<NametableView ppu={ppu} />
 		</div>
 		<canvas ref={charsCanvasRef} />
 		<canvas ref={colorsCanvasRef} />
@@ -428,7 +496,7 @@ export const DebugGame = (props: { nes: NES.NES, onReset: () => void }): JSX.Ele
 			<APUInfo apu={props.nes.apu} />
 			<CPUInfo cpu={props.nes.cpu} />
 		</div>
-		<PPUInfo ppu={props.nes.ppu} />
+		<PPUView ppu={props.nes.ppu} />
 	</div>
 }
 

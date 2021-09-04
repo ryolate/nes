@@ -53,7 +53,7 @@ export class DMC {
     cpuStallCount = 0
 
     // https://wiki.nesdev.com/w/index.php/APU_DMC#Memory_reader
-    fillBuffer() { // idempotent
+    private fillBuffer() { // idempotent
         if (this.sampleBuffer !== null) {
             return
         }
