@@ -6,6 +6,8 @@ import { Mapper, MapperState } from "./mapper";
 export class Mapper1 implements Mapper {
 	readonly cartridge: Cartridge
 	readonly vram = new Uint8Array(0x800) // 2KB nametable
+
+	readonly prgRAM = new Uint8Array(32 * 1024)
 	constructor(cartridge: Cartridge) {
 		this.cartridge = cartridge
 		this.resetShiftRegister()
@@ -29,7 +31,7 @@ export class Mapper1 implements Mapper {
 		if (copy) {
 			if (pc <= 0x9FFF) {
 				this.setControl(this.shiftRegister)
-			} else if (pc <= 0xBFFF) {
+			} else if (pc <= 0xBFFF) { // CHR bank 0 (internal, $A000-$BFFF)
 				this.chrBank0 = this.shiftRegister
 			} else if (pc <= 0xDFFF) {
 				this.chrBank1 = this.shiftRegister
@@ -70,19 +72,18 @@ export class Mapper1 implements Mapper {
 	// Select 16 KB PRG ROM bank (low bit ignored in 32 KB mode)
 	private prgBank = 0
 	// PRG RAM chip enable (0: enabled; 1: disabled; ignored on MMC1A)
-	// This emulator ignores this bit.
+	// This emulator ignores this bit, and always enable RAM.
 	private prgRAMChipEnable = 0
 
 	readCPU(pc: uint16): uint8 {
 		if (pc < 0x6000) {
 			return 0
 		} else if (pc <= 0x7FFF) {
-			// CPU $6000-$7FFF: 8 KB PRG RAM bank, (optional)
-			// TODO: implement RAM bank.
-			if (this.cartridge.prgRAM.length) {
-				return this.cartridge.prgRAM[(pc - 0x6000) % this.cartridge.prgRAM.length]
-			}
-			return 0
+			// CPU $6000-$7FFF: 8 KB PRG RAM bank.
+			//
+			// TODO: we should select PRG RAM bank for SOROM, SUROM, SXROM
+			//       and SZROM.
+			return this.prgRAM[pc - 0x6000]
 		} else {
 			const i = pc - 0x8000
 			const prgROM = this.cartridge.prgROM
@@ -109,10 +110,8 @@ export class Mapper1 implements Mapper {
 		if (pc < 0x6000) {
 			return
 		} else if (pc <= 0x7FFF) {
-			// $6000-$7FFF: 8 KB PRG RAM bank, (optional)
-			if (this.cartridge.prgRAM.length) {
-				this.cartridge.prgRAM[(pc - 0x6000) % this.cartridge.prgRAM.length] = x
-			}
+			// $6000-$7FFF: 8 KB PRG RAM bank.
+			this.prgRAM[pc - 0x6000] = x
 			return
 		} else {
 			// Unlike almost all other mappers, the MMC1 is configured through a
@@ -156,14 +155,18 @@ export class Mapper1 implements Mapper {
 	}
 	readNametable(pc: number): number {
 		assertInRange(pc, 0x2000, 0x2FFF)
-		assertInRange(this.nametableIndex(pc), 0, 0x800)
-		return this.vram[this.nametableIndex(pc)]
+
+		const i = this.nametableIndex(pc)
+		assertInRange(i, 0, 0x800)
+		return this.vram[i]
 	}
 	writeNametable(pc: number, x: number): void {
 		assertInRange(pc, 0x2000, 0x2FFF)
 		assertUint8(x)
-		assertInRange(this.nametableIndex(pc), 0, 0x800)
-		this.vram[this.nametableIndex(pc)] = x
+
+		const i = this.nametableIndex(pc)
+		assertInRange(i, 0, 0x800)
+		this.vram[i] = x
 	}
 
 	state(): MapperState {

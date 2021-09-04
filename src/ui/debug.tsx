@@ -15,7 +15,7 @@ const withHeader = (title: string, e: JSX.Element) => {
 	</div>
 }
 
-const APUInfo = (props: { apu: APU }) => {
+const APUView = (props: { apu: APU }) => {
 	const { apu } = props
 
 	return withHeader("APU", <div>
@@ -77,7 +77,7 @@ const PPUPalettes = (props: { universal: number, bg: Array<PPU.Palette>, sprite:
 	</div>
 }
 
-const SpriteInfo = (props: { oam: Array<number> }) => {
+const SpriteView = (props: { oam: Array<number> }) => {
 	const oam = props.oam
 	const res = []
 	for (let i = 0; i < oam.length; i += 4) {
@@ -279,7 +279,7 @@ const PPUView = (props: { ppu: PPU.PPU }) => {
 				{stateTable}
 			</span>
 			<span>
-				<SpriteInfo oam={ppu.bus.oam} />
+				<SpriteView oam={ppu.bus.oam} />
 			</span>
 		</div>
 		<PPUPalettes universal={ppu.bus.universalBackgroundColor}
@@ -293,7 +293,7 @@ const PPUView = (props: { ppu: PPU.PPU }) => {
 	</div>
 }
 
-const CPUInfo = (props: { cpu: CPU }) => {
+const CPUView = (props: { cpu: CPU }) => {
 	const cpu = props.cpu
 	const disaList = cpu.disasm(10)
 
@@ -453,7 +453,7 @@ const UserInteraction = (props: { nes: NES.NES, onChange: () => void, onReset: (
 	</div>
 }
 
-const MapperInfo = (props: { mapper: Mapper }) => {
+const MapperView = (props: { mapper: Mapper }) => {
 	return withHeader("Mapper", <table><tbody>
 		{
 			props.mapper.state().map(([name, value], i) => {
@@ -463,18 +463,20 @@ const MapperInfo = (props: { mapper: Mapper }) => {
 	</tbody></table>)
 }
 
-const CartridgeInfo = (props: { cartridge: Cartridge }) => {
-	return <table><tbody>
+const CartridgeView = (props: { cartridge: Cartridge }) => {
+	return withHeader("Cartridge", <table><tbody>
 		{
 			[
 				["Mapper", props.cartridge.header.mapper.toString(10)],
 				["chrROMSize", "0x" + props.cartridge.header.chrROMSize.toString(16)],
 				["mirroring", "" + props.cartridge.header.mirroring],
+				["hasBatteryPackedPRGRAM", "" + props.cartridge.header.hasBatteryPackedPRGRAM],
+				["prgROMSize", (props.cartridge.header.prgROMSize / 1024) + "K"],
 			].map(([name, value], i) => {
 				return <TableRow key={i} row={[name, value]} />
 			})
 		}
-	</tbody></table>
+	</tbody></table>)
 }
 
 export const DebugGame = (props: { nes: NES.NES, onReset: () => void }): JSX.Element => {
@@ -491,10 +493,10 @@ export const DebugGame = (props: { nes: NES.NES, onReset: () => void }): JSX.Ele
 	return <div style={{ display: "flex" }}>
 		<UserInteraction nes={props.nes} onChange={() => setUpdateCounter((x) => x + 1)} onReset={props.onReset} />
 		<div>
-			<CartridgeInfo cartridge={props.nes.mapper.cartridge} />
-			<MapperInfo mapper={props.nes.mapper} />
-			<APUInfo apu={props.nes.apu} />
-			<CPUInfo cpu={props.nes.cpu} />
+			<CartridgeView cartridge={props.nes.mapper.cartridge} />
+			<MapperView mapper={props.nes.mapper} />
+			<APUView apu={props.nes.apu} />
+			<CPUView cpu={props.nes.cpu} />
 		</div>
 		<PPUView ppu={props.nes.ppu} />
 	</div>

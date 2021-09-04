@@ -6,6 +6,9 @@ import { Mapper, MapperState } from "./mapper";
 export class Mapper0 implements Mapper {
 	readonly cartridge: Cartridge
 	readonly vram = new Uint8Array(0x800) // 2KB nametable
+	// PRG RAM: 2 or 4 KiB, not bankswitched, only in Family Basic (but most
+	// emulators provide 8)
+	readonly prgRAM = new Uint8Array(8 * 1024)
 	constructor(cartridge: Cartridge) {
 		this.cartridge = cartridge
 	}
@@ -17,10 +20,7 @@ export class Mapper0 implements Mapper {
 		if (pc < 0x6000) {
 			return 0
 		} else if (pc < 0x8000) {
-			if (this.cartridge.prgRAM.length) {
-				return this.cartridge.prgRAM[(pc - 0x6000) % this.cartridge.prgRAM.length]
-			}
-			return 0
+			return this.prgRAM[pc - 0x6000]
 		} else {
 			return this.cartridge.prgROM[(pc - 0x8000) % this.cartridge.prgROM.length]
 		}
@@ -30,14 +30,11 @@ export class Mapper0 implements Mapper {
 		if (pc < 0x4020) {
 			throw new Error(`Outside cartridge space ${pc.toString(16)}`)
 		}
-		if (pc < 0x6000) {
+		if (pc <= 0x5FFF) {
 			return
-		} else if (pc < 0x8000) {
-			// Family Basic only: PRG RAM, mirrored as necessary to fill entire
-			// 8 KiB window, write protectable with an external switch
-			if (this.cartridge.prgRAM.length) {
-				this.cartridge.prgRAM[(pc - 0x8000) % this.cartridge.prgRAM.length] = x
-			}
+		} else if (pc <= 0x7FFF) {
+			// $6000-$7FFF
+			this.prgRAM[pc - 0x6000] = x
 			return
 		} else {
 			// ROM Space

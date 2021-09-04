@@ -55,8 +55,6 @@ interface Header {
 
     mapper: uint8
 
-    prgRAMSize: number
-
     // Ignore flag9 and flag10; relatively few emulators honor it.
 }
 
@@ -88,6 +86,12 @@ function parseHeader(sc: Scanner): Header {
     const nes2format = hasBit(flag7, 3) && (!hasBit(flag7, 2))
     const mapper = (flag7 & 0xF0) | (flag6 >> 4)
     const prgRAMSize = flag8
+    if (prgRAMSize > 0) {
+        // Size of PRG RAM in 8 KB units
+        // This was a later extension to the iNES format and not widely used.
+        // NES 2.0 is recommended for specifying PRG RAM size instead.
+        throw new Error("Not widely use option is used")
+    }
 
     if (nes2format) {
         throw new Error("NES 2.0 is not supported")
@@ -104,7 +108,6 @@ function parseHeader(sc: Scanner): Header {
         playChoice10,
         nes2format,
         mapper,
-        prgRAMSize,
     }
 }
 
@@ -112,15 +115,13 @@ export class Cartridge {
     readonly header: Header
     readonly trainer: Uint8Array
     readonly prgROM: Uint8Array
-    readonly prgRAM: Uint8Array
     private readonly chrROM: Uint8Array
     private readonly chrRAM: Uint8Array
 
-    constructor(header: Header, trainer: Uint8Array, prgROM: Uint8Array, chrROM: Uint8Array, chrRAM: Uint8Array, prgRAMSize: number) {
+    constructor(header: Header, trainer: Uint8Array, prgROM: Uint8Array, chrROM: Uint8Array, chrRAM: Uint8Array) {
         this.header = header
         this.trainer = trainer
         this.prgROM = prgROM
-        this.prgRAM = new Uint8Array(prgRAMSize)
         this.chrROM = chrROM
         this.chrRAM = chrRAM
     }
@@ -160,6 +161,6 @@ export class Cartridge {
 
         sc.assertEOF()
 
-        return new Cartridge(header, trainer, prgROM, chrROM, chrRAM, header.prgRAMSize)
+        return new Cartridge(header, trainer, prgROM, chrROM, chrRAM)
     }
 }
