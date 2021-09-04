@@ -99,7 +99,7 @@ const RealGame = (props: { nes: NES.NES }) => {
 		}
 	}, [props.nes])
 
-	const maxSpeed = 300
+	const maxSpeed = 400
 	return <>
 		<div>
 			Speed 100%<input type="range" value={speed} min={100} max={maxSpeed} onChange={(e) => {
