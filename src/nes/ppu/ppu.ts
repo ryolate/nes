@@ -329,110 +329,109 @@ export class PPU {
     tickPPU(): void {
         this.updateIndices()
 
+        if (this.scanline >= 240) {
+            // The VBlank flag of the PPU is set at tick 1 (the second tick) of
+            // scanline 241, where the VBlank NMI also occurs.
+            if (this.scanline === 241 && this.scanlineCycle === 1) {
+                this.vblank = 1
+                if (this.ctrlNMIEnable) {
+                    this.nmi.set()
+                }
+            }
+            return
+        }
+
         if (this.scanlineCycle >= 337 || this.scanlineCycle === 0) {
             return
         }
+        // Visible scanline (-1-239)
 
-        if (this.scanline <= 239) {
-            // Scroll
-            // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
-            let bgColorIndex = -1
-            if (this.renderingEnabled()) {
-                if (this.scanlineCycle <= 255 || this.scanlineCycle >= 327) {
-                    if ((this.scanlineCycle & 7) === 0) {
-                        // 328, 336, 8, 16, 24, ..., 248
-                        // If rendering is enabled, the PPU increments the horizontal position in v many times across the scanline. increment on tick 256 is not visible since hori(v) is reloaded right after (tick 257).
-                        this.coarseXIncrement()
-                    } else if ((this.scanlineCycle & 7) === 1) {
-                        // 329, 337, 9, 17, 25, ..., 250
-                        this.reloadShifters()
-                    } else if ((this.scanlineCycle & 7) === 7) {
-                        // 327, 335, 7, 15, 23, ..., 247, 255
-                        // The data fetched from these accesses is placed into internal latches, and then fed to the appropriate shift registers when it's time to do so (every 8 cycles). Because the PPU can only fetch an attribute byte every 8 cycles, each sequential string of 8 pixels is forced to have the same palette attribute.
-                        this.fetchTileData()
-                    }
-                } else if (this.scanlineCycle === 256) {
-                    // If rendering is enabled, the PPU increments the vertical position in v.
-                    this.yIncrement()
-                } else if (this.scanlineCycle === 257) {
-                    // hori(v) = hori(t)
-                    const mask = 0b10000011111
+        // Scroll
+        // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
+        let bgColorIndex = -1
+        if (this.renderingEnabled()) {
+            if (this.scanlineCycle <= 255 || this.scanlineCycle >= 327) {
+                if ((this.scanlineCycle & 7) === 0) {
+                    // 328, 336, 8, 16, 24, ..., 248
+                    // If rendering is enabled, the PPU increments the horizontal position in v many times across the scanline. increment on tick 256 is not visible since hori(v) is reloaded right after (tick 257).
+                    this.coarseXIncrement()
+                } else if ((this.scanlineCycle & 7) === 1) {
+                    // 329, 337, 9, 17, 25, ..., 250
+                    this.reloadShifters()
+                } else if ((this.scanlineCycle & 7) === 7) {
+                    // 327, 335, 7, 15, 23, ..., 247, 255
+                    // The data fetched from these accesses is placed into internal latches, and then fed to the appropriate shift registers when it's time to do so (every 8 cycles). Because the PPU can only fetch an attribute byte every 8 cycles, each sequential string of 8 pixels is forced to have the same palette attribute.
+                    this.fetchTileData()
+                }
+            } else if (this.scanlineCycle === 256) {
+                // If rendering is enabled, the PPU increments the vertical position in v.
+                this.yIncrement()
+            } else if (this.scanlineCycle === 257) {
+                // hori(v) = hori(t)
+                const mask = 0b10000011111
+                this.internalV &= ~mask
+                this.internalV |= this.internalT & mask
+            }
+
+            if (this.scanlineCycle <= 256 || this.scanlineCycle >= 329) {
+                // 329-336, 1-8, 9-17, ..., 249-256
+                bgColorIndex = this.fetchBackgroundColorIndex()
+            }
+        }
+
+        if (this.scanline < 0) {// Pre-render scanline (-1 or 261)
+            if (this.scanlineCycle === 1) {
+                // https://wiki.nesdev.com/w/index.php?title=PPU_registers#Status_.28.242002.29_.3C_read
+                // cleared at dot 1 (the second dot) of the pre-render line.
+                this.spriteOverflow = 0
+                this.spriteZeroHit = 0
+                this.vblank = 0
+            } else if (this.scanlineCycle >= 280 && this.scanlineCycle <= 304) {
+                // If rendering is enabled, at the end of vblank, shortly after
+                // the horizontal bits are copied from t to v at dot 257, the
+                // PPU will repeatedly copy the vertical bits from t to v from
+                // dots 280 to 304, completing the full initialization of v from t:
+                if (this.renderingEnabled()) {
+                    // vert(v) = vert(t)
+                    const mask = 0b111101111100000
                     this.internalV &= ~mask
                     this.internalV |= this.internalT & mask
                 }
-
-                if (this.scanlineCycle <= 256 || this.scanlineCycle >= 329) {
-                    // 329-336, 1-8, 9-17, ..., 249-256
-                    bgColorIndex = this.fetchBackgroundColorIndex()
-                }
-            }
-
-            if (this.scanline < 0) {// Pre-render scanline (-1 or 261)
-                if (this.scanlineCycle === 1) {
-                    // https://wiki.nesdev.com/w/index.php?title=PPU_registers#Status_.28.242002.29_.3C_read
-                    // cleared at dot 1 (the second dot) of the pre-render line.
-                    this.spriteOverflow = 0
-                    this.spriteZeroHit = 0
-                    this.vblank = 0
-                } else if (this.scanlineCycle >= 280 && this.scanlineCycle <= 304) {
-                    // If rendering is enabled, at the end of vblank, shortly after
-                    // the horizontal bits are copied from t to v at dot 257, the
-                    // PPU will repeatedly copy the vertical bits from t to v from
-                    // dots 280 to 304, completing the full initialization of v from t:
-                    if (this.renderingEnabled()) {
-                        // vert(v) = vert(t)
-                        const mask = 0b111101111100000
-                        this.internalV &= ~mask
-                        this.internalV |= this.internalT & mask
-                    }
-                }
-                return
-            }
-
-            // Visible scanline (-1-239)
-            if (this.scanlineCycle <= 256) { // Cycles 1-256
-                let colorIndex = -1
-                if (this.backgroundEnable && (this.scanlineCycle >= 9 || this.backgroundLeftColumnEnable)) {
-                    colorIndex = bgColorIndex
-                }
-                const spritePixel = this.spriteLineBuffer[this.scanlineCycle - 1]
-                if (this.spriteEnable && spritePixel >= 0) {
-                    const spriteColorIndex = spritePixel & 63
-                    const priority = (spritePixel >> 6) & 1
-                    const spriteZero = (spritePixel >> 7) & 1
-
-                    if (colorIndex !== -1 && spriteZero) {
-                        this.spriteZeroHit = 1
-                    }
-                    if (priority === 0 || colorIndex === -1) {
-                        colorIndex = spriteColorIndex
-                    }
-                }
-                if (colorIndex === -1) {
-                    colorIndex = this.bus.universalBackgroundColor
-                }
-                this.putPixel(this.scanlineCycle - 1, this.scanline, colorIndex)
-            } else if (this.scanlineCycle === 261) {
-                // Sprite evaluation does not happen on the pre-render scanline.
-                // Because evaluation applies to the next line's sprite
-                // rendering, no sprites will be rendered on the first scanline,
-                // and this is why there is a 1 line offset on a sprite's Y
-                // coordinate.
-
-                // TODO: cycle accurate OAM eveluation.
-                this.spriteLine(this.scanline)
             }
             return
         }
 
-        // The VBlank flag of the PPU is set at tick 1 (the second tick) of
-        // scanline 241, where the VBlank NMI also occurs.
-        if (this.scanline === 241 && this.scanlineCycle === 1) {
-            this.vblank = 1
-            if (this.ctrlNMIEnable) {
-                this.nmi.set()
+        if (this.scanlineCycle <= 256) { // Cycles 1-256
+            let colorIndex = -1
+            if (this.backgroundEnable && (this.scanlineCycle >= 9 || this.backgroundLeftColumnEnable)) {
+                colorIndex = bgColorIndex
             }
-            return
+            const spritePixel = this.spriteLineBuffer[this.scanlineCycle - 1]
+            if (this.spriteEnable && spritePixel >= 0) {
+                const spriteColorIndex = spritePixel & 63
+                const priority = (spritePixel >> 6) & 1
+                const spriteZero = (spritePixel >> 7) & 1
+
+                if (colorIndex >= 0 && spriteZero) {
+                    this.spriteZeroHit = 1
+                }
+                if (priority === 0 || colorIndex === -1) {
+                    colorIndex = spriteColorIndex
+                }
+            }
+            if (colorIndex === -1) {
+                colorIndex = this.bus.universalBackgroundColor
+            }
+            this.putPixel(this.scanlineCycle - 1, this.scanline, colorIndex)
+        } else if (this.scanlineCycle === 261) {
+            // Sprite evaluation does not happen on the pre-render scanline.
+            // Because evaluation applies to the next line's sprite
+            // rendering, no sprites will be rendered on the first scanline,
+            // and this is why there is a 1 line offset on a sprite's Y
+            // coordinate.
+
+            // TODO: cycle accurate OAM eveluation.
+            this.spriteLine(this.scanline)
         }
     }
 
@@ -792,27 +791,20 @@ class PPUBus {
     // PPU palettes
     universalBackgroundColor = 9 // $3F00
 
-<<<<<<< HEAD
-    // (i * 3 + j)-th element contains palette[i]'s j-th color.
-    backgroundPalettes = new Uint8Array([
-        1, 0, 1,       // $3F01-$3F03
-        2, 2, 0xD,     // $3F05-$3F07
-        0x10, 8, 0x24, // $3F09-$3F0B
-        0, 4, 0x2C     // $3F0D-$3F0F
-    ])
+    // (i * 4 + j + 1)-th element contains palette[i]'s j-th color.
+    backgroundPalettes = [
+        -1, 1, 0, 1,       // $3F01-$3F03
+        -1, 2, 2, 0xD,     // $3F05-$3F07
+        -1, 0x10, 8, 0x24, // $3F09-$3F0B
+        -1, 0, 4, 0x2C,    // $3F0D-$3F0F
+    ]
     spritePalettes: Array<Palette> = [
         [1, 0x34, 3],    // $3F11-$3F13
         [4, 0, 0x14],    // $3F15-$3F17
         [0x3A, 0, 2],    // $3F19-$3F1B
         [0x20, 0x2C, 8], // $3F1D-$3F1F
     ]
-=======
-    // (i * 4 + j + 1)-th element contains palette[i]'s j-th color.
-    backgroundPalettes = new Array(16)
-    spritePalettes: Array<Palette> = [0, 0, 0, 0].map(() => {
-        return newPalette()
-    })
->>>>>>> fd1e04a... Took 8.71 seconds (689% speed)
+
     // $3F04, $3F08, $3F0C
     unusedData: Array<uint8> = [0, 8, 0]
 
