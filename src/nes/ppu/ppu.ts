@@ -367,19 +367,21 @@ export class PPU {
                 } else if (mod === 1) {
                     this.reloadShifters()
                 }
+
+                if (x <= 255 || x >= 329) {
+                    // 329-336, 1-8, 9-17, ..., 249-256
+                    bgColorIndex = this.fetchBackgroundColorIndex()
+                }
             } else if (x === 256) {
                 // If rendering is enabled, the PPU increments the vertical position in v.
                 this.yIncrement()
+
+                bgColorIndex = this.fetchBackgroundColorIndex()
             } else if (x === 257) {
                 // hori(v) = hori(t)
                 const mask = 0b10000011111
                 this.internalV &= ~mask
                 this.internalV |= this.internalT & mask
-            }
-
-            if (x <= 256 || x >= 329) {
-                // 329-336, 1-8, 9-17, ..., 249-256
-                bgColorIndex = this.fetchBackgroundColorIndex()
             }
         }
 
