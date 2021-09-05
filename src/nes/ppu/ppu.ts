@@ -351,7 +351,7 @@ export class PPU {
         // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
         let bgColorIndex = -1
         if (this.renderingEnabled()) {
-            if (x >= 327 || x <= 255) {
+            if (x >= 327 || x <= 256) {
                 // 327, 335, 7, 15, 23, ..., 247, 255
                 // The data fetched from these accesses is placed into internal latches, and then fed to the appropriate shift registers when it's time to do so (every 8 cycles). Because the PPU can only fetch an attribute byte every 8 cycles, each sequential string of 8 pixels is forced to have the same palette attribute.
                 // 328, 336, 8, 16, 24, ..., 248
@@ -359,24 +359,24 @@ export class PPU {
                 // 329, 337, 9, 17, 25, ..., 250
                 // Reload shifters.
 
-                const mod = (x & 7)
-                if (mod === 7) {
-                    this.fetchTileData()
-                } else if (mod === 0) {
-                    this.coarseXIncrement()
-                } else if (mod === 1) {
-                    this.reloadShifters()
+                if (x === 256) {
+                    // If rendering is enabled, the PPU increments the vertical position in v.
+                    this.yIncrement()
+                } else {
+                    const mod = (x & 7)
+                    if (mod === 7) {
+                        this.fetchTileData()
+                    } else if (mod === 0) {
+                        this.coarseXIncrement()
+                    } else if (mod === 1) {
+                        this.reloadShifters()
+                    }
                 }
 
-                if (x <= 255 || x >= 329) {
+                if (x <= 256 || x >= 329) {
                     // 329-336, 1-8, 9-17, ..., 249-256
                     bgColorIndex = this.fetchBackgroundColorIndex()
                 }
-            } else if (x === 256) {
-                // If rendering is enabled, the PPU increments the vertical position in v.
-                this.yIncrement()
-
-                bgColorIndex = this.fetchBackgroundColorIndex()
             } else if (x === 257) {
                 // hori(v) = hori(t)
                 const mask = 0b10000011111
