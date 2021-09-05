@@ -490,19 +490,18 @@ export class PPU {
             // |||||||+- Bank ($0000 or $1000) of tiles
             // +++++++-- Tile number of top of sprite (0 to 254; bottom half gets the next tile)
             const tileIndexNumber = this.bus.oam[i + 1]
-
             const attributes = this.bus.oam[i + 2]
+            const x = this.bus.oam[i + 3] // X position of left side of sprite
+
             const pi = attributes & 3 // Palette (4 to 7) of sprite
+            const palette = this.bus.spritePalettes[pi]
             // 2,3,4 unimplemented
             const priority = attributes >> 5 & 1 // Priority (0: in front of background; 1: behind background)
             const flipHorizontally = attributes >> 6 & 1 // Flip sprite horizontally
             const flipVertically = attributes >> 7 & 1 // Flip sprite vertically
 
-            const x = this.bus.oam[i + 3] // X position of left side of sprite
-
-            const palette = this.bus.spritePalettes[pi]
-            for (let xi = 0; xi < 8; xi++) {
-                if (x + xi < 8 && !this.spriteLeftColumnEnable || x + xi >= WIDTH || this.spriteLineBuffer[x + xi] >= 0) {
+            for (let xi = 0; xi < 8 && x + xi < WIDTH; xi++) {
+                if (this.spriteLineBuffer[x + xi] >= 0 || (!this.spriteLeftColumnEnable && x + xi < 8)) {
                     continue
                 }
                 const yi = scanline - y
@@ -522,8 +521,7 @@ export class PPU {
                 if (pv === 0) {
                     continue
                 }
-                const ci = palette[pv - 1]
-                this.spriteLineBuffer[x + xi] = ci | priority << 6 | (i === 0 ? 1 : 0) << 7
+                this.spriteLineBuffer[x + xi] = palette[pv - 1] | priority << 6 | (i === 0 ? 1 : 0) << 7
             }
         }
     }
