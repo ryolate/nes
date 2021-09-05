@@ -457,7 +457,7 @@ export class PPU {
     // Stores color index 0-63, or -1 for no pixel.
     // If pixel exists the bit 64 (1<<6) represents its priority.
     // If the pixel is from sprite 0, the bit 128 (1<<7) is set for sprite zero hit detection.
-    private spriteLineBuffer = new Array(WIDTH)
+    private spriteLineBuffer = new Int32Array(WIDTH)
     // Computes sprite pixels for scanline and stores the result to spriteLineBuffer.
     //
     // References
