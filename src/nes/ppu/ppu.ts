@@ -314,12 +314,12 @@ export class PPU {
     tickPPU(): void {
         this.updateIndices()
 
-        const x = this.scanlineCycle
-        if (x >= 337) {
+        if (this.scanlineCycle >= 337) {
             return
         }
+        const x = this.scanlineCycle
         const y = this.scanline
-        if (y >= 240) {
+        if (this.scanline >= 240) {
             // The VBlank flag of the PPU is set at tick 1 (the second tick) of
             // scanline 241, where the VBlank NMI also occurs.
             if (y === 241 && x === 1) {
