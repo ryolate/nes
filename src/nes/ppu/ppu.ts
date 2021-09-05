@@ -446,8 +446,8 @@ export class PPU {
 
     private frontBuffer = new ArrayBuffer(WIDTH * HEIGHT * 4)
     private backBuffer = new ArrayBuffer(WIDTH * HEIGHT * 4)
-    private frontView = new Uint32Array(this.frontBuffer)
-    private backView = new Uint32Array(this.backBuffer)
+    private frontView = new Int32Array(this.frontBuffer)
+    private backView = new Int32Array(this.backBuffer)
 
     private putPixel(x: number, y: number, colorIndex: number) {
         this.backView[y << 8 | x] = Color.palette[colorIndex]
