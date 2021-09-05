@@ -796,12 +796,12 @@ class PPUBus {
     universalBackgroundColor = 9 // $3F00
 
     // (i * 4 + j + 1)-th element contains palette[i]'s j-th color.
-    backgroundPalettes = [
+    backgroundPalettes = new Int8Array([
         -1, 1, 0, 1,       // $3F01-$3F03
         -1, 2, 2, 0xD,     // $3F05-$3F07
         -1, 0x10, 8, 0x24, // $3F09-$3F0B
         -1, 0, 4, 0x2C,    // $3F0D-$3F0F
-    ]
+    ])
     spritePalettes: Array<Palette> = [
         [1, 0x34, 3],    // $3F11-$3F13
         [4, 0, 0x14],    // $3F15-$3F17
