@@ -332,27 +332,7 @@ export class PPU {
         // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
         let bgColorIndex = -1
         if (this.renderingEnabled() && (this.scanline === 261 || this.scanline <= 239)) {
-            // y in [0,239]  [261]
-
-            // Event happen when x is in
-            // 7, 8, 9,
-            // 15, 16, 17,
-            // ...
-            // 247, 248, 249,
-            // 255
-            // 256, 257
-            // 327, 328, 329
-            // 335, 336, 337
-
-            if (this.scanlineCycle === 256) {
-                // If rendering is enabled, the PPU increments the vertical position in v.
-                this.yIncrement()
-            } else if (this.scanlineCycle === 257) {
-                // hori(v) = hori(t)
-                const mask = 0b10000011111
-                this.internalV &= ~mask
-                this.internalV |= this.internalT & mask
-            } else if ((this.scanlineCycle >= 1 && this.scanlineCycle <= 255) || this.scanlineCycle >= 327) {
+            if ((this.scanlineCycle >= 1 && this.scanlineCycle <= 255) || this.scanlineCycle >= 327) {
                 if ((this.scanlineCycle & 7) === 0) {
                     // 328, 336, 8, 16, 24, ..., 248
                     // If rendering is enabled, the PPU increments the horizontal position in v many times across the scanline. increment on tick 256 is not visible since hori(v) is reloaded right after (tick 257).
@@ -365,6 +345,14 @@ export class PPU {
                     // The data fetched from these accesses is placed into internal latches, and then fed to the appropriate shift registers when it's time to do so (every 8 cycles). Because the PPU can only fetch an attribute byte every 8 cycles, each sequential string of 8 pixels is forced to have the same palette attribute.
                     this.fetchTileData()
                 }
+            } else if (this.scanlineCycle === 256) {
+                // If rendering is enabled, the PPU increments the vertical position in v.
+                this.yIncrement()
+            } else if (this.scanlineCycle === 257) {
+                // hori(v) = hori(t)
+                const mask = 0b10000011111
+                this.internalV &= ~mask
+                this.internalV |= this.internalT & mask
             }
 
             if (this.scanlineCycle >= 1 && this.scanlineCycle <= 256 || this.scanlineCycle >= 329 && this.scanlineCycle <= 336) {
