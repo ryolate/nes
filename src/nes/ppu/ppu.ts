@@ -380,8 +380,7 @@ export class PPU {
                 }
             }
 
-            if (this.scanlineCycle >= 329 && this.scanlineCycle <= 336 ||
-                this.scanlineCycle >= 1 && this.scanlineCycle <= 256) {
+            if (this.scanlineCycle >= 1 && this.scanlineCycle <= 256 || this.scanlineCycle >= 329 && this.scanlineCycle <= 336) {
                 // 329-336, 1-8, 9-17, ..., 249-256
                 bgColorIndex = this.fetchBackgroundColorIndex()
             }
