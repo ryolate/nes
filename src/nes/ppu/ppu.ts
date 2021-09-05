@@ -464,7 +464,9 @@ export class PPU {
     // - https://wiki.nesdev.com/w/index.php?title=PPU_sprite_evaluation
     // - https://wiki.nesdev.com/w/index.php/PPU_sprite_priority
     private spriteLine(scanline: number) {
-        this.spriteLineBuffer.fill(-1)
+        for (let i = 0; i < 256; i++) {
+            this.spriteLineBuffer[i] = -1
+        }
         // Find 8 sprites.
         const ids = []
         const spriteHeight = this.ctrlSpriteHeight ? 16 : 8
