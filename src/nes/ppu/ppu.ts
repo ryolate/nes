@@ -278,9 +278,10 @@ export class PPU {
     //
     // NT byte, AT byte, Low BG tile byte, High BG tile byte in https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     private fetchTileData() {
-        const fineY = this.internalV >> 12
+        const v = this.internalV
+        const fineY = v >> 12
         // Name table address.
-        const tileAddress = 0x2000 | (this.internalV & 0xFFF)
+        const tileAddress = 0x2000 | (v & 0xFFF)
         const tileIndex = this.bus.mapper.readNametable(tileAddress)
 
         const patternByte0 = this.bus.mapper.readCHR(this.ctrlBackgroundTileSelect << 12 |
@@ -299,12 +300,11 @@ export class PPU {
         // || |||| +++------ high 3 bits of coarse Y (y/4)
         // || ++++---------- attribute offset (960 bytes)
         // ++--------------- nametable select
-        const attributeAddress = 0x23C0 | (this.internalV & 0x0C00) |
-            ((this.internalV >> 4) & 0b111000) | ((this.internalV >> 2) & 0b111)
+        const attributeAddress = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0b111000) | ((v >> 2) & 0b111)
         const attrByte = this.bus.mapper.readNametable(attributeAddress)
 
         // --- -- ---Y- ---X- -> YX0
-        this.paletteAttributesNextLatch = attrByte >> ((this.internalV >> 4) & 4 | this.internalV & 2) & 3
+        this.paletteAttributesNextLatch = attrByte >> ((v >> 4) & 4 | v & 2) & 3
     }
     private reloadShifters() {
         this.patternTableData |= this.patternByteLatch << 16
