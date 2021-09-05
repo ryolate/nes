@@ -169,14 +169,12 @@ export class PPU {
     // tiles. Every 8 cycles, the data for the next tile is loaded into the
     // upper 8 bits of this shift register. Meanwhile, the pixel to render is
     // fetched from one of the lower 8 bits.
-    private patternTableData0: uint16 = 0
-    private patternTableData1: uint16 = 0
+    private patternTableData = 0
     // 2 8-bit shift registers - These contain the palette attributes for the
     // lower 8 pixels of the 16-bit shift register. These registers are fed by a
     // latch which contains the palette attribute for the next tile. Every 8
     // cycles, the latch is loaded with the palette attribute for the next tile.
-    private paletteAttributes0: uint8 = 0
-    private paletteAttributes1: uint8 = 0
+    private paletteAttributes = 0
     // 2-bit Palette Attribute for next tile
     private paletteAttributesNext = 0
 
@@ -272,8 +270,7 @@ export class PPU {
         return !!(this.backgroundEnable || this.spriteEnable)
     }
 
-    private patternByte0Latch: uint8 = 0
-    private patternByte1Latch: uint8 = 0
+    private patternByteLatch = 0
     private paletteAttributesNextLatch = 0
 
     // Tile and attribute fetching
@@ -289,7 +286,12 @@ export class PPU {
         const patternByte0 = this.bus.mapper.readCHR(this.ctrlBackgroundTileSelect << 12 |
             tileIndex << 4 | 0 | fineY)
         const patternByte1 = this.bus.mapper.readCHR(this.ctrlBackgroundTileSelect << 12 |
-            tileIndex << 4 | 8 | fineY)
+            tileIndex << 4 | 8 | fineY) << 1
+
+        this.patternByteLatch = 0
+        for (let i = 0; i < 8; i++) {
+            this.patternByteLatch |= ((patternByte0 >> i & 1) | (patternByte1 >> i & 2)) << ((7 - i) << 1)
+        }
 
         // NN 1111 YYY XXX
         // || |||| ||| +++-- high 3 bits of coarse X (x/4)
@@ -301,15 +303,10 @@ export class PPU {
         const attrByte = this.bus.mapper.readNametable(attributeAddress)
 
         // --- -- ---Y- ---X- -> YX0
-        const at = attrByte >> ((this.internalV >> 4) & 4 | this.internalV & 2) & 3
-
-        this.patternByte0Latch = uint8Reverse(patternByte0)
-        this.patternByte1Latch = uint8Reverse(patternByte1)
-        this.paletteAttributesNextLatch = at
+        this.paletteAttributesNextLatch = attrByte >> ((this.internalV >> 4) & 4 | this.internalV & 2) & 3
     }
     private reloadShifters() {
-        this.patternTableData0 |= this.patternByte0Latch << 8
-        this.patternTableData1 |= this.patternByte1Latch << 9
+        this.patternTableData |= this.patternByteLatch << 16
         this.paletteAttributesNext = this.paletteAttributesNextLatch
     }
     // Returns 0-63 or -1 (transparent).
@@ -319,16 +316,12 @@ export class PPU {
         // depends on the fine X scroll, set by $2005 (this is how fine X
         // scrolling is possible). Afterwards, the shift registers are shifted
         // once, to the data for the next pixel.
-        const bgPixel = (this.patternTableData0 >> this.internalX & 1) |
-            (this.patternTableData1 >> this.internalX & 2)
-        const bgAttr = (this.paletteAttributes0 >> this.internalX & 1) |
-            (this.paletteAttributes1 >> this.internalX & 2)
+        const bgPixel = (this.patternTableData >> (this.internalX << 1)) & 3
+        const bgAttr = (this.paletteAttributes >> (this.internalX << 1)) & 3
         const bgColorIndex = bgPixel === 0 ? -1 : this.bus.backgroundPalettes[bgAttr * 3 + bgPixel - 1]
 
-        this.patternTableData0 >>= 1
-        this.patternTableData1 >>= 1
-        this.paletteAttributes0 = (this.paletteAttributes0 >> 1) | ((this.paletteAttributesNext & 1) << 7)
-        this.paletteAttributes1 = (this.paletteAttributes1 >> 1) | ((this.paletteAttributesNext & 2) << 7)
+        this.patternTableData >>>= 2
+        this.paletteAttributes = (this.paletteAttributes >> 2) | ((this.paletteAttributesNext & 3) << 14)
         return bgColorIndex
     }
 
