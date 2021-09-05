@@ -150,16 +150,9 @@ export class NES {
 
 	// throw CPUHaltError on CPU halt
 	stepToNextInstruction(): void {
-		let cpuStatus: CPUStatus | null = null
-		const id = this.cpu.addDebugCallback((s) => {
-			cpuStatus = s
-		})
-		try {
-			while (cpuStatus === null) {
-				this.step(1)
-			}
-		} finally {
-			this.cpu.removeDebugCallback(id)
+		const curCycle = this.cpu.instructionCount
+		while (curCycle === this.cpu.instructionCount) {
+			this.step(1)
 		}
 	}
 	private logger?: Logger

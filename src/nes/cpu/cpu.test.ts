@@ -3,6 +3,7 @@ import { CPUStatus, CPUHaltError, operation2str } from './cpu'
 import * as Opcode from './opcode'
 import * as fs from 'fs'
 import { NES } from '../nes'
+import { cpus } from 'os'
 
 const data = fs.readFileSync("testdata/nestest.nes")
 
@@ -31,29 +32,30 @@ test("nestest", () => {
     const cpu = nes.cpu
     cpu.setPC(0xc000)
 
-    let i = 0
-    cpu.addDebugCallback(got => {
-        if (i >= wantNESTestLog.length) {
-            return
-        }
-        const want = wantNESTestLog[i++]
-        expect(state2Obj(got)).toEqual(want[0])
-    })
+    for (let i = 0; i < wantNESTestLog.length; i++) {
+        const cpuStatus = nes.cpu.cpuStatus()
+        const got = state2Obj(cpuStatus)
 
-    try {
-        for (; ;) {
-            cpu.tickCPU()
-        }
-    } catch (e) {
-        if (!(e instanceof CPUHaltError)) {
-            console.log(e)
-        }
-        expect(e).toBeInstanceOf(CPUHaltError)
+        nes.stepToNextInstruction()
+
+        got.cyc = nes.cpu.cycle
+
+        const want = wantNESTestLog[i]
+        expect(got).toEqual(want[0])
     }
-    expect(i).toBe(wantNESTestLog.length)
 })
 
-function state2Obj(state: CPUStatus): Object {
+interface State {
+    pc: number,
+    a: number,
+    x: number,
+    y: number,
+    p: number,
+    s: number,
+    cyc: number,
+}
+
+function state2Obj(state: CPUStatus): State {
     return {
         pc: state.registers.pc,
         a: state.registers.a,

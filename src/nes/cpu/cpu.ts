@@ -742,12 +742,7 @@ export class CPU {
 
         this.instructionCount++
 
-        this.debugCallbacks.forEach(x => {
-            x[0](this.cpuStatus())
-        });
-
-        const instr = this.fetchInstruction()
-        this.execute(instr)
+        this.execute(this.fetchInstruction())
 
         return
     }
@@ -827,26 +822,6 @@ export class CPU {
     instructionCount = 0
     setPC(pc: uint16): void {
         this.PC = pc
-    }
-
-    private debugCallbackID = 0
-    private debugCallbacks: Array<[(c: CPUStatus) => void, number]> = []
-    addDebugCallback(f: (c: CPUStatus) => void): number {
-        this.debugCallbacks.push([f, this.debugCallbackID])
-
-        if (this.debugCallbacks.length >= 2) {
-            console.error("debugcallback >= 2")
-        }
-
-        return this.debugCallbackID++
-    }
-    removeDebugCallback(id: number): void {
-        for (let i = 0; i < this.debugCallbacks.length; i++) {
-            if (this.debugCallbacks[i][1] !== id) {
-                continue
-            }
-            this.debugCallbacks.splice(i, 1)
-        }
     }
 
     cpuStatus(): CPUStatus {
