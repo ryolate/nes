@@ -353,8 +353,7 @@ export class PPU {
                 const mask = 0b10000011111
                 this.internalV &= ~mask
                 this.internalV |= this.internalT & mask
-            } else if ((this.scanlineCycle >= 327 ||
-                this.scanlineCycle >= 1 && this.scanlineCycle <= 255)) {
+            } else if ((this.scanlineCycle >= 1 && this.scanlineCycle <= 255) || this.scanlineCycle >= 327) {
                 switch (this.scanlineCycle & 7) {
                     case 7:
                         // 327, 335, 7, 15, 23, ..., 247, 255
@@ -548,10 +547,8 @@ export class PPU {
         }
     }
 
-
-
     // get the value at the (x,y) position of the i-th tile in the pattern table.
-    // the return value can be used for indexing a palette.
+    // the return value can be used for indexing a palette.x1
     // h specifies whether to use left(0) or right(1) pattern table.
     private patternValue(h: number, i: number, x: number, y: number): number {
         if (h < 0 || h > 1 || i < 0 || i >= 256 || x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
