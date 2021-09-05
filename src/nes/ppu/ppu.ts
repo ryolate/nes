@@ -309,7 +309,7 @@ export class PPU {
     }
     private reloadShifters() {
         this.patternTableData0 |= this.patternByte0Latch << 8
-        this.patternTableData1 |= this.patternByte1Latch << 8
+        this.patternTableData1 |= this.patternByte1Latch << 9
         this.paletteAttributesNext = this.paletteAttributesNextLatch
     }
     // Returns 0-63 or -1 (transparent).
@@ -320,7 +320,7 @@ export class PPU {
         // scrolling is possible). Afterwards, the shift registers are shifted
         // once, to the data for the next pixel.
         const bgPixel = (this.patternTableData0 >> this.internalX & 1) |
-            (this.patternTableData1 >> this.internalX & 1) << 1
+            (this.patternTableData1 >> this.internalX & 2)
         const bgAttr = (this.paletteAttributes0 >> this.internalX & 1) |
             (this.paletteAttributes1 >> this.internalX & 2)
         const bgColorIndex = bgPixel === 0 ? -1 : this.bus.backgroundPalettes[bgAttr * 3 + bgPixel - 1]
