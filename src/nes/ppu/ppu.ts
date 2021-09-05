@@ -400,7 +400,7 @@ export class PPU {
                     this.spriteLine(this.scanline)
                 }
             }
-        } else if (this.scanline === HEIGHT) { // Post-render scanline (240)
+        } else if (this.scanline === 240) { // Post-render scanline (240)
             // The PPU just idles during this scanline. Even though accessing
             // PPU memory from the program would be safe here, the VBlank flag
             // isn't set until after this scanline.
@@ -441,9 +441,7 @@ export class PPU {
     private backView = new Uint32Array(this.backBuffer)
 
     private putPixel(x: number, y: number, colorIndex: number) {
-        const rgba = Color.get(colorIndex)
-        const i = y * WIDTH + x
-        this.backView[i] = rgba
+        this.backView[y << 8 | x] = Color.palette[colorIndex]
     }
 
     // Holds the result of spriteLine.
@@ -902,12 +900,13 @@ class PPUBus {
     }
 }
 
-export function to2DPalettes(palettes1D: Uint8Array): Array<Palette> {
-    const p = palettes1D
-    return [
-        [p[0], p[1], p[2]],
-        [p[3], p[4], p[5]],
-        [p[6], p[7], p[8]],
-        [p[9], p[10], p[11]],
-    ]
+export function to2DPalettes(palettes1D: Array<number>): Array<Palette> {
+    const res = new Array<Palette>()
+    for (let i = 0; i < 4; i++) {
+        res.push([0, 0, 0])
+        for (let j = 0; j < 3; j++) {
+            res[i][j] = palettes1D[i * 4 + 1 + j]
+        }
+    }
+    return res
 }
