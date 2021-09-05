@@ -529,55 +529,50 @@ export class APU {
 		if (this.fiveStepSequence === 0) {
 			// Mode 0: 4-Step Sequence
 			switch (this.frameCounter2) {
-				case 3728.5 * 2:
+				case 7457: // 3728.5 * 2
 					this.tickQuarterFrame()
 					break
-				case 7456.5 * 2:
-					this.tickQuarterFrame()
-					this.tickHalfFrame()
-					break
-				case 11185.5 * 2:
-					this.tickQuarterFrame()
-					break
-				case 14914 * 2:
-					this.updateFrameInterruptFlag()
-					break
-				case 14914.5 * 2:
+				case 14913: // 7456.5 * 2
 					this.tickQuarterFrame()
 					this.tickHalfFrame()
+					break
+				case 22371: // 11185.5 * 2
+					this.tickQuarterFrame()
+					break
+				case 29828: // 14914 * 2
 					this.updateFrameInterruptFlag()
 					break
-				case 14915 * 2:
+				case 29829: // 14914.5 * 2
+					this.tickQuarterFrame()
+					this.tickHalfFrame()
+					this.updateFrameInterruptFlag()
+					break
+				case 29830: // 14915 * 2
 					this.updateFrameInterruptFlag()
 					this.frameCounter2 = 0
 					break
 			}
-			// assertInRange(this.frameCounter2, 0, 14914.5 * 2)
 		} else {
 			// Mode 1: 5-Step Sequence
 			// In this mode, the frame interrupt flag is never set.
 			switch (this.frameCounter2) {
-				case 3728.5 * 2:
+				case 7457: // 3728.5 * 2
 					this.tickQuarterFrame()
 					break
-				case 7456.5 * 2:
-					this.tickQuarterFrame()
-					this.tickHalfFrame()
-					break
-				case 11185.5 * 2:
-					this.tickQuarterFrame()
-					break
-				case 14914.5 * 2:
-					// Do nothing
-					break
-				case 18640.5 * 2:
+				case 14913: // 7456.5 * 2
 					this.tickQuarterFrame()
 					this.tickHalfFrame()
 					break
-				case 18641 * 2:
+				case 22371: // 11185.5 * 2
+					this.tickQuarterFrame()
+					break
+				case 37281: // 18640.5 * 2
+					this.tickQuarterFrame()
+					this.tickHalfFrame()
+					break
+				case 37282: // 18641 * 2
 					this.frameCounter2 = 0
 			}
-			// assertInRange(this.frameCounter2, 0, 18640.5 * 2)
 		}
 	}
 	private updateFrameInterruptFlag() {
