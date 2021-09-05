@@ -316,7 +316,7 @@ export class PPU {
         // depends on the fine X scroll, set by $2005 (this is how fine X
         // scrolling is possible). Afterwards, the shift registers are shifted
         // once, to the data for the next pixel.
-        const bgPixel = (this.patternTableData >> (this.internalX << 1)) & 3
+        const bgPixel = (this.patternTableData >>> (this.internalX << 1)) & 3
         const bgAttr = (this.paletteAttributes >> (this.internalX << 1)) & 3
         const bgColorIndex = bgPixel === 0 ? -1 : this.bus.backgroundPalettes[bgAttr * 3 + bgPixel - 1]
 
