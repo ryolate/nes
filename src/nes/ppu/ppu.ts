@@ -316,9 +316,10 @@ export class PPU {
         // depends on the fine X scroll, set by $2005 (this is how fine X
         // scrolling is possible). Afterwards, the shift registers are shifted
         // once, to the data for the next pixel.
-        const bgPixel = (this.patternTableData >>> (this.internalX << 1)) & 3
-        const bgAttr = (this.paletteAttributes >> (this.internalX << 1)) & 3
-        const bgColorIndex = bgPixel === 0 ? -1 : this.bus.backgroundPalettes[bgAttr * 3 + bgPixel - 1]
+        const bgColorIndex = this.bus.backgroundPalettes[(
+            ((this.paletteAttributes >> (this.internalX << 1)) & 3) << 2) |
+            ((this.patternTableData >>> (this.internalX << 1)) & 3)
+        ]
 
         this.patternTableData >>>= 2
         this.paletteAttributes = (this.paletteAttributesNext << 14) | (this.paletteAttributes >> 2)
@@ -683,7 +684,7 @@ export class PPU {
                         const x2 = (x >> 4 & 1) << 1, y2 = (y >> 4 & 1) << 1
                         const at = b >> (y2 << 1 | x2) & 3
 
-                        const ci = this.bus.backgroundPalettes[at * 3 + pi - 1]
+                        const ci = this.bus.backgroundPalettes[at * 4 + pi]
                         colorIndex = ci
                     }
 
@@ -790,6 +791,7 @@ class PPUBus {
     // PPU palettes
     universalBackgroundColor = 9 // $3F00
 
+<<<<<<< HEAD
     // (i * 3 + j)-th element contains palette[i]'s j-th color.
     backgroundPalettes = new Uint8Array([
         1, 0, 1,       // $3F01-$3F03
@@ -803,6 +805,13 @@ class PPUBus {
         [0x3A, 0, 2],    // $3F19-$3F1B
         [0x20, 0x2C, 8], // $3F1D-$3F1F
     ]
+=======
+    // (i * 4 + j + 1)-th element contains palette[i]'s j-th color.
+    backgroundPalettes = new Array(16)
+    spritePalettes: Array<Palette> = [0, 0, 0, 0].map(() => {
+        return newPalette()
+    })
+>>>>>>> fd1e04a... Took 8.71 seconds (689% speed)
     // $3F04, $3F08, $3F0C
     unusedData: Array<uint8> = [0, 8, 0]
 
@@ -814,6 +823,9 @@ class PPUBus {
     constructor(mapper: Mapper) {
         this.mapper = mapper
         this.oam.fill(0)
+        for (let i = 0; i < 4; i++) {
+            this.backgroundPalettes[i * 4] = -1
+        }
     }
     // Read PPU memory map.
     read(pc: uint16): uint8 {
@@ -842,11 +854,11 @@ class PPUBus {
             if ((k & 3) === 0) {// 4, 8, 12
                 return this.unusedData[(k - 4) >> 2]
             }
-            const i = k >> 2, j = (k & 3) - 1
+            const i = k >> 2, j = (k & 3)
             if (i < 4) {
-                return this.backgroundPalettes[i * 3 + j]
+                return this.backgroundPalettes[i * 4 + j]
             } else {
-                return this.spritePalettes[i - 4][j]
+                return this.spritePalettes[i - 4][j - 1]
             }
         }
     }
@@ -880,7 +892,7 @@ class PPUBus {
             }
             const i = k >> 2
             if (i < 4) {
-                this.backgroundPalettes[i * 3 + (k & 3) - 1] = x & 63
+                this.backgroundPalettes[i * 4 + (k & 3)] = x & 63
             } else {
                 this.spritePalettes[i - 4][(k & 3) - 1] = x & 63
             }
