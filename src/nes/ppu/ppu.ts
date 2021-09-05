@@ -389,16 +389,15 @@ export class PPU {
                     colorIndex = this.bus.universalBackgroundColor
                 }
                 this.putPixel(this.scanlineCycle - 1, this.scanline, colorIndex)
-            } else if (this.scanlineCycle >= 257 && this.scanlineCycle <= 320) {
+            } else if (this.scanlineCycle === 261) {
+                // Sprite evaluation does not happen on the pre-render scanline.
+                // Because evaluation applies to the next line's sprite
+                // rendering, no sprites will be rendered on the first scanline,
+                // and this is why there is a 1 line offset on a sprite's Y
+                // coordinate.
+
                 // TODO: cycle accurate OAM eveluation.
-                if (this.scanlineCycle === 261) {
-                    // Sprite evaluation does not happen on the pre-render scanline.
-                    // Because evaluation applies to the next line's sprite
-                    // rendering, no sprites will be rendered on the first scanline,
-                    // and this is why there is a 1 line offset on a sprite's Y
-                    // coordinate.
-                    this.spriteLine(this.scanline)
-                }
+                this.spriteLine(this.scanline)
             }
         } else if (this.scanline === 240) { // Post-render scanline (240)
             // The PPU just idles during this scanline. Even though accessing
