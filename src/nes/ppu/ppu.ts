@@ -327,10 +327,8 @@ export class PPU {
         assertInRange(bgColorIndex, -1, 63)
         this.patternTableData0 >>= 1
         this.patternTableData1 >>= 1
-        this.paletteAttributes0 >>= 1
-        this.paletteAttributes1 >>= 1
-        this.paletteAttributes0 |= (this.paletteAttributesNext & 1) << 7
-        this.paletteAttributes1 |= (this.paletteAttributesNext & 2) << 6
+        this.paletteAttributes0 = (this.paletteAttributes0 >> 1) | ((this.paletteAttributesNext & 1) << 7)
+        this.paletteAttributes1 = (this.paletteAttributes1 >> 1) | ((this.paletteAttributesNext & 2) << 6)
         return bgColorIndex
     }
 
