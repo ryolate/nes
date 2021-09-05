@@ -815,7 +815,7 @@ class PPUBus {
     // The OAM (Object Attribute Memory) is internal memory inside the PPU that
     // contains a display list of up to 64 sprites, where each sprite's
     // information occupies 4 bytes.
-    oam: Array<uint8> = new Array(256)
+    oam = new Int16Array(256)
 
     constructor(mapper: Mapper) {
         this.mapper = mapper
