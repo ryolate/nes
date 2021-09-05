@@ -323,11 +323,13 @@ export class PPU {
             (this.patternTableData1 >> this.internalX & 1) << 1
         const bgAttr = (this.paletteAttributes0 >> this.internalX & 1) |
             (this.paletteAttributes1 >> this.internalX & 1) << 1
+        const bgColorIndex = bgPixel === 0 ? -1 : this.bus.backgroundPalettes[bgAttr * 3 + bgPixel - 1]
+
         this.patternTableData0 >>= 1
         this.patternTableData1 >>= 1
         this.paletteAttributes0 = (this.paletteAttributes0 >> 1) | ((this.paletteAttributesNext & 1) << 7)
         this.paletteAttributes1 = (this.paletteAttributes1 >> 1) | ((this.paletteAttributesNext & 2) << 6)
-        return bgPixel === 0 ? -1 : this.bus.backgroundPalettes[bgAttr * 3 + bgPixel - 1]
+        return bgColorIndex
     }
 
     tickPPU(): void {
