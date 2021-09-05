@@ -105,7 +105,7 @@ export class PPU {
         // During rendering (on the pre-render line and the visible lines
         // 0-239, provided either background or sprite rendering is enabled),
         // it will update v in an odd way, ...
-        if (this.renderingEnabled() && (this.scanline === 261 || this.scanline < HEIGHT)) {
+        if (this.renderingEnabled() && this.scanline < 240) {
             throw new Error(`Data write while rendering`)
         }
         this.bus.write(this.internalV & 0x3FFF, x)
@@ -114,7 +114,7 @@ export class PPU {
         this.incrementInternalV()
     }
     private readData(): uint8 {
-        if (this.renderingEnabled() && (this.scanline === 261 || this.scanline < HEIGHT)) {
+        if (this.renderingEnabled() && this.scanline < 240) {
             throw new Error(`Data read while rendering`)
         }
 
@@ -183,7 +183,7 @@ export class PPU {
 
     bus: PPUBus
 
-    scanline = 0 // [0,261]
+    scanline = -1 // [-1,260]
     scanlineCycle = 0 // [0,340]
     frameCount = 0
 
@@ -197,10 +197,10 @@ export class PPU {
     }
 
     private updateIndices() {
-        if (++this.scanlineCycle >= 341) {
+        if (++this.scanlineCycle > 340) {
             this.scanlineCycle = 0
-            if (++this.scanline >= 262) {
-                this.scanline = 0
+            if (++this.scanline > 260) {
+                this.scanline = -1
                 this.frameCount++
 
                 const tmp = this.frontView
@@ -215,7 +215,7 @@ export class PPU {
 
     // inc hori(v) in https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     private coarseXIncrement() {
-        if ((this.scanline <= 239 || this.scanline === 261) &&
+        if (this.scanline <= 239 &&
             (this.scanlineCycle & 7) === 0 &&
             (this.scanlineCycle >= 8 && this.scanlineCycle <= 256 ||
                 this.scanlineCycle >= 328 && this.scanlineCycle <= 336)) {
@@ -237,7 +237,7 @@ export class PPU {
 
     // inc vert(v) in https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     private yIncrement() {
-        if ((this.scanline <= 239 || this.scanline === 261) &&
+        if (this.scanline <= 239 &&
             (this.scanlineCycle === 256)) {
             // OK.
             // scanline: -1 ~ 239
@@ -336,7 +336,7 @@ export class PPU {
         // Scroll
         // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
         let bgColorIndex = -1
-        if (this.renderingEnabled() && (this.scanline === 261 || this.scanline <= 239)) {
+        if (this.renderingEnabled() && this.scanline <= 239) {
             if (this.scanlineCycle <= 255 || this.scanlineCycle >= 327) {
                 if ((this.scanlineCycle & 7) === 0) {
                     // 328, 336, 8, 16, 24, ..., 248
@@ -366,7 +366,30 @@ export class PPU {
             }
         }
 
-        if (this.scanline <= 239) { // Visible scanline (0-239)
+        if (this.scanline <= 239) {
+            if (this.scanline < 0) {// Pre-render scanline (-1 or 261)
+                if (this.scanlineCycle === 1) {
+                    // https://wiki.nesdev.com/w/index.php?title=PPU_registers#Status_.28.242002.29_.3C_read
+                    // cleared at dot 1 (the second dot) of the pre-render line.
+                    this.spriteOverflow = 0
+                    this.spriteZeroHit = 0
+                    this.vblank = 0
+                } else if (this.scanlineCycle >= 280 && this.scanlineCycle <= 304) {
+                    // If rendering is enabled, at the end of vblank, shortly after
+                    // the horizontal bits are copied from t to v at dot 257, the
+                    // PPU will repeatedly copy the vertical bits from t to v from
+                    // dots 280 to 304, completing the full initialization of v from t:
+                    if (this.renderingEnabled()) {
+                        // vert(v) = vert(t)
+                        const mask = 0b111101111100000
+                        this.internalV &= ~mask
+                        this.internalV |= this.internalT & mask
+                    }
+                }
+                return
+            }
+
+            // Visible scanline (-1-239)
             if (this.scanlineCycle <= 256) { // Cycles 1-256
                 let colorIndex = -1
                 if (this.backgroundEnable && (this.scanlineCycle >= 9 || this.backgroundLeftColumnEnable)) {
@@ -410,25 +433,6 @@ export class PPU {
                 this.vblank = 1
                 if (this.ctrlNMIEnable) {
                     this.nmi.set()
-                }
-            }
-        } else { // Pre-render scanline (-1 or 261)
-            if (this.scanlineCycle === 1) {
-                // https://wiki.nesdev.com/w/index.php?title=PPU_registers#Status_.28.242002.29_.3C_read
-                // cleared at dot 1 (the second dot) of the pre-render line.
-                this.spriteOverflow = 0
-                this.spriteZeroHit = 0
-                this.vblank = 0
-            } else if (this.scanlineCycle >= 280 && this.scanlineCycle <= 304) {
-                // If rendering is enabled, at the end of vblank, shortly after
-                // the horizontal bits are copied from t to v at dot 257, the
-                // PPU will repeatedly copy the vertical bits from t to v from
-                // dots 280 to 304, completing the full initialization of v from t:
-                if (this.renderingEnabled()) {
-                    // vert(v) = vert(t)
-                    const mask = 0b111101111100000
-                    this.internalV &= ~mask
-                    this.internalV |= this.internalT & mask
                 }
             }
         }
@@ -581,7 +585,7 @@ export class PPU {
             case 4:
                 // For emulation purposes, it is probably best to completely
                 // ignore writes during rendering.
-                if (this.scanline === 261 || this.scanline < HEIGHT) {
+                if (this.scanline < 240) {
                     return
                 }
                 this.bus.oam[this.oamAddr] = x
