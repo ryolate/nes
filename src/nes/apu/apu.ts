@@ -490,8 +490,7 @@ export class APU {
 
 	frameInterruptFlag = 0
 
-	oddCPUCycle = false // if true APU is ticked
-	frameCounter = 0
+	frameCounter2 = 0
 
 	timerResetIn = 0
 
@@ -501,10 +500,9 @@ export class APU {
 
 	// Call it at the same rate as the CPU clock cycle.
 	tickAPU(): void {
-		if (this.oddCPUCycle) {
+		if (this.frameCounter2 & 1) {
 			this.clockAPU()
 		}
-		this.oddCPUCycle = !this.oddCPUCycle
 
 		if (this.timerResetIn > 0) {
 			if (--this.timerResetIn === 0) {
@@ -523,63 +521,63 @@ export class APU {
 	}
 	// Ticked on every CPU cycle
 	private tickFrameCounterSequencer() {
-		this.frameCounter += 0.5
+		this.frameCounter2++
 		// The sequencer keeps track of how many APU cycles have
 		// elapsed in total, and each step of the sequence will occur once that
 		// total has reached the indicated amount. Once the last
 		// step has executed, the count resets to 0 on the next APU cycle.
 		if (this.fiveStepSequence === 0) {
 			// Mode 0: 4-Step Sequence
-			switch (this.frameCounter) {
-				case 3728.5:
+			switch (this.frameCounter2) {
+				case 3728.5 * 2:
 					this.tickQuarterFrame()
 					break
-				case 7456.5:
-					this.tickQuarterFrame()
-					this.tickHalfFrame()
-					break
-				case 11185.5:
-					this.tickQuarterFrame()
-					break
-				case 14914:
-					this.updateFrameInterruptFlag()
-					break
-				case 14914.5:
+				case 7456.5 * 2:
 					this.tickQuarterFrame()
 					this.tickHalfFrame()
+					break
+				case 11185.5 * 2:
+					this.tickQuarterFrame()
+					break
+				case 14914 * 2:
 					this.updateFrameInterruptFlag()
 					break
-				case 14915:
+				case 14914.5 * 2:
+					this.tickQuarterFrame()
+					this.tickHalfFrame()
 					this.updateFrameInterruptFlag()
-					this.frameCounter = 0
+					break
+				case 14915 * 2:
+					this.updateFrameInterruptFlag()
+					this.frameCounter2 = 0
 					break
 			}
-			assertInRange(this.frameCounter, 0, 14914.5)
+			// assertInRange(this.frameCounter2, 0, 14914.5 * 2)
 		} else {
 			// Mode 1: 5-Step Sequence
 			// In this mode, the frame interrupt flag is never set.
-			switch (this.frameCounter) {
-				case 3728.5:
+			switch (this.frameCounter2) {
+				case 3728.5 * 2:
 					this.tickQuarterFrame()
 					break
-				case 7456.5:
+				case 7456.5 * 2:
 					this.tickQuarterFrame()
 					this.tickHalfFrame()
 					break
-				case 11185.5:
+				case 11185.5 * 2:
 					this.tickQuarterFrame()
 					break
-				case 14914.5:
+				case 14914.5 * 2:
 					// Do nothing
 					break
-				case 18640.5:
+				case 18640.5 * 2:
 					this.tickQuarterFrame()
 					this.tickHalfFrame()
 					break
-				case 18641:
-					this.frameCounter = 0
+				case 18641 * 2:
+					this.frameCounter2 = 0
 			}
-			assertInRange(this.frameCounter, 0, 18640.5)
+			// assertInRange(this.frameCounter2, 0, 18640.5 * 2)
 		}
 	}
 	private updateFrameInterruptFlag() {
@@ -589,7 +587,7 @@ export class APU {
 		this.frameInterruptFlag = 1
 	}
 	private resetFrameCounter() {
-		this.frameCounter = 0
+		this.frameCounter2 = 0
 	}
 	// Tick APU cycle
 	private clockAPU() {
@@ -748,7 +746,7 @@ export class APU {
 				// After 3 or 4 CPU clock cycles*, the timer is reset.
 				// If the mode flag is set, then both "quarter frame" and "half
 				// frame" signals are also generated.
-				this.timerResetIn = (this.oddCPUCycle) ? 3 : 4
+				this.timerResetIn = (this.frameCounter2 & 1) ? 3 : 4
 				return
 		}
 		throw new Error(`APU.write not implemented. 0x${pc.toString(16)}, ${x}`);
