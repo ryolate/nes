@@ -36,6 +36,7 @@
   },
   "scripts": {
     "start": "webpack serve --config ./webpack.dev.js",
+    "start:prod": "webpack serve --config ./webpack.prod.js",
     "build": "webpack build --config ./webpack.prod.js",
     "test": "jest src/nes",
     "bench": "npx ts-node src/testing/bench.ts"

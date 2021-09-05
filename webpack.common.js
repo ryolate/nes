@@ -17,4 +17,8 @@ module.exports = {
     resolve: {
         extensions: ['.ts', '.tsx', '.js']
     },
+    devServer: {
+        contentBase: './docs',
+        watchContentBase: true,
+    },
 };
