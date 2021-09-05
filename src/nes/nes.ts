@@ -66,9 +66,7 @@ export class NES {
 	}
 
 	tick(): void {
-		this.ppu.tickPPU()
-		this.ppu.tickPPU()
-		this.ppu.tickPPU()
+		this.ppu.tickPPU3()
 		this.cpu.tickCPU()
 		this.apu.tickAPU()
 

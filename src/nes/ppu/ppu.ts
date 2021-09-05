@@ -311,138 +311,140 @@ export class PPU {
         this.paletteAttributesNext = this.paletteAttributesNextLatch
     }
 
-    tickPPU(): void {
-        this.updateIndices()
+    tickPPU3(): void {
+        for (let iter = 0; iter < 3; iter++) {
+            this.updateIndices()
 
-        if (this.scanlineCycle >= 337) {
-            return
-        }
-        const x = this.scanlineCycle
-        const y = this.scanline
-        if (this.scanline >= 240) {
-            // The VBlank flag of the PPU is set at tick 1 (the second tick) of
-            // scanline 241, where the VBlank NMI also occurs.
-            if (y === 241 && x === 1) {
-                this.vblank = 1
-                if (this.ctrlNMIEnable) {
-                    this.nmi.set()
-                }
+            if (this.scanlineCycle >= 337) {
+                continue
             }
-            return
-        }
-        // Visible scanline (-1-239)
-
-        // Scroll
-        // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
-        let bgColorIndex = -1
-        if (this.renderingEnabled()) {
-            if (x >= 327 || x <= 256) {
-                // 327, 335, 7, 15, 23, ..., 247, 255
-                // The data fetched from these accesses is placed into internal latches, and then fed to the appropriate shift registers when it's time to do so (every 8 cycles). Because the PPU can only fetch an attribute byte every 8 cycles, each sequential string of 8 pixels is forced to have the same palette attribute.
-                // 328, 336, 8, 16, 24, ..., 248
-                // If rendering is enabled, the PPU increments the horizontal position in v many times across the scanline. increment on tick 256 is not visible since hori(v) is reloaded right after (tick 257).
-                // 329, 337, 9, 17, 25, ..., 250
-                // Reload shifters.
-
-                switch (x & 7) {
-                    case 0:
-                        if (x === 256) {
-                            // If rendering is enabled, the PPU increments the vertical position in v.
-                            this.yIncrement()
-                        } else {
-                            this.coarseXIncrement()
-                        }
-                        break
-                    case 1:
-                        this.reloadShifters()
-                        break
-                    case 7:
-                        this.fetchTileData()
-                        break
+            const x = this.scanlineCycle
+            const y = this.scanline
+            if (this.scanline >= 240) {
+                // The VBlank flag of the PPU is set at tick 1 (the second tick) of
+                // scanline 241, where the VBlank NMI also occurs.
+                if (y === 241 && x === 1) {
+                    this.vblank = 1
+                    if (this.ctrlNMIEnable) {
+                        this.nmi.set()
+                    }
                 }
+                continue
+            }
+            // Visible scanline (-1-239)
 
-                if (x !== 327 && x !== 328) {
-                    // 329-336, 1-8, 9-17, ..., 249-256
+            // Scroll
+            // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
+            let bgColorIndex = -1
+            if (this.renderingEnabled()) {
+                if (x >= 327 || x <= 256) {
+                    // 327, 335, 7, 15, 23, ..., 247, 255
+                    // The data fetched from these accesses is placed into internal latches, and then fed to the appropriate shift registers when it's time to do so (every 8 cycles). Because the PPU can only fetch an attribute byte every 8 cycles, each sequential string of 8 pixels is forced to have the same palette attribute.
+                    // 328, 336, 8, 16, 24, ..., 248
+                    // If rendering is enabled, the PPU increments the horizontal position in v many times across the scanline. increment on tick 256 is not visible since hori(v) is reloaded right after (tick 257).
+                    // 329, 337, 9, 17, 25, ..., 250
+                    // Reload shifters.
 
-                    // Every cycle, a bit is fetched from the 4 background shift registers
-                    // in order to create a pixel on screen. Exactly which bit is fetched
-                    // depends on the fine X scroll, set by $2005 (this is how fine X
-                    // scrolling is possible). Afterwards, the shift registers are shifted
-                    // once, to the data for the next pixel.
-                    if (x <= 256) {
-                        const pt = ((this.patternTableData >>> (this.internalX << 1)) & 3)
-                        if (pt > 0) {
-                            bgColorIndex = this.bus.backgroundPalettes[(
-                                ((this.paletteAttributes >> (this.internalX << 1)) & 3) << 2) |
-                                pt
-                            ]
-                        }
+                    switch (x & 7) {
+                        case 0:
+                            if (x === 256) {
+                                // If rendering is enabled, the PPU increments the vertical position in v.
+                                this.yIncrement()
+                            } else {
+                                this.coarseXIncrement()
+                            }
+                            break
+                        case 1:
+                            this.reloadShifters()
+                            break
+                        case 7:
+                            this.fetchTileData()
+                            break
                     }
 
-                    this.patternTableData >>>= 2
-                    this.paletteAttributes = (this.paletteAttributesNext << 14) | (this.paletteAttributes >> 2)
-                }
-            } else if (x === 257) {
-                // hori(v) = hori(t)
-                const mask = 0b10000011111
-                this.internalV &= ~mask
-                this.internalV |= this.internalT & mask
-            }
-        }
+                    if (x !== 327 && x !== 328) {
+                        // 329-336, 1-8, 9-17, ..., 249-256
 
-        if (y < 0) {// Pre-render scanline (-1 or 261)
-            if (x === 1) {
-                // https://wiki.nesdev.com/w/index.php?title=PPU_registers#Status_.28.242002.29_.3C_read
-                // cleared at dot 1 (the second dot) of the pre-render line.
-                this.spriteOverflow = 0
-                this.spriteZeroHit = 0
-                this.vblank = 0
-            } else if (x >= 280 && x <= 304) {
-                // If rendering is enabled, at the end of vblank, shortly after
-                // the horizontal bits are copied from t to v at dot 257, the
-                // PPU will repeatedly copy the vertical bits from t to v from
-                // dots 280 to 304, completing the full initialization of v from t:
-                if (this.renderingEnabled()) {
-                    // vert(v) = vert(t)
-                    const mask = 0b111101111100000
+                        // Every cycle, a bit is fetched from the 4 background shift registers
+                        // in order to create a pixel on screen. Exactly which bit is fetched
+                        // depends on the fine X scroll, set by $2005 (this is how fine X
+                        // scrolling is possible). Afterwards, the shift registers are shifted
+                        // once, to the data for the next pixel.
+                        if (x <= 256) {
+                            const pt = ((this.patternTableData >>> (this.internalX << 1)) & 3)
+                            if (pt > 0) {
+                                bgColorIndex = this.bus.backgroundPalettes[(
+                                    ((this.paletteAttributes >> (this.internalX << 1)) & 3) << 2) |
+                                    pt
+                                ]
+                            }
+                        }
+
+                        this.patternTableData >>>= 2
+                        this.paletteAttributes = (this.paletteAttributesNext << 14) | (this.paletteAttributes >> 2)
+                    }
+                } else if (x === 257) {
+                    // hori(v) = hori(t)
+                    const mask = 0b10000011111
                     this.internalV &= ~mask
                     this.internalV |= this.internalT & mask
                 }
             }
-            return
-        }
 
-        if (x <= 256) { // Cycles 1-256
-            let colorIndex = -1
-            if (this.backgroundEnable && (x >= 9 || this.backgroundLeftColumnEnable)) {
-                colorIndex = bgColorIndex
-            }
-            const spritePixel = this.spriteLineBuffer[x - 1]
-            if (this.spriteEnable && spritePixel >= 0) {
-                const spriteColorIndex = spritePixel & 63
-                const priority = (spritePixel >> 6) & 1
-                const spriteZero = (spritePixel >> 7) & 1
-
-                if (colorIndex >= 0 && spriteZero) {
-                    this.spriteZeroHit = 1
+            if (y < 0) {// Pre-render scanline (-1 or 261)
+                if (x === 1) {
+                    // https://wiki.nesdev.com/w/index.php?title=PPU_registers#Status_.28.242002.29_.3C_read
+                    // cleared at dot 1 (the second dot) of the pre-render line.
+                    this.spriteOverflow = 0
+                    this.spriteZeroHit = 0
+                    this.vblank = 0
+                } else if (x >= 280 && x <= 304) {
+                    // If rendering is enabled, at the end of vblank, shortly after
+                    // the horizontal bits are copied from t to v at dot 257, the
+                    // PPU will repeatedly copy the vertical bits from t to v from
+                    // dots 280 to 304, completing the full initialization of v from t:
+                    if (this.renderingEnabled()) {
+                        // vert(v) = vert(t)
+                        const mask = 0b111101111100000
+                        this.internalV &= ~mask
+                        this.internalV |= this.internalT & mask
+                    }
                 }
-                if (priority === 0 || colorIndex === -1) {
-                    colorIndex = spriteColorIndex
-                }
+                continue
             }
-            if (colorIndex === -1) {
-                colorIndex = this.bus.universalBackgroundColor
-            }
-            this.putPixel(x - 1, y, colorIndex)
-        } else if (x === 261) {
-            // Sprite evaluation does not happen on the pre-render scanline.
-            // Because evaluation applies to the next line's sprite
-            // rendering, no sprites will be rendered on the first scanline,
-            // and this is why there is a 1 line offset on a sprite's Y
-            // coordinate.
 
-            // TODO: cycle accurate OAM eveluation.
-            this.spriteLine(this.scanline)
+            if (x <= 256) { // Cycles 1-256
+                let colorIndex = -1
+                if (this.backgroundEnable && (x >= 9 || this.backgroundLeftColumnEnable)) {
+                    colorIndex = bgColorIndex
+                }
+                const spritePixel = this.spriteLineBuffer[x - 1]
+                if (this.spriteEnable && spritePixel >= 0) {
+                    const spriteColorIndex = spritePixel & 63
+                    const priority = (spritePixel >> 6) & 1
+                    const spriteZero = (spritePixel >> 7) & 1
+
+                    if (colorIndex >= 0 && spriteZero) {
+                        this.spriteZeroHit = 1
+                    }
+                    if (priority === 0 || colorIndex === -1) {
+                        colorIndex = spriteColorIndex
+                    }
+                }
+                if (colorIndex === -1) {
+                    colorIndex = this.bus.universalBackgroundColor
+                }
+                this.putPixel(x - 1, y, colorIndex)
+            } else if (x === 261) {
+                // Sprite evaluation does not happen on the pre-render scanline.
+                // Because evaluation applies to the next line's sprite
+                // rendering, no sprites will be rendered on the first scanline,
+                // and this is why there is a 1 line offset on a sprite's Y
+                // coordinate.
+
+                // TODO: cycle accurate OAM eveluation.
+                this.spriteLine(this.scanline)
+            }
         }
     }
 
