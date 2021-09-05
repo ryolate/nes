@@ -321,7 +321,7 @@ export class PPU {
         const bgColorIndex = bgPixel === 0 ? -1 : this.bus.backgroundPalettes[bgAttr * 3 + bgPixel - 1]
 
         this.patternTableData >>>= 2
-        this.paletteAttributes = (this.paletteAttributes >> 2) | ((this.paletteAttributesNext & 3) << 14)
+        this.paletteAttributes = (this.paletteAttributesNext << 14) | (this.paletteAttributes >> 2)
         return bgColorIndex
     }
 
