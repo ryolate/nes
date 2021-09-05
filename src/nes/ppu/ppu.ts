@@ -333,40 +333,40 @@ export class PPU {
             return
         }
 
-        // Scroll
-        // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
-        let bgColorIndex = -1
-        if (this.renderingEnabled() && this.scanline <= 239) {
-            if (this.scanlineCycle <= 255 || this.scanlineCycle >= 327) {
-                if ((this.scanlineCycle & 7) === 0) {
-                    // 328, 336, 8, 16, 24, ..., 248
-                    // If rendering is enabled, the PPU increments the horizontal position in v many times across the scanline. increment on tick 256 is not visible since hori(v) is reloaded right after (tick 257).
-                    this.coarseXIncrement()
-                } else if ((this.scanlineCycle & 7) === 1) {
-                    // 329, 337, 9, 17, 25, ..., 250
-                    this.reloadShifters()
-                } else if ((this.scanlineCycle & 7) === 7) {
-                    // 327, 335, 7, 15, 23, ..., 247, 255
-                    // The data fetched from these accesses is placed into internal latches, and then fed to the appropriate shift registers when it's time to do so (every 8 cycles). Because the PPU can only fetch an attribute byte every 8 cycles, each sequential string of 8 pixels is forced to have the same palette attribute.
-                    this.fetchTileData()
-                }
-            } else if (this.scanlineCycle === 256) {
-                // If rendering is enabled, the PPU increments the vertical position in v.
-                this.yIncrement()
-            } else if (this.scanlineCycle === 257) {
-                // hori(v) = hori(t)
-                const mask = 0b10000011111
-                this.internalV &= ~mask
-                this.internalV |= this.internalT & mask
-            }
-
-            if (this.scanlineCycle <= 256 || this.scanlineCycle >= 329) {
-                // 329-336, 1-8, 9-17, ..., 249-256
-                bgColorIndex = this.fetchBackgroundColorIndex()
-            }
-        }
-
         if (this.scanline <= 239) {
+            // Scroll
+            // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
+            let bgColorIndex = -1
+            if (this.renderingEnabled()) {
+                if (this.scanlineCycle <= 255 || this.scanlineCycle >= 327) {
+                    if ((this.scanlineCycle & 7) === 0) {
+                        // 328, 336, 8, 16, 24, ..., 248
+                        // If rendering is enabled, the PPU increments the horizontal position in v many times across the scanline. increment on tick 256 is not visible since hori(v) is reloaded right after (tick 257).
+                        this.coarseXIncrement()
+                    } else if ((this.scanlineCycle & 7) === 1) {
+                        // 329, 337, 9, 17, 25, ..., 250
+                        this.reloadShifters()
+                    } else if ((this.scanlineCycle & 7) === 7) {
+                        // 327, 335, 7, 15, 23, ..., 247, 255
+                        // The data fetched from these accesses is placed into internal latches, and then fed to the appropriate shift registers when it's time to do so (every 8 cycles). Because the PPU can only fetch an attribute byte every 8 cycles, each sequential string of 8 pixels is forced to have the same palette attribute.
+                        this.fetchTileData()
+                    }
+                } else if (this.scanlineCycle === 256) {
+                    // If rendering is enabled, the PPU increments the vertical position in v.
+                    this.yIncrement()
+                } else if (this.scanlineCycle === 257) {
+                    // hori(v) = hori(t)
+                    const mask = 0b10000011111
+                    this.internalV &= ~mask
+                    this.internalV |= this.internalT & mask
+                }
+
+                if (this.scanlineCycle <= 256 || this.scanlineCycle >= 329) {
+                    // 329-336, 1-8, 9-17, ..., 249-256
+                    bgColorIndex = this.fetchBackgroundColorIndex()
+                }
+            }
+
             if (this.scanline < 0) {// Pre-render scanline (-1 or 261)
                 if (this.scanlineCycle === 1) {
                     // https://wiki.nesdev.com/w/index.php?title=PPU_registers#Status_.28.242002.29_.3C_read
@@ -422,19 +422,17 @@ export class PPU {
                 // TODO: cycle accurate OAM eveluation.
                 this.spriteLine(this.scanline)
             }
-        } else if (this.scanline === 240) { // Post-render scanline (240)
-            // The PPU just idles during this scanline. Even though accessing
-            // PPU memory from the program would be safe here, the VBlank flag
-            // isn't set until after this scanline.
-        } else if (this.scanline <= 260) { // Vertical blanking lines (241-260)
-            // The VBlank flag of the PPU is set at tick 1 (the second tick) of
-            // scanline 241, where the VBlank NMI also occurs.
-            if (this.scanline === 241 && this.scanlineCycle === 1) {
-                this.vblank = 1
-                if (this.ctrlNMIEnable) {
-                    this.nmi.set()
-                }
+            return
+        }
+
+        // The VBlank flag of the PPU is set at tick 1 (the second tick) of
+        // scanline 241, where the VBlank NMI also occurs.
+        if (this.scanline === 241 && this.scanlineCycle === 1) {
+            this.vblank = 1
+            if (this.ctrlNMIEnable) {
+                this.nmi.set()
             }
+            return
         }
     }
 
