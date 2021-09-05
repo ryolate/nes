@@ -329,11 +329,15 @@ export class PPU {
     tickPPU(): void {
         this.updateIndices()
 
+        if (this.scanlineCycle === 0) {
+            return
+        }
+
         // Scroll
         // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
         let bgColorIndex = -1
         if (this.renderingEnabled() && (this.scanline === 261 || this.scanline <= 239)) {
-            if ((this.scanlineCycle >= 1 && this.scanlineCycle <= 255) || this.scanlineCycle >= 327) {
+            if (this.scanlineCycle <= 255 || this.scanlineCycle >= 327) {
                 if ((this.scanlineCycle & 7) === 0) {
                     // 328, 336, 8, 16, 24, ..., 248
                     // If rendering is enabled, the PPU increments the horizontal position in v many times across the scanline. increment on tick 256 is not visible since hori(v) is reloaded right after (tick 257).
@@ -356,14 +360,14 @@ export class PPU {
                 this.internalV |= this.internalT & mask
             }
 
-            if (this.scanlineCycle >= 1 && this.scanlineCycle <= 256 || this.scanlineCycle >= 329 && this.scanlineCycle <= 336) {
+            if (this.scanlineCycle <= 256 || this.scanlineCycle >= 329 && this.scanlineCycle <= 336) {
                 // 329-336, 1-8, 9-17, ..., 249-256
                 bgColorIndex = this.fetchBackgroundColorIndex()
             }
         }
 
         if (this.scanline <= 239) { // Visible scanline (0-239)
-            if (this.scanlineCycle >= 1 && this.scanlineCycle <= 256) { // Cycles 1-256
+            if (this.scanlineCycle <= 256) { // Cycles 1-256
                 let colorIndex = -1
                 if (this.backgroundEnable && (this.scanlineCycle >= 9 || this.backgroundLeftColumnEnable)) {
                     colorIndex = bgColorIndex
