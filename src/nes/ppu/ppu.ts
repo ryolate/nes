@@ -288,10 +288,11 @@ export class PPU {
         const patternByte1 = this.bus.mapper.readCHR(this.ctrlBackgroundTileSelect << 12 |
             tileIndex << 4 | 8 | fineY) << 1
 
-        this.patternByteLatch = 0
+        let pbl = 0
         for (let i = 0; i < 8; i++) {
-            this.patternByteLatch |= ((patternByte0 >> i & 1) | (patternByte1 >> i & 2)) << ((7 - i) << 1)
+            pbl |= ((patternByte0 >> i & 1) | (patternByte1 >> i & 2)) << ((7 - i) << 1)
         }
+        this.patternByteLatch = pbl
 
         // NN 1111 YYY XXX
         // || |||| ||| +++-- high 3 bits of coarse X (x/4)
