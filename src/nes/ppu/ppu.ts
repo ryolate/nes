@@ -359,18 +359,21 @@ export class PPU {
                 // 329, 337, 9, 17, 25, ..., 250
                 // Reload shifters.
 
-                const mod = (x & 7)
-                if (mod === 7) {
-                    this.fetchTileData()
-                } else if (mod === 0) {
-                    if (x === 256) {
-                        // If rendering is enabled, the PPU increments the vertical position in v.
-                        this.yIncrement()
-                    } else {
-                        this.coarseXIncrement()
-                    }
-                } else if (mod === 1) {
-                    this.reloadShifters()
+                switch (x & 7) {
+                    case 0:
+                        if (x === 256) {
+                            // If rendering is enabled, the PPU increments the vertical position in v.
+                            this.yIncrement()
+                        } else {
+                            this.coarseXIncrement()
+                        }
+                        break
+                    case 1:
+                        this.reloadShifters()
+                        break
+                    case 7:
+                        this.fetchTileData()
+                        break
                 }
 
                 if (x !== 327 && x !== 328) {
