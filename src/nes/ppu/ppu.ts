@@ -468,22 +468,17 @@ export class PPU {
             this.spriteLineBuffer[i] = -1
         }
         // Find 8 sprites.
-        const ids = []
+        let count = 0
         const spriteHeight = this.ctrlSpriteHeight ? 16 : 8
         for (let i = 0; i < 256; i += 4) { // 64 sprites
-            const y = this.bus.oam[i]
+            const y = this.bus.oam[i] // Y position of top of sprite
             if (scanline < y || scanline >= y + spriteHeight) {
                 continue
             }
-            if (ids.length === 8) {
+            if (count++ === 8) {
                 this.spriteOverflow = 1
-                break
+                return
             }
-            ids.push(i)
-        }
-
-        for (const i of ids) {
-            const y = this.bus.oam[i] // Y position of top of sprite
 
             // For 8x8 sprites, this is the tile number of this sprite within
             // the pattern table selected in bit 3 of PPUCTRL ($2000).
