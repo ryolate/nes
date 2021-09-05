@@ -362,14 +362,6 @@ export class PPU {
         }
 
         if (this.scanline <= 239) { // Visible scanline (0-239)
-            if (this.scanlineCycle === 261) {
-                // Sprite evaluation does not happen on the pre-render scanline.
-                // Because evaluation applies to the next line's sprite
-                // rendering, no sprites will be rendered on the first scanline,
-                // and this is why there is a 1 line offset on a sprite's Y
-                // coordinate.
-                this.spriteLine(this.scanline)
-            }
             if (this.scanlineCycle >= 1 && this.scanlineCycle <= 256) { // Cycles 1-256
                 let colorIndex = -1
                 if (this.backgroundEnable && (this.scanlineCycle >= 9 || this.backgroundLeftColumnEnable)) {
@@ -394,6 +386,14 @@ export class PPU {
                 this.putPixel(this.scanlineCycle - 1, this.scanline, colorIndex)
             } else if (this.scanlineCycle >= 257 && this.scanlineCycle <= 320) {
                 // TODO: cycle accurate OAM eveluation.
+                if (this.scanlineCycle === 261) {
+                    // Sprite evaluation does not happen on the pre-render scanline.
+                    // Because evaluation applies to the next line's sprite
+                    // rendering, no sprites will be rendered on the first scanline,
+                    // and this is why there is a 1 line offset on a sprite's Y
+                    // coordinate.
+                    this.spriteLine(this.scanline)
+                }
             } else if (this.scanlineCycle >= 337 && this.scanlineCycle <= 340) {
                 // Two bytes are fetched, but the purpose for this is unknown.
             }
