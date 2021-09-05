@@ -295,21 +295,19 @@ export class PPU {
     }
 
     private updateIndices() {
-        this.scanlineCycle++
-        if (this.scanlineCycle >= 341) {
+        if (++this.scanlineCycle >= 341) {
             this.scanlineCycle = 0
-            this.scanline++
-        }
-        if (this.scanline >= 262) {
-            this.scanline = 0
-            this.frameCount++
+            if (++this.scanline >= 262) {
+                this.scanline = 0
+                this.frameCount++
 
-            const tmp = this.frontView
-            this.frontView = this.backView
-            this.backView = tmp
-            const tmp2 = this.frontBuffer
-            this.frontBuffer = this.backBuffer
-            this.backBuffer = tmp2
+                const tmp = this.frontView
+                this.frontView = this.backView
+                this.backView = tmp
+                const tmp2 = this.frontBuffer
+                this.frontBuffer = this.backBuffer
+                this.backBuffer = tmp2
+            }
         }
     }
 
