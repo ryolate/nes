@@ -309,22 +309,6 @@ export class PPU {
         this.patternTableData |= this.patternByteLatch << 16
         this.paletteAttributesNext = this.paletteAttributesNextLatch
     }
-    // Returns 0-63 or -1 (transparent).
-    private fetchBackgroundColorIndex(): number {
-        // Every cycle, a bit is fetched from the 4 background shift registers
-        // in order to create a pixel on screen. Exactly which bit is fetched
-        // depends on the fine X scroll, set by $2005 (this is how fine X
-        // scrolling is possible). Afterwards, the shift registers are shifted
-        // once, to the data for the next pixel.
-        const bgColorIndex = this.bus.backgroundPalettes[(
-            ((this.paletteAttributes >> (this.internalX << 1)) & 3) << 2) |
-            ((this.patternTableData >>> (this.internalX << 1)) & 3)
-        ]
-
-        this.patternTableData >>>= 2
-        this.paletteAttributes = (this.paletteAttributesNext << 14) | (this.paletteAttributes >> 2)
-        return bgColorIndex
-    }
 
     tickPPU(): void {
         this.updateIndices()
@@ -378,7 +362,18 @@ export class PPU {
 
                 if (x !== 327 && x !== 328) {
                     // 329-336, 1-8, 9-17, ..., 249-256
-                    bgColorIndex = this.fetchBackgroundColorIndex()
+
+                    // Every cycle, a bit is fetched from the 4 background shift registers
+                    // in order to create a pixel on screen. Exactly which bit is fetched
+                    // depends on the fine X scroll, set by $2005 (this is how fine X
+                    // scrolling is possible). Afterwards, the shift registers are shifted
+                    // once, to the data for the next pixel.
+                    bgColorIndex = this.bus.backgroundPalettes[(
+                        ((this.paletteAttributes >> (this.internalX << 1)) & 3) << 2) |
+                        ((this.patternTableData >>> (this.internalX << 1)) & 3)
+                    ]
+                    this.patternTableData >>>= 2
+                    this.paletteAttributes = (this.paletteAttributesNext << 14) | (this.paletteAttributes >> 2)
                 }
             } else if (x === 257) {
                 // hori(v) = hori(t)
