@@ -388,7 +388,7 @@ export class PPU {
             }
         }
 
-        if (this.scanline < HEIGHT) { // Visible scanline (0-239)
+        if (this.scanline <= 239) { // Visible scanline (0-239)
             if (this.scanlineCycle === 261) {
                 // Sprite evaluation does not happen on the pre-render scanline.
                 // Because evaluation applies to the next line's sprite
@@ -397,14 +397,12 @@ export class PPU {
                 // coordinate.
                 this.spriteLine(this.scanline)
             }
-            if (this.scanlineCycle >= 1 && this.scanlineCycle <= WIDTH) { // Cycles 1-256
-                const x = (this.scanlineCycle - 1), y = this.scanline
-
+            if (this.scanlineCycle >= 1 && this.scanlineCycle <= 256) { // Cycles 1-256
                 let colorIndex = -1
-                if (this.backgroundEnable && (x >= 8 || this.backgroundLeftColumnEnable)) {
+                if (this.backgroundEnable && (this.scanlineCycle >= 9 || this.backgroundLeftColumnEnable)) {
                     colorIndex = bgColorIndex
                 }
-                const spritePixel = this.spriteLineBuffer[x]
+                const spritePixel = this.spriteLineBuffer[this.scanlineCycle - 1]
                 if (this.spriteEnable && spritePixel >= 0) {
                     const spriteColorIndex = spritePixel & 63
                     const priority = (spritePixel >> 6) & 1
@@ -420,7 +418,7 @@ export class PPU {
                 if (colorIndex === -1) {
                     colorIndex = this.bus.universalBackgroundColor
                 }
-                this.putPixel(x, y, colorIndex)
+                this.putPixel(this.scanlineCycle - 1, this.scanline, colorIndex)
             } else if (this.scanlineCycle >= 257 && this.scanlineCycle <= 320) {
                 // TODO: cycle accurate OAM eveluation.
             } else if (this.scanlineCycle >= 337 && this.scanlineCycle <= 340) {
