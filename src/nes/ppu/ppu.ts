@@ -897,7 +897,7 @@ class PPUBus {
     }
 }
 
-export function to2DPalettes(palettes1D: Array<number>): Array<Palette> {
+export function to2DPalettes(palettes1D: Int8Array): Array<Palette> {
     const res = new Array<Palette>()
     for (let i = 0; i < 4; i++) {
         res.push([0, 0, 0])

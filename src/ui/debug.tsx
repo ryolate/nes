@@ -77,7 +77,7 @@ const PPUPalettes = (props: { universal: number, bg: Array<PPU.Palette>, sprite:
 	</div>
 }
 
-const SpriteView = (props: { oam: Array<number> }) => {
+const SpriteView = (props: { oam: Int16Array }) => {
 	const oam = props.oam
 	const res = []
 	for (let i = 0; i < oam.length; i += 4) {
