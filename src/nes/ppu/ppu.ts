@@ -351,18 +351,21 @@ export class PPU {
         // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
         let bgColorIndex = -1
         if (this.renderingEnabled()) {
-            if (x <= 255 || x >= 327) {
-                if ((x & 7) == 0) {
-                    // 328, 336, 8, 16, 24, ..., 248
-                    // If rendering is enabled, the PPU increments the horizontal position in v many times across the scanline. increment on tick 256 is not visible since hori(v) is reloaded right after (tick 257).
-                    this.coarseXIncrement()
-                } else if ((x & 7) == 1) {
-                    // 329, 337, 9, 17, 25, ..., 250
-                    this.reloadShifters()
-                } else if ((x & 7) == 7) {
-                    // 327, 335, 7, 15, 23, ..., 247, 255
-                    // The data fetched from these accesses is placed into internal latches, and then fed to the appropriate shift registers when it's time to do so (every 8 cycles). Because the PPU can only fetch an attribute byte every 8 cycles, each sequential string of 8 pixels is forced to have the same palette attribute.
+            if (x >= 327 || x <= 255) {
+                // 327, 335, 7, 15, 23, ..., 247, 255
+                // The data fetched from these accesses is placed into internal latches, and then fed to the appropriate shift registers when it's time to do so (every 8 cycles). Because the PPU can only fetch an attribute byte every 8 cycles, each sequential string of 8 pixels is forced to have the same palette attribute.
+                // 328, 336, 8, 16, 24, ..., 248
+                // If rendering is enabled, the PPU increments the horizontal position in v many times across the scanline. increment on tick 256 is not visible since hori(v) is reloaded right after (tick 257).
+                // 329, 337, 9, 17, 25, ..., 250
+                // Reload shifters.
+
+                const mod = (x & 7)
+                if (mod === 7) {
                     this.fetchTileData()
+                } else if (mod === 0) {
+                    this.coarseXIncrement()
+                } else if (mod === 1) {
+                    this.reloadShifters()
                 }
             } else if (x === 256) {
                 // If rendering is enabled, the PPU increments the vertical position in v.
