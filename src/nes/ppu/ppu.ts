@@ -329,7 +329,7 @@ export class PPU {
     tickPPU(): void {
         this.updateIndices()
 
-        if (this.scanlineCycle === 0) {
+        if (this.scanlineCycle >= 337 || this.scanlineCycle === 0) {
             return
         }
 
@@ -360,7 +360,7 @@ export class PPU {
                 this.internalV |= this.internalT & mask
             }
 
-            if (this.scanlineCycle <= 256 || this.scanlineCycle >= 329 && this.scanlineCycle <= 336) {
+            if (this.scanlineCycle <= 256 || this.scanlineCycle >= 329) {
                 // 329-336, 1-8, 9-17, ..., 249-256
                 bgColorIndex = this.fetchBackgroundColorIndex()
             }
@@ -399,8 +399,6 @@ export class PPU {
                     // coordinate.
                     this.spriteLine(this.scanline)
                 }
-            } else if (this.scanlineCycle >= 337 && this.scanlineCycle <= 340) {
-                // Two bytes are fetched, but the purpose for this is unknown.
             }
         } else if (this.scanline === HEIGHT) { // Post-render scanline (240)
             // The PPU just idles during this scanline. Even though accessing
