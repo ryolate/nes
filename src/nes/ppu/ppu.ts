@@ -345,8 +345,7 @@ export class PPU {
             // 335, 336, 337
 
             if (this.scanlineCycle === 256) {
-                // If rendering is enabled, the PPU increments the vertical
-                // position in v.
+                // If rendering is enabled, the PPU increments the vertical position in v.
                 this.yIncrement()
             } else if (this.scanlineCycle === 257) {
                 // hori(v) = hori(t)
@@ -354,29 +353,17 @@ export class PPU {
                 this.internalV &= ~mask
                 this.internalV |= this.internalT & mask
             } else if ((this.scanlineCycle >= 1 && this.scanlineCycle <= 255) || this.scanlineCycle >= 327) {
-                switch (this.scanlineCycle & 7) {
-                    case 7:
-                        // 327, 335, 7, 15, 23, ..., 247, 255
-                        // The data fetched from these accesses is placed into internal
-                        // latches, and then fed to the appropriate shift registers when
-                        // it's time to do so (every 8 cycles). Because the PPU can only
-                        // fetch an attribute byte every 8 cycles, each sequential
-                        // string of 8 pixels is forced to have the same palette
-                        // attribute.
-                        this.fetchTileData()
-                        break
-                    case 0:
-                        // 328, 336, 8, 16, 24, ..., 248
-                        // If rendering is enabled, the PPU increments the
-                        // horizontal position in v many times across the
-                        // scanline.
-                        // increment on tick 256 is not visible since hori(v) is
-                        // reloaded right after (tick 257).
-                        this.coarseXIncrement()
-                        break
-                    case 1:
-                        // 329, 337, 9, 17, 25, ..., 249
-                        this.reloadShifters()
+                if ((this.scanlineCycle & 7) === 0) {
+                    // 328, 336, 8, 16, 24, ..., 248
+                    // If rendering is enabled, the PPU increments the horizontal position in v many times across the scanline. increment on tick 256 is not visible since hori(v) is reloaded right after (tick 257).
+                    this.coarseXIncrement()
+                } else if ((this.scanlineCycle & 7) === 1) {
+                    // 329, 337, 9, 17, 25, ..., 250
+                    this.reloadShifters()
+                } else if ((this.scanlineCycle & 7) === 7) {
+                    // 327, 335, 7, 15, 23, ..., 247, 255
+                    // The data fetched from these accesses is placed into internal latches, and then fed to the appropriate shift registers when it's time to do so (every 8 cycles). Because the PPU can only fetch an attribute byte every 8 cycles, each sequential string of 8 pixels is forced to have the same palette attribute.
+                    this.fetchTileData()
                 }
             }
 
