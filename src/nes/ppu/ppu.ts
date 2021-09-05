@@ -184,7 +184,7 @@ export class PPU {
     bus: PPUBus
 
     scanline = -1 // [-1,260]
-    scanlineCycle = 0 // [0,340]
+    scanlineCycle = 1 // [1,341]
     frameCount = 0
 
     nmi: NMI
@@ -197,8 +197,8 @@ export class PPU {
     }
 
     private updateIndices() {
-        if (++this.scanlineCycle > 340) {
-            this.scanlineCycle = 0
+        if (++this.scanlineCycle > 341) {
+            this.scanlineCycle = 1
             if (++this.scanline > 260) {
                 this.scanline = -1
                 this.frameCount++
@@ -341,7 +341,7 @@ export class PPU {
             return
         }
 
-        if (this.scanlineCycle >= 337 || this.scanlineCycle === 0) {
+        if (this.scanlineCycle >= 337) {
             return
         }
         // Visible scanline (-1-239)
