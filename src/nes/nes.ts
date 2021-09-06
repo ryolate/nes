@@ -59,25 +59,21 @@ export class NES {
 	}
 
 	// throw error on CPU halt
-	private step(numCPUSteps: number) {
+	step(numCPUSteps: number): void {
 		for (let i = 0; i < numCPUSteps; i++) {
-			this.tick()
-		}
-	}
+			this.ppu.tickPPU3()
+			this.cpu.tickCPU()
+			this.apu.tickAPU()
 
-	tick(): void {
-		this.ppu.tickPPU3()
-		this.cpu.tickCPU()
-		this.apu.tickAPU()
-
-		this.cycleCount++
-		if (this.nextAudioSampleCount < this.cycleCount) {
-			this.nextAudioSampleCount += CPUHz / this.audioSampleRate
-			this.audioSampleBuffer.pushBack({
-				value: this.apu.output(),
-				cycle: this.cycleCount,
-			})
-			this.audioSampleBuffer.ensureCapacity(1024)
+			this.cycleCount++
+			if (this.nextAudioSampleCount < this.cycleCount) {
+				this.nextAudioSampleCount += CPUHz / this.audioSampleRate
+				this.audioSampleBuffer.pushBack({
+					value: this.apu.output(),
+					cycle: this.cycleCount,
+				})
+				this.audioSampleBuffer.ensureCapacity(1024)
+			}
 		}
 	}
 
@@ -129,7 +125,7 @@ export class NES {
 		for (let i = 0; i < iter; i++) {
 			const c = this.ppu.frameCount
 			while (c === this.ppu.frameCount) {
-				this.tick()
+				this.step(1)
 			}
 		}
 	}

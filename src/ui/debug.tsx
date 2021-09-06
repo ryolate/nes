@@ -358,9 +358,7 @@ const UserInteraction = (props: { nes: NES.NES, onChange: () => void, onReset: (
 
 	const onCycle = () => {
 		try {
-			for (let i = 0; i < cycleCount; i++) {
-				props.nes.tick()
-			}
+			props.nes.step(cycleCount)
 		} catch (e) {
 			setError(e)
 		}
