@@ -371,18 +371,14 @@ export class PPU {
                         // scrolling is possible). Afterwards, the shift registers are shifted
                         // once, to the data for the next pixel.
                         if (x <= 256) {
-                            const shift = this.internalX << 1
-                            const pt = ((this.patternTableData >>> (shift)) & 3)
-                            if (pt > 0) {
-                                bgColorIndex = this.bus.backgroundPalettes[(
-                                    ((this.paletteAttributes >> (shift)) & 3) << 2) |
-                                    pt
-                                ]
-                            }
+                            bgColorIndex = this.bus.backgroundPalettes[(
+                                (this.paletteAttributes >> this.internalX) & 12) |
+                                ((this.patternTableData >>> this.internalX) & 3)
+                            ]
                         }
 
                         this.patternTableData >>>= 2
-                        this.paletteAttributes = (this.paletteAttributesNext << 14) | (this.paletteAttributes >> 2)
+                        this.paletteAttributes = this.paletteAttributesNext << 16 | this.paletteAttributes >> 2
                     }
                 } else if (x === 257) {
                     // hori(v) = hori(t)
@@ -588,7 +584,7 @@ export class PPU {
             case 3: // $2003
                 this.oamAddr = x
                 return
-            case 4:
+            case 4: // $2004 OAMDATA
                 // For emulation purposes, it is probably best to completely
                 // ignore writes during rendering.
                 if (this.scanline < 240) {
@@ -597,11 +593,10 @@ export class PPU {
                 this.bus.oam[this.oamAddr] = x
                 this.oamAddr = (this.oamAddr + 1) & 0xFF
                 return
-            // OAMDATA
-            case 5:
+            case 5: // $2005 PPUSCROLL
                 if (this.internalW === 0) {
                     this.internalT = this.internalT & ~0b11111 | (x >> 3)
-                    this.internalX = x & 0b111
+                    this.internalX = (x & 0b111) << 1
                     this.internalW = 1
                 } else {
                     this.internalT &= ~0b111001111100000
@@ -609,8 +604,7 @@ export class PPU {
                     this.internalW = 0
                 }
                 return
-            // PPUADDR
-            case 6:
+            case 6: // $2006 PPUADDR
                 if (this.internalW === 0) {
                     this.internalT &= ~0x7F00
                     this.internalT |= (x & 0x3F) << 8
@@ -655,7 +649,7 @@ export class PPU {
         return this.internalV >> 10 & 3
     }
     fineX(): number {
-        return this.internalX
+        return this.internalX >> 1
     }
     fineY(): number {
         return this.internalV >> 12
