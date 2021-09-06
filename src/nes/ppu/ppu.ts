@@ -23,6 +23,18 @@ Reference:
 export const WIDTH = 256
 export const HEIGHT = 240
 
+const REVERSE_INTERLEAVE = (() => {
+    const res = new Array(256)
+    for (let i = 0; i < 256; i++) {
+        res[i] = 0
+        for (let j = 0; j < 8; j++) {
+            res[i] |= (i >> j & 1) << ((7 - j) << 1)
+        }
+        res[i] <<= 16
+    }
+    return res
+})()
+
 // NTCS
 export class PPU {
     // PPUCTRL $2000 > write
@@ -52,7 +64,7 @@ export class PPU {
         }
 
         if (this.ctrlNMIEnable !== oldCtrlNMIEnable) {
-            this.logger?.log(`ctroNMIEnable <- ${this.ctrlNMIEnable}`)
+            this.logger?.log(`ctroNMIEnable < - ${this.ctrlNMIEnable} `)
         }
     }
 
@@ -223,7 +235,7 @@ export class PPU {
             // scanline: -1 ~ 239
             // tick: 8, 16, ..., 256, 328, 336
         } else {
-            throw new Error(`inc hori(v) at (${this.scanline}, ${this.scanlineCycle})`)
+            throw new Error(`inc hori(v) at(${this.scanline}, ${this.scanlineCycle})`)
         }
         // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Wrapping_around
         // Coarse X increment
@@ -243,7 +255,7 @@ export class PPU {
             // scanline: -1 ~ 239
             // tick: 256
         } else {
-            throw new Error(`inc ver(v) at (${this.scanline}, ${this.scanlineCycle})`)
+            throw new Error(`inc ver(v) at(${this.scanline}, ${this.scanlineCycle})`)
         }
 
         // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Wrapping_around
@@ -287,13 +299,9 @@ export class PPU {
         const patternByte0 = this.bus.mapper.readCHR(this.ctrlBackgroundTileSelect << 12 |
             tileIndex << 4 | 0 | fineY)
         const patternByte1 = this.bus.mapper.readCHR(this.ctrlBackgroundTileSelect << 12 |
-            tileIndex << 4 | 8 | fineY) << 1
+            tileIndex << 4 | 8 | fineY)
 
-        let pbl = 0
-        for (let i = 0, j = 30; i < 8; i++, j -= 2) {
-            pbl |= ((patternByte0 >> i & 1) | (patternByte1 >> i & 2)) << j
-        }
-        this.patternByteLatch = pbl
+        this.patternByteLatch = REVERSE_INTERLEAVE[patternByte0] | (REVERSE_INTERLEAVE[patternByte1] << 1)
 
         // NN 1111 YYY XXX
         // || |||| ||| +++-- high 3 bits of coarse X (x/4)
@@ -748,8 +756,8 @@ export class PPU {
     // render pattern table using predefined colors.
     renderCharacters(canvas: HTMLCanvasElement): void {
         const pixelSize = 2
-        canvas.setAttribute('width', `${2 * 16 * 8 * pixelSize}`)
-        canvas.setAttribute('height', `${16 * 8 * pixelSize}`)
+        canvas.setAttribute('width', `${2 * 16 * 8 * pixelSize} `)
+        canvas.setAttribute('height', `${16 * 8 * pixelSize} `)
         const ctx = canvas.getContext('2d')
         if (!ctx) {
             return
@@ -763,7 +771,7 @@ export class PPU {
                         for (let c = 0; c < 8; c++) {
                             const colorIndex = (((upperBits >> 7 - c) & 1) << 1) | ((lowerBits >> 7 - c) & 1)
                             const gray = (3 - colorIndex) * 80
-                            ctx.fillStyle = `rgb(${gray},${gray},${gray})`
+                            ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`
                             ctx.fillRect((h * 16 * 8 + x * 8 + c) * pixelSize, (y * 8 + r) * pixelSize, pixelSize, pixelSize)
                         }
                     }
