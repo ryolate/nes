@@ -64,11 +64,7 @@ const RealGame = (props: { nes: NES.NES }) => {
 			const elapsed = timestamp - prevTimestamp
 			prevTimestamp = timestamp
 
-<<<<<<< HEAD
 			props.nes.play(elapsed * speed / 100)
-=======
-			props.nes.play(elapsed * 4)
->>>>>>> 19f0008... Took 9.31 seconds (644.33% speed)
 			props.nes.render(ctx)
 
 			countInSecond++
