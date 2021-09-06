@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { PPU } from "./ppu/ppu";
-import { CPU, CPUHaltError, CPUStatus } from "./cpu/cpu";
+import { CPU, CPUHaltError } from "./cpu/cpu";
 import { APU } from "./apu/apu";
 import { NMI } from "./cpu/nmi";
 import { Controller, ControllerId } from "./controller";
