@@ -290,8 +290,8 @@ export class PPU {
             tileIndex << 4 | 8 | fineY) << 1
 
         let pbl = 0
-        for (let i = 0; i < 8; i++) {
-            pbl |= ((patternByte0 >> i & 1) | (patternByte1 >> i & 2)) << ((7 - i) << 1)
+        for (let i = 0, j = 30; i < 8; i++, j -= 2) {
+            pbl |= ((patternByte0 >> i & 1) | (patternByte1 >> i & 2)) << j
         }
         this.patternByteLatch = pbl
 
@@ -307,7 +307,7 @@ export class PPU {
         this.paletteAttributesNextLatch = (attrByte >> ((v >> 4) & 4 | v & 2) & 3) << 16
     }
     private reloadShifters() {
-        this.patternTableData |= this.patternByteLatch << 16
+        this.patternTableData |= this.patternByteLatch
         this.paletteAttributesNext = this.paletteAttributesNextLatch
     }
 
