@@ -1,6 +1,6 @@
 import { Logger } from "../logger";
 import { Mapper } from "../mappers/mapper";
-import { assertInRange, assertUint8, uint16, uint8 } from "../num";
+import { assertUint8, uint16, uint8 } from "../num"; ``
 import { DMC } from "./dmc";
 /*
 References
@@ -403,7 +403,6 @@ class LengthCounter {
 	private enabled = 0
 	halt = 0
 	setLoad(load: number) {
-		assertInRange(load, 0, 31)
 		// If the enabled flag is set, the length counter is loaded with entry L of the length table:
 		if (this.enabled) {
 			this.counter = LengthCounter.lengthTable[load]
@@ -418,7 +417,6 @@ class LengthCounter {
 	]
 
 	setEnabled(x: number) {
-		assertInRange(x, 0, 1)
 		// When the enabled bit is cleared (via $4015), the length counter is
 		// forced to 0 and cannot be changed until enabled is set again (the
 		// length counter's previous value is lost). There is no immediate
@@ -640,7 +638,6 @@ export class APU {
 	}
 
 	write(pc: uint16, x: uint8): void {
-		assertInRange(pc, 0x4000, 0x4017)
 		assertUint8(x)
 		switch (pc & 0x1F) {
 			case 0x00:
@@ -762,17 +759,11 @@ export class APU {
 		// 			(triangle / 8227) + (noise / 12241) + (dmc / 22638)
 		const pulse1 = this.pulse1.output()
 		const pulse2 = this.pulse2.output()
-		assertInRange(pulse1, 0, 15)
-		assertInRange(pulse2, 0, 15)
 		const pulseOut = 95.88 / (8128 / (pulse1 + pulse2) + 100)
 
 		const triangle = this.triangle.output()
 		const noise = this.noise.output()
 		const dmc = this.dmc.output()
-
-		assertInRange(triangle, 0, 15)
-		assertInRange(noise, 0, 15)
-		assertInRange(dmc, 0, 127)
 
 		if (this.prevDMC != dmc) {
 			this.prevDMC = dmc

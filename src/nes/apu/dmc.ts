@@ -1,5 +1,5 @@
 import { Mapper } from "../mappers/mapper"
-import { assertInRange, uint8 } from "../num"
+import { uint8 } from "../num"
 
 export class DMC {
     readonly mapper
@@ -162,7 +162,6 @@ export class DMC {
     outputBitsRemainingCounter = 1
     outputSilence = 0
     output(): number {
-        assertInRange(this.outputLevel, 0, 127)
         return this.outputLevel
     }
 }

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { uint8, hasBit, assertInRange, assertUint8 } from '../num'
+import { uint8, hasBit, assertUint8 } from '../num'
 
 /*
 Reference:
@@ -128,10 +128,8 @@ export class Cartridge {
 
     readCHR(pc: number): uint8 {
         if (this.chrROM.length) {
-            assertInRange(pc, 0, this.chrROM.length)
             return this.chrROM[pc]
         } else {
-            assertInRange(pc, 0, this.chrRAM.length)
             return this.chrRAM[pc]
         }
     }
@@ -141,7 +139,6 @@ export class Cartridge {
         if (this.header.chrROMSize) {
             return
         }
-        assertInRange(pc, 0, this.chrRAM.length)
         this.chrRAM[pc] = x
     }
 

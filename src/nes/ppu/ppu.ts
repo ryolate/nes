@@ -1,4 +1,4 @@
-import { assertInRange, assertUint8, uint16, uint8 } from '../num'
+import { assertUint8, uint16, uint8 } from '../num'
 import { NMI } from '../cpu/nmi'
 import * as Color from './color'
 import { Logger } from '../logger'
@@ -680,7 +680,6 @@ export class PPU {
                     const pt = this.bus.mapper.readNametable(0x2000 + h * 0x400 + i)
                     // const pt = this.bus.mapper.vram[(h << 10 | i) & (this.bus.mapper.vram.length - 1)]
                     const pi = this.patternValue(this.ctrlBackgroundTileSelect, pt, x, y)
-                    assertInRange(pi, 0, 3)
 
                     let colorIndex
                     if (pi === 0) {
@@ -830,7 +829,6 @@ class PPUBus {
     }
     // Read PPU memory map.
     read(pc: uint16): uint8 {
-        assertInRange(pc, 0, 0x3FFF)
         if (pc <= 0x1FFF) {
             // Pattern table
             return this.mapper.readCHR(pc)
@@ -864,8 +862,6 @@ class PPUBus {
         }
     }
     write(pc: uint16, x: uint8) {
-        assertInRange(pc, 0, 0x3FFF)
-        assertUint8(x)
         if (pc <= 0x1FFF) { // Pattern tables $0000 - $1FFF
             this.mapper.writeCHR(pc, x)
             return

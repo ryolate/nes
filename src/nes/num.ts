@@ -32,12 +32,12 @@ export const assertUint16 = (x: number): void => {
     throw new Error(`${x} not uint16`)
 }
 
-export const assertInRange = (x: number, minimum: number, maximum: number): void => {
-    if (minimum <= x && x <= maximum) {
-        return
-    }
-    throw new Error(`$${x.toString(16)} not in range [$${minimum.toString(16)}, $${maximum.toString(16)}]`)
-}
+// export const assertInRange = (x: number, minimum: number, maximum: number): void => {
+//     if (minimum <= x && x <= maximum) {
+//         return
+//     }
+//     throw new Error(`$${x.toString(16)} not in range [$${minimum.toString(16)}, $${maximum.toString(16)}]`)
+// }
 
 export const uint8Reverse = (x: uint8): uint8 => {
     let res = 0
