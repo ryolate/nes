@@ -371,10 +371,11 @@ export class PPU {
                         // scrolling is possible). Afterwards, the shift registers are shifted
                         // once, to the data for the next pixel.
                         if (x <= 256) {
-                            const pt = ((this.patternTableData >>> (this.internalX << 1)) & 3)
+                            const shift = this.internalX << 1
+                            const pt = ((this.patternTableData >>> (shift)) & 3)
                             if (pt > 0) {
                                 bgColorIndex = this.bus.backgroundPalettes[(
-                                    ((this.paletteAttributes >> (this.internalX << 1)) & 3) << 2) |
+                                    ((this.paletteAttributes >> (shift)) & 3) << 2) |
                                     pt
                                 ]
                             }
