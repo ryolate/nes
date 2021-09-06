@@ -304,11 +304,11 @@ export class PPU {
         const attrByte = this.bus.mapper.readNametable(attributeAddress)
 
         // --- -- ---Y- ---X- -> YX0
-        this.paletteAttributesNextLatch = attrByte >> ((v >> 4) & 4 | v & 2) & 3
+        this.paletteAttributesNextLatch = (attrByte >> ((v >> 4) & 4 | v & 2) & 3) << 16
     }
     private reloadShifters() {
         this.patternTableData |= this.patternByteLatch << 16
-        this.paletteAttributesNext = this.paletteAttributesNextLatch << 16
+        this.paletteAttributesNext = this.paletteAttributesNextLatch
     }
 
     tickPPU3(): void {
