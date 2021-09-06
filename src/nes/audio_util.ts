@@ -45,4 +45,7 @@ export class AudioEventDeque {
 	}
 }
 
-export type AudioEvent = number
+export interface AudioEvent {
+	value: number
+	cycle: number
+}
