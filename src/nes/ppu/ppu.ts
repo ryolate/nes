@@ -23,8 +23,6 @@ Reference:
 export const WIDTH = 256
 export const HEIGHT = 240
 
-const BG_TRANSPARENT = 64 // transparent color
-
 // NTCS
 export class PPU {
     // PPUCTRL $2000 > write
@@ -314,7 +312,7 @@ export class PPU {
         this.patternTableData1 |= this.patternByte1Latch << 8
         this.paletteAttributesNext = this.paletteAttributesNextLatch
     }
-    // Returns 0-63 or 64 (transparent).
+    // Returns 0-63 or -1 (transparent).
     private fetchBackgroundColorIndex(): number {
         // Every cycle, a bit is fetched from the 4 background shift registers
         // in order to create a pixel on screen. Exactly which bit is fetched
@@ -325,7 +323,8 @@ export class PPU {
             (this.patternTableData1 >> this.internalX & 1) << 1
         const bgAttr = (this.paletteAttributes0 >> this.internalX & 1) |
             (this.paletteAttributes1 >> this.internalX & 1) << 1
-        const bgColorIndex = bgPixel === 0 ? BG_TRANSPARENT : this.bus.backgroundPalettes[bgAttr * 3 + bgPixel - 1]
+        const bgColorIndex = bgPixel === 0 ? -1 : this.bus.backgroundPalettes[bgAttr * 3 + bgPixel - 1]
+        assertInRange(bgColorIndex, -1, 63)
         this.patternTableData0 >>= 1
         this.patternTableData1 >>= 1
         this.paletteAttributes0 >>= 1
@@ -340,7 +339,7 @@ export class PPU {
 
         // Scroll
         // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
-        let bgColorIndex = BG_TRANSPARENT
+        let bgColorIndex = -1
         if (this.renderingEnabled() && (this.scanline === 261 || this.scanline <= 239)) {
             // y in [0,239]  [261]
 
@@ -410,7 +409,7 @@ export class PPU {
             if (this.scanlineCycle >= 1 && this.scanlineCycle <= WIDTH) { // Cycles 1-256
                 const x = (this.scanlineCycle - 1), y = this.scanline
 
-                let colorIndex = BG_TRANSPARENT
+                let colorIndex = -1
                 if (this.backgroundEnable && (x >= 8 || this.backgroundLeftColumnEnable)) {
                     colorIndex = bgColorIndex
                 }
@@ -420,14 +419,14 @@ export class PPU {
                     const priority = (spritePixel >> 6) & 1
                     const spriteZero = (spritePixel >> 7) & 1
 
-                    if (colorIndex !== BG_TRANSPARENT && spriteZero) {
+                    if (colorIndex !== -1 && spriteZero) {
                         this.spriteZeroHit = 1
                     }
-                    if (priority === 0 || colorIndex === BG_TRANSPARENT) {
+                    if (priority === 0 || colorIndex === -1) {
                         colorIndex = spriteColorIndex
                     }
                 }
-                if (colorIndex === BG_TRANSPARENT) {
+                if (colorIndex === -1) {
                     colorIndex = this.bus.universalBackgroundColor
                 }
                 this.putPixel(x, y, colorIndex)
