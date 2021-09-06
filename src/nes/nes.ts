@@ -66,8 +66,8 @@ export class NES {
 			this.apu.tickAPU()
 
 			this.cycleCount++
-			if (this.nextAudioSampleCount < this.cycleCount) {
-				this.nextAudioSampleCount += CPUHz / this.audioSampleRate
+			if (this.nextAudioSampleCount < this.cycleCount * this.audioSampleRate) {
+				this.nextAudioSampleCount += CPUHz
 				this.audioSampleBuffer.pushBack({
 					value: this.apu.output(),
 					cycle: this.cycleCount,
