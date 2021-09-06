@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import fs from 'fs'
 import { NES } from '../nes/nes'
 import { performance } from 'node:perf_hooks'
 

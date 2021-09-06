@@ -25,100 +25,6 @@ export const HEIGHT = 240
 
 const BG_TRANSPARENT = 64 // transparent color
 
-enum EventType {
-    Y_INCREMENT,
-    HORIV_HORIT,
-    FETCH_TILE_DATA,
-    COARSE_X_INCREMENT,
-    RELOAD_SHIFTERS,
-    FETCH_BACKGROUND_COLOR_INDEX,
-    SPRITE_LINE,
-    PUT_PIXEL,
-    VBLANK,
-    CLEAR_VBLANK,
-    VERTC_VERTT
-}
-
-function getOperations(scanline: number, scanlineCycle: number): Array<EventType> {
-    const events = new Array<EventType>()
-
-    // Scroll
-    // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
-    if (scanline === 261 || scanline <= 239) {
-        if (scanlineCycle === 256) {
-            events.push(EventType.Y_INCREMENT)
-        } else if (scanlineCycle === 257) {
-            events.push(EventType.HORIV_HORIT)
-        } else if ((scanlineCycle >= 327 ||
-            scanlineCycle >= 1 && scanlineCycle <= 255)) {
-            switch (scanlineCycle & 7) {
-                case 7:
-                    events.push(EventType.FETCH_TILE_DATA)
-                    break
-                case 0:
-                    events.push(EventType.COARSE_X_INCREMENT)
-                    break
-                case 1:
-                    events.push(EventType.RELOAD_SHIFTERS)
-                    break
-            }
-        }
-
-        if (scanlineCycle >= 329 && scanlineCycle <= 336 ||
-            scanlineCycle >= 1 && scanlineCycle <= 256) {
-            events.push(EventType.FETCH_BACKGROUND_COLOR_INDEX)
-        }
-    }
-
-    if (scanline < HEIGHT) { // Visible scanline (0-239)
-        if (scanlineCycle === 261) {
-            // Sprite evaluation does not happen on the pre-render scanline.
-            // Because evaluation applies to the next line's sprite
-            // rendering, no sprites will be rendered on the first scanline,
-            // and this is why there is a 1 line offset on a sprite's Y
-            // coordinate.
-            events.push(EventType.SPRITE_LINE)
-        } else if (scanlineCycle >= 1 && scanlineCycle <= WIDTH) { // Cycles 1-256
-            events.push(EventType.PUT_PIXEL)
-        }
-    } else if (scanline === HEIGHT) { // Post-render scanline (240)
-        // The PPU just idles during this scanline. Even though accessing
-        // PPU memory from the program would be safe here, the VBlank flag
-        // isn't set until after this scanline.
-    } else if (scanline <= 260) { // Vertical blanking lines (241-260)
-        // The VBlank flag of the PPU is set at tick 1 (the second tick) of
-        // scanline 241, where the VBlank NMI also occurs.
-        if (scanline === 241 && scanlineCycle === 1) {
-            events.push(EventType.VBLANK)
-        }
-    } else { // Pre-render scanline (-1 or 261)
-        if (scanlineCycle === 1) {
-            events.push(EventType.CLEAR_VBLANK)
-        } else if (scanlineCycle >= 280 && scanlineCycle <= 304) {
-            events.push(EventType.VERTC_VERTT)
-        }
-    }
-
-    return events
-}
-
-const operationLens = new Array<number>()
-const operations = (() => {
-    const res = new Array<EventType>()
-
-    for (let scanline = 0; scanline <= 261; scanline++) {
-        for (let scanlineCycle = 0; scanlineCycle <= 340; scanlineCycle++) {
-            operationLens.push(res.length)
-            for (const e of getOperations(scanline, scanlineCycle)) {
-                res.push(e)
-            }
-        }
-    }
-    operationLens.push(res.length)
-    return res
-})()
-
-
 // NTCS
 export class PPU {
     // PPUCTRL $2000 > write
@@ -434,27 +340,35 @@ export class PPU {
     tickPPU(): void {
         this.updateIndices()
 
+        // Scroll
+        // See https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
         let bgColorIndex = BG_TRANSPARENT
+        if (this.renderingEnabled() && (this.scanline === 261 || this.scanline <= 239)) {
+            // y in [0,239]  [261]
 
-        const idx = this.scanline * 341 + this.scanlineCycle
-        const end = operationLens[idx + 1]
-        for (let i = operationLens[idx]; i < end; i++) {
-            switch (operations[i]) {
-                case EventType.Y_INCREMENT:
-                    if (this.renderingEnabled()) {
-                        this.yIncrement()
-                    }
-                    break
-                case EventType.HORIV_HORIT:
-                    if (this.renderingEnabled()) {
-                        // hori(v) = hori(t)
-                        const mask = 0b10000011111
-                        this.internalV &= ~mask
-                        this.internalV |= this.internalT & mask
-                    }
-                    break
-                case EventType.FETCH_TILE_DATA:
-                    if (this.renderingEnabled()) {
+            // Event happen when x is in
+            // 7, 8, 9,
+            // 15, 16, 17,
+            // ...
+            // 247, 248, 249,
+            // 255
+            // 256, 257
+            // 327, 328, 329
+            // 335, 336, 337
+
+            if (this.scanlineCycle === 256) {
+                // If rendering is enabled, the PPU increments the vertical
+                // position in v.
+                this.yIncrement()
+            } else if (this.scanlineCycle === 257) {
+                // hori(v) = hori(t)
+                const mask = 0b10000011111
+                this.internalV &= ~mask
+                this.internalV |= this.internalT & mask
+            } else if ((this.scanlineCycle >= 327 ||
+                this.scanlineCycle >= 1 && this.scanlineCycle <= 255)) {
+                switch (this.scanlineCycle & 7) {
+                    case 7:
                         // 327, 335, 7, 15, 23, ..., 247, 255
                         // The data fetched from these accesses is placed into internal
                         // latches, and then fed to the appropriate shift registers when
@@ -463,10 +377,8 @@ export class PPU {
                         // string of 8 pixels is forced to have the same palette
                         // attribute.
                         this.fetchTileData()
-                    }
-                    break
-                case EventType.COARSE_X_INCREMENT:
-                    if (this.renderingEnabled()) {
+                        break
+                    case 0:
                         // 328, 336, 8, 16, 24, ..., 248
                         // If rendering is enabled, the PPU increments the
                         // horizontal position in v many times across the
@@ -474,75 +386,89 @@ export class PPU {
                         // increment on tick 256 is not visible since hori(v) is
                         // reloaded right after (tick 257).
                         this.coarseXIncrement()
-                    }
-                    break
-                case EventType.RELOAD_SHIFTERS:
-                    if (this.renderingEnabled()) {
+                        break
+                    case 1:
                         // 329, 337, 9, 17, 25, ..., 249
                         this.reloadShifters()
-                    }
-                    break
-                case EventType.FETCH_BACKGROUND_COLOR_INDEX:
-                    if (this.renderingEnabled()) {
-                        // 329-336, 1-8, 9-17, ..., 249-256
-                        bgColorIndex = this.fetchBackgroundColorIndex()
-                    }
-                    break
-                case EventType.SPRITE_LINE:
-                    this.spriteLine(this.scanline)
-                    break
-                case EventType.PUT_PIXEL: {
-                    const x = (this.scanlineCycle - 1), y = this.scanline
-
-                    let colorIndex = BG_TRANSPARENT
-                    if (this.backgroundEnable && (x >= 8 || this.backgroundLeftColumnEnable)) {
-                        colorIndex = bgColorIndex
-                    }
-                    const spritePixel = this.spriteLineBuffer[x]
-                    if (this.spriteEnable && spritePixel >= 0) {
-                        const spriteColorIndex = spritePixel & 63
-                        const priority = (spritePixel >> 6) & 1
-                        const spriteZero = (spritePixel >> 7) & 1
-
-                        if (colorIndex !== BG_TRANSPARENT && spriteZero) {
-                            this.spriteZeroHit = 1
-                        }
-                        if (priority === 0 || colorIndex === BG_TRANSPARENT) {
-                            colorIndex = spriteColorIndex
-                        }
-                    }
-                    if (colorIndex === BG_TRANSPARENT) {
-                        colorIndex = this.bus.universalBackgroundColor
-                    }
-                    this.putPixel(x, y, colorIndex)
-
-                    break
                 }
-                case EventType.VBLANK:
-                    this.vblank = 1
-                    if (this.ctrlNMIEnable) {
-                        this.nmi.set()
+            }
+
+            if (this.scanlineCycle >= 329 && this.scanlineCycle <= 336 ||
+                this.scanlineCycle >= 1 && this.scanlineCycle <= 256) {
+                // 329-336, 1-8, 9-17, ..., 249-256
+                bgColorIndex = this.fetchBackgroundColorIndex()
+            }
+        }
+
+        if (this.scanline < HEIGHT) { // Visible scanline (0-239)
+            if (this.scanlineCycle === 261) {
+                // Sprite evaluation does not happen on the pre-render scanline.
+                // Because evaluation applies to the next line's sprite
+                // rendering, no sprites will be rendered on the first scanline,
+                // and this is why there is a 1 line offset on a sprite's Y
+                // coordinate.
+                this.spriteLine(this.scanline)
+            }
+            if (this.scanlineCycle >= 1 && this.scanlineCycle <= WIDTH) { // Cycles 1-256
+                const x = (this.scanlineCycle - 1), y = this.scanline
+
+                let colorIndex = BG_TRANSPARENT
+                if (this.backgroundEnable && (x >= 8 || this.backgroundLeftColumnEnable)) {
+                    colorIndex = bgColorIndex
+                }
+                const spritePixel = this.spriteLineBuffer[x]
+                if (this.spriteEnable && spritePixel >= 0) {
+                    const spriteColorIndex = spritePixel & 63
+                    const priority = (spritePixel >> 6) & 1
+                    const spriteZero = (spritePixel >> 7) & 1
+
+                    if (colorIndex !== BG_TRANSPARENT && spriteZero) {
+                        this.spriteZeroHit = 1
                     }
-                    break
-                case EventType.CLEAR_VBLANK:
-                    // https://wiki.nesdev.com/w/index.php?title=PPU_registers#Status_.28.242002.29_.3C_read
-                    // cleared at dot 1 (the second dot) of the pre-render line.
-                    this.spriteOverflow = 0
-                    this.spriteZeroHit = 0
-                    this.vblank = 0
-                    break
-                case EventType.VERTC_VERTT:
-                    // If rendering is enabled, at the end of vblank, shortly after
-                    // the horizontal bits are copied from t to v at dot 257, the
-                    // PPU will repeatedly copy the vertical bits from t to v from
-                    // dots 280 to 304, completing the full initialization of v from t:
-                    if (this.renderingEnabled()) {
-                        // vert(v) = vert(t)
-                        const mask = 0b111101111100000
-                        this.internalV &= ~mask
-                        this.internalV |= this.internalT & mask
+                    if (priority === 0 || colorIndex === BG_TRANSPARENT) {
+                        colorIndex = spriteColorIndex
                     }
-                    break
+                }
+                if (colorIndex === BG_TRANSPARENT) {
+                    colorIndex = this.bus.universalBackgroundColor
+                }
+                this.putPixel(x, y, colorIndex)
+            } else if (this.scanlineCycle >= 257 && this.scanlineCycle <= 320) {
+                // TODO: cycle accurate OAM eveluation.
+            } else if (this.scanlineCycle >= 337 && this.scanlineCycle <= 340) {
+                // Two bytes are fetched, but the purpose for this is unknown.
+            }
+        } else if (this.scanline === HEIGHT) { // Post-render scanline (240)
+            // The PPU just idles during this scanline. Even though accessing
+            // PPU memory from the program would be safe here, the VBlank flag
+            // isn't set until after this scanline.
+        } else if (this.scanline <= 260) { // Vertical blanking lines (241-260)
+            // The VBlank flag of the PPU is set at tick 1 (the second tick) of
+            // scanline 241, where the VBlank NMI also occurs.
+            if (this.scanline === 241 && this.scanlineCycle === 1) {
+                this.vblank = 1
+                if (this.ctrlNMIEnable) {
+                    this.nmi.set()
+                }
+            }
+        } else { // Pre-render scanline (-1 or 261)
+            if (this.scanlineCycle === 1) {
+                // https://wiki.nesdev.com/w/index.php?title=PPU_registers#Status_.28.242002.29_.3C_read
+                // cleared at dot 1 (the second dot) of the pre-render line.
+                this.spriteOverflow = 0
+                this.spriteZeroHit = 0
+                this.vblank = 0
+            } else if (this.scanlineCycle >= 280 && this.scanlineCycle <= 304) {
+                // If rendering is enabled, at the end of vblank, shortly after
+                // the horizontal bits are copied from t to v at dot 257, the
+                // PPU will repeatedly copy the vertical bits from t to v from
+                // dots 280 to 304, completing the full initialization of v from t:
+                if (this.renderingEnabled()) {
+                    // vert(v) = vert(t)
+                    const mask = 0b111101111100000
+                    this.internalV &= ~mask
+                    this.internalV |= this.internalT & mask
+                }
             }
         }
     }
@@ -635,6 +561,8 @@ export class PPU {
             }
         }
     }
+
+
 
     // get the value at the (x,y) position of the i-th tile in the pattern table.
     // the return value can be used for indexing a palette.
