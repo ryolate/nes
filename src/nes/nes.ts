@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { PPU } from "./ppu/ppu";
-import { CPU, CPUHaltError, CPUStatus } from "./cpu/cpu";
+import { CPU, CPUHaltError } from "./cpu/cpu";
 import { APU } from "./apu/apu";
 import { NMI } from "./cpu/nmi";
 import { Controller, ControllerId } from "./controller";
@@ -21,8 +21,7 @@ export class NES {
 	ppu: PPU
 	cpu: CPU
 
-	private cycleCount = 0
-	private nextAudioSampleCount = 0.0
+	private nextAudioSampleTime = 0
 	private readonly audioSampleBuffer = new AudioEventDeque()
 	private readonly audioSampleRate
 
@@ -65,13 +64,10 @@ export class NES {
 			this.cpu.tickCPU()
 			this.apu.tickAPU()
 
-			this.cycleCount++
-			if (this.nextAudioSampleCount < this.cycleCount * this.audioSampleRate) {
-				this.nextAudioSampleCount += CPUHz
-				this.audioSampleBuffer.pushBack({
-					value: this.apu.output(),
-					cycle: this.cycleCount,
-				})
+			this.nextAudioSampleTime -= this.audioSampleRate
+			if (0 > this.nextAudioSampleTime) {
+				this.nextAudioSampleTime += CPUHz
+				this.audioSampleBuffer.pushBack(this.apu.output())
 				this.audioSampleBuffer.ensureCapacity(1024)
 			}
 		}
@@ -107,13 +103,13 @@ export class NES {
 		for (let i = 0; i < n; i++) {
 			const e = this.audioSampleBuffer.peek()
 			if (e === null) {
-				if (event) {
-					outputBuffer[i] = event.value
+				if (event !== null) {
+					outputBuffer[i] = event
 				}
 				continue
 			}
 			event = e
-			outputBuffer[i] = e.value
+			outputBuffer[i] = e
 			this.audioSampleBuffer.pop()
 		}
 		return
