@@ -308,7 +308,7 @@ export class PPU {
     }
     private reloadShifters() {
         this.patternTableData |= this.patternByteLatch << 16
-        this.paletteAttributesNext = this.paletteAttributesNextLatch
+        this.paletteAttributesNext = this.paletteAttributesNextLatch << 16
     }
 
     tickPPU3(): void {
@@ -378,7 +378,7 @@ export class PPU {
                         }
 
                         this.patternTableData >>>= 2
-                        this.paletteAttributes = this.paletteAttributesNext << 16 | this.paletteAttributes >> 2
+                        this.paletteAttributes = this.paletteAttributesNext | this.paletteAttributes >> 2
                     }
                 } else if (x === 257) {
                     // hori(v) = hori(t)
